@@ -1,33 +1,45 @@
 ---
 title: First login
-description: Log in as admin and set up your first user.
+description: Create your admin account and configure GateKeeper for the first time.
 ---
 
-## Admin first login
+## Step 1 - visit the admin panel
 
-On first startup, GateKeeper creates one admin account using the `ADMIN_EMAIL` and `ADMIN_PASSWORD` values from your environment. This happens exactly once - if an admin already exists, those variables are ignored.
+After starting GateKeeper for the first time, go to `/admin` in your browser. Since no admin account exists yet, GateKeeper redirects you to `/admin/setup`.
 
-Navigate to `https://auth.example.com/admin/login` and sign in with those credentials.
+## Step 2 - create your admin account
 
-Change your admin password immediately after first login - the bootstrap password is visible in your environment variables and should be treated as temporary.
+Enter your email address and a password (minimum 12 characters). Click **Create admin account**.
 
-## Creating your first user
+This page only appears once. The moment an admin account exists, the setup page redirects to the normal login page and cannot be accessed again.
 
-1. Go to `/admin/users` and click **New user**.
-2. Enter an email address and a temporary password (minimum 12 characters).
-3. Click **Create**.
+## Step 3 - configure SMTP
 
-The new user will be forced to change their password on first login. This is automatic and cannot be skipped.
+Without SMTP, GateKeeper cannot send one-time login codes or password reset emails, so users cannot log in.
 
-## Testing ForwardAuth
+Go to `/admin/settings` and fill in your SMTP details:
 
-1. Make sure GateKeeper is running and Traefik is configured with the `gatekeeper-auth` middleware on at least one service.
-2. Visit the protected service in your browser.
-3. You should be redirected to `/login?redirect_uri=<original_url>`.
-4. Sign in with the user you just created.
-5. Complete the OTP verification (check the email).
-6. You should be redirected back to the original URL.
+- **Host** - your SMTP server address, e.g. `smtp.fastmail.com`
+- **Port** - usually `587` for STARTTLS or `465` for TLS
+- **Username and password** - your SMTP credentials
+- **From address** - the "from" field on outgoing emails, e.g. `noreply@example.com`
+- **TLS mode** - `starttls` for port 587, `tls` for port 465
 
-## Checking the audit log
+Click **Save settings**. The change takes effect immediately.
 
-Every login attempt, OTP send, and session event is recorded in the audit log at `/admin/audit`. This is a good place to confirm that everything is working.
+## Step 4 - create your first user
+
+Go to `/admin/users` and click **New user**. Enter an email address and a temporary password. The user will be required to change this password on their first login.
+
+## Step 5 - test the login flow
+
+1. Open a private browser window and go to `https://auth.example.com/login`.
+2. Sign in with the user credentials you just created.
+3. Check the user's email for the one-time code.
+4. Enter the code to complete login.
+
+If the email does not arrive, double-check your SMTP settings at `/admin/settings`.
+
+## Step 6 - protect an app with Traefik
+
+See [ForwardAuth setup](/traefik/forwardauth) to configure Traefik to use GateKeeper for a service.

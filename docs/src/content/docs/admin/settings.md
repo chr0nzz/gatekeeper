@@ -1,26 +1,45 @@
 ---
 title: Settings
-description: Runtime configuration overview.
+description: Configure GateKeeper from the admin UI - no restart required.
 ---
 
-GateKeeper's settings are managed entirely through environment variables. The settings page at `/admin/settings` is a reference to this documentation - there are no editable fields in the UI.
+The settings page at `/admin/settings` lets you configure GateKeeper while it is running. All changes apply immediately.
 
-To change a setting, update the environment variable in your `docker-compose.yml` and restart GateKeeper:
+## Access control
 
-```bash
-docker compose up -d gatekeeper
+### Allowed email domains
+
+A comma-separated list of email domains that are permitted to log in.
+
+```
+example.com, contractor.org
 ```
 
-## Why environment variables only
+Leave blank to allow any email address. When a domain list is set, login attempts from other domains are rejected with an "invalid credentials" error (the same message as a wrong password, to avoid revealing whether an account exists).
 
-This is a deliberate design choice. Environment variables make configuration auditable (they live in your compose file or secrets manager), easy to version-control (no separate config file to track), and simple to apply (restart the container).
+### Session timeout
 
-## Key settings to review
+How many hours a session stays active after the last request. The default is 8 hours. The counter resets on each authenticated request, so active users are not logged out.
 
-**Session TTL** (`SESSION_TTL_HOURS`, default 8): how long a session lasts after the last request. Shorter is more secure; longer is more convenient. Users on corporate networks with idle timeouts may appreciate a shorter value.
+Shorter values improve security - a stolen session cookie becomes useless sooner. Longer values are more convenient for users on trusted devices.
 
-**Allowed email domains** (`ALLOWED_EMAIL_DOMAINS`): comma-separated list of domains that can log in. Leave empty to allow all. If your users are all `company.com`, set this to `company.com` to prevent external accounts.
+The minimum is 1 hour. You can go up to 720 hours (30 days) for a "remember me" style experience.
 
-**Log level** (`LOG_LEVEL`, default `info`): set to `debug` to see every request. Logs are structured JSON to stdout.
+## SMTP
 
-For the full variable reference, see [Environment variables](/reference/env-vars).
+GateKeeper sends emails for two purposes: one-time login codes and password reset links. Without a working SMTP configuration, users cannot complete login or recover their passwords.
+
+| Field | Description |
+|---|---|
+| Host | Your SMTP server hostname, e.g. `smtp.fastmail.com` |
+| Port | `587` for STARTTLS, `465` for TLS, `25` for plain |
+| Username | SMTP authentication username |
+| Password | SMTP authentication password. Leave blank to keep the current value. |
+| From address | The "from" field on all outgoing emails |
+| TLS mode | `STARTTLS` - connects plainly then upgrades (port 587). `TLS` - encrypted from the start (port 465). `None` - no encryption, for internal mail servers only. |
+
+## Env var fallbacks
+
+All settings on this page can also be set as environment variables, which act as the default when no value has been saved in the UI. See [Configuration](/getting-started/configuration) for the full list.
+
+If you set both an env var and a UI value, the UI value wins.

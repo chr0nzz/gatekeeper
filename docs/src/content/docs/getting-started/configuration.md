@@ -1,85 +1,71 @@
 ---
 title: Configuration
-description: All environment variables with descriptions and examples.
+description: Environment variables and admin UI settings.
 ---
 
-GateKeeper is configured entirely through environment variables. There are no config files.
+GateKeeper uses a two-tier configuration model:
 
-## Required variables
+- **Env vars** - infrastructure settings that require a container restart to change. Keep these minimal.
+- **Admin UI** - everything else. Changes take effect immediately with no restart.
 
-### `BASE_URL`
+## Required env vars
 
-The public URL where GateKeeper is reachable, without a trailing slash. This is used as the OIDC issuer URL and as the WebAuthn (passkey) origin.
+| Variable | Example | Description |
+|---|---|---|
+| `BASE_URL` | `https://auth.example.com` | Public URL. Used as the OIDC issuer and WebAuthn origin. No trailing slash. |
+| `SECRET_KEY` | 64 hex chars | At least 32 characters. Encrypts TOTP secrets and signs sessions. Do not change after first run without revoking all sessions. |
 
-```env
-BASE_URL=https://auth.example.com
-```
-
-### `SECRET_KEY`
-
-A random string of at least 32 characters. Used to encrypt TOTP secrets stored in the database and to sign session data. Generate one with:
+Generate a secret key:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Keep this secret. Changing it will invalidate all existing sessions and TOTP enrollments.
+## Optional env vars
 
-### `ADMIN_EMAIL` and `ADMIN_PASSWORD`
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8080` | Port to listen on |
+| `DB_PATH` | `/data/gatekeeper.db` | SQLite database path. Mount a volume here. |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error` |
 
-The email and password for the first admin account. These are only used on the very first startup when no admin exists yet. After that, changing these variables has no effect.
+## Env var fallbacks (overridden by admin UI)
 
-### `SMTP_HOST` and `SMTP_FROM`
+These can be set as defaults via env vars, but any value saved in the admin UI takes precedence. If you set them here, they show up pre-filled in the settings form.
 
-The hostname of your SMTP server and the "from" address for outgoing emails.
+| Variable | Default | Description |
+|---|---|---|
+| `SMTP_HOST` | - | SMTP server hostname |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_USERNAME` | - | SMTP username |
+| `SMTP_PASSWORD` | - | SMTP password |
+| `SMTP_FROM` | - | From address for outgoing emails |
+| `SMTP_TLS` | `starttls` | `starttls`, `tls`, or `none` |
+| `SESSION_TTL_HOURS` | `8` | Session lifetime in hours |
+| `ALLOWED_EMAIL_DOMAINS` | - | Comma-separated allowed domains, empty = all |
 
-## All variables
+## Settings managed in the admin UI
 
-```env
-# Server
-PORT=8080
-BASE_URL=https://auth.example.com
+Go to `/admin/settings` to configure:
 
-# Encryption
-SECRET_KEY=<32+ random characters>
+- **Allowed email domains** - restrict which email addresses can log in. Leave blank to allow all.
+- **Session timeout** - how many hours before an idle session expires.
+- **SMTP** - all mail server settings.
 
-# Bootstrap admin (first run only)
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=changeme
+Changes to these settings apply immediately to all new requests, with no restart needed.
 
-# Database
-DB_PATH=/data/gatekeeper.db
+## Minimal compose file
 
-# SMTP
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USERNAME=
-SMTP_PASSWORD=
-SMTP_FROM=noreply@example.com
-SMTP_TLS=starttls    # starttls | tls | none
+```yaml
+services:
+  gatekeeper:
+    image: ghcr.io/chr0nzz/gatekeeper:latest
+    environment:
+      BASE_URL: "https://auth.example.com"
+      SECRET_KEY: "your-secret-key-here"
+    volumes:
+      - gatekeeper_data:/data
 
-# Sessions
-SESSION_TTL_HOURS=8
-
-# Optional
-ALLOWED_EMAIL_DOMAINS=    # comma-separated, empty means allow all
-LOG_LEVEL=info            # debug | info | warn | error
+volumes:
+  gatekeeper_data:
 ```
-
-## SMTP TLS modes
-
-| Value | What it does |
-|---|---|
-| `starttls` | Connects on the plain port then upgrades to TLS. The default for port 587. |
-| `tls` | Connects with TLS from the start. Use this for port 465. |
-| `none` | No encryption. Only use this on a trusted internal network. |
-
-## Allowed email domains
-
-Set `ALLOWED_EMAIL_DOMAINS` to a comma-separated list to restrict which email addresses can log in:
-
-```env
-ALLOWED_EMAIL_DOMAINS=example.com,mycompany.org
-```
-
-Leave it empty to allow any email address.
