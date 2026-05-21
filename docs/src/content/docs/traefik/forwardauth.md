@@ -9,57 +9,91 @@ Traefik's ForwardAuth feature sends every incoming request to an authentication 
 
 1. A browser sends a request to `app.example.com`.
 2. Traefik intercepts it and sends a `GET /auth/verify` request to GateKeeper, including the session cookie.
-3. GateKeeper checks the session. If valid, it responds `200` and sets `X-Auth-User` and `X-Auth-Email` headers.
-4. Traefik forwards the original request to the app, including those headers. If invalid, Traefik returns a 401 redirect to the login page.
-5. After login, GateKeeper redirects back to the original URL via the `redirect_uri` query parameter.
+3. GateKeeper checks the session. If valid, it responds `200` with `X-Auth-User` and `X-Auth-Email` headers.
+4. Traefik forwards the original request to the app with those headers attached.
+5. If the session is invalid, Traefik returns a 401, the browser redirects to `/login?redirect_uri=<original_url>`, and after login the user is sent back.
 
-## Docker labels
+## Step 1 - define the middleware
 
-Add these labels to both the GateKeeper service and any service you want to protect:
-
-```yaml
-# On the gatekeeper service - defines the middleware
-labels:
-  - traefik.http.middlewares.gatekeeper-auth.forwardauth.address=http://gatekeeper:8080/auth/verify
-  - traefik.http.middlewares.gatekeeper-auth.forwardauth.authResponseHeaders=X-Auth-User,X-Auth-Email
-
-# On any protected service - applies the middleware
-labels:
-  - traefik.http.routers.myapp.middlewares=gatekeeper-auth
-```
-
-## File provider (YAML)
-
-If you use Traefik's file provider instead of Docker labels:
+Create one file in your Traefik dynamic config directory that defines the `gk-auth` middleware. You only need to do this once.
 
 ```yaml
-# traefik/dynamic/gatekeeper.yml
+# traefik/dynamic/middlewares-gk-auth.yml
 http:
   middlewares:
-    gatekeeper-auth:
+    gk-auth:
       forwardAuth:
-        address: "http://gatekeeper:8080/auth/verify"
+        address: "https://auth.example.com/auth/verify"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
+```
 
+Replace `auth.example.com` with the `BASE_URL` you configured for GateKeeper.
+
+Traefik hot-reloads the dynamic config directory, so no restart is needed after adding this file.
+
+## Step 2 - apply it to a service
+
+In each service's route file, add `gk-auth@file` to the router's middleware list.
+
+```yaml
+# traefik/dynamic/myapp.yml
+http:
   routers:
     myapp:
       rule: "Host(`app.example.com`)"
+      entryPoints:
+        - https
       middlewares:
-        - gatekeeper-auth
+        - gk-auth@file
+      tls:
+        certResolver: cloudflare
       service: myapp-service
+  services:
+    myapp-service:
+      loadBalancer:
+        servers:
+          - url: "http://100.0.0.1:8080"
 ```
+
+The `@file` suffix tells Traefik the middleware comes from the file provider. If your middleware and router are in the same file you can omit it, but `@file` is explicit and always safe.
 
 ## Identity headers
 
 When authentication succeeds, GateKeeper sets two headers that Traefik forwards to your app:
 
-- `X-Auth-User` - the user's internal ID (a UUID)
+- `X-Auth-User` - the user's internal UUID
 - `X-Auth-Email` - the user's email address
 
-Your app can read these headers to know who is logged in, without needing to talk to GateKeeper directly.
+Your app can read these to identify who is logged in without any SDK or API call.
+
+```python
+# Flask example
+@app.route("/")
+def index():
+    email = request.headers.get("X-Auth-Email", "anonymous")
+    return f"Hello, {email}"
+```
+
+```go
+// Go example
+func handler(w http.ResponseWriter, r *http.Request) {
+    email := r.Header.Get("X-Auth-Email")
+    fmt.Fprintf(w, "Hello, %s", email)
+}
+```
 
 ## Logout
 
-Users can log out by POSTing to `/logout` on GateKeeper. Include a logout link in your app that points to `https://auth.example.com/logout`.
+Add a logout link in your app that posts to GateKeeper's logout endpoint:
+
+```html
+<form method="POST" action="https://auth.example.com/logout">
+  <button type="submit">Sign out</button>
+</form>
+```
+
+## Protecting GateKeeper itself
+
+Do not apply the `gk-auth` middleware to GateKeeper's own route. Doing so creates a loop where the auth server requires authentication to serve the login page.

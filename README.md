@@ -52,26 +52,42 @@ When TOTP is enrolled it replaces email OTP. Passkey login skips both.
 
 Every request to a protected service hits `GET /auth/verify`. GateKeeper returns `200` with identity headers on success, `401` on failure.
 
+**Step 1 - define the middleware** (one file, once):
+
 ```yaml
-# Traefik file provider (traefik/dynamic/gatekeeper.yml)
+# traefik/dynamic/middlewares-gk-auth.yml
 http:
   middlewares:
     gk-auth:
       forwardAuth:
-        address: "http://gatekeeper:8080/auth/verify"
+        address: "https://auth.example.com/auth/verify"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
+```
 
+**Step 2 - apply it to a service** (in that service's route file):
+
+```yaml
+http:
   routers:
     myapp:
       rule: "Host(`app.example.com`)"
+      entryPoints:
+        - https
       middlewares:
-        - gk-auth
+        - gk-auth@file
+      tls:
+        certResolver: cloudflare
       service: myapp-service
+  services:
+    myapp-service:
+      loadBalancer:
+        servers:
+          - url: "http://100.0.0.1:8080"
 ```
 
-Identity is passed to the upstream app via:
+Identity headers passed to the upstream app:
 - `X-Auth-User` - user UUID
 - `X-Auth-Email` - user email address
 
