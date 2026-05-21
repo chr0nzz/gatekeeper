@@ -1,0 +1,26 @@
+{{define "admin_base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{block "title" .}}Admin - GateKeeper{{end}}</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body class="admin">
+<nav class="sidebar">
+  <div class="logo">GateKeeper</div>
+  <a href="/admin/users">Users</a>
+  <a href="/admin/clients">OIDC Clients</a>
+  <a href="/admin/audit">Audit Log</a>
+  <a href="/admin/settings">Settings</a>
+  <a href="/admin/profile">My account</a>
+  <form method="POST" action="/admin/logout" style="margin-top:auto">
+    <button type="submit" class="btn-link">Sign out</button>
+  </form>
+</nav>
+<main class="admin-content">
+{{block "content" .}}{{end}}
+</main>
+</body>
+</html>
+{{end}}

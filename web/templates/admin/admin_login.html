@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin sign in - GateKeeper</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<main>
+<div class="card">
+  <h1>Admin sign in</h1>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  <form method="POST" action="/admin/login">
+    <label>Email
+      <input type="email" name="email" required autofocus autocomplete="username">
+    </label>
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="btn btn-primary">Sign in</button>
+  </form>
+</div>
+</main>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{{template "base" .}}
+{{define "title"}}Home - GateKeeper{{end}}
+{{define "content"}}
+<div class="card wide">
+  <h1>You are signed in</h1>
+  <p>{{.User.Email}}</p>
+  <div class="section">
+    <h2>Security</h2>
+    <dl>
+      <dt>Two-factor</dt>
+      <dd>{{if .TOTPEnabled}}Authenticator app enabled{{else}}Email OTP (no authenticator app enrolled){{end}}</dd>
+      <dt>Passkeys</dt>
+      <dd>{{len .Passkeys}} registered</dd>
+    </dl>
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/profile/password" class="btn btn-secondary">Change password</a>
+      {{if .TOTPEnabled}}
+        <a href="/profile/totp/disable" class="btn btn-secondary">Remove authenticator</a>
+      {{else}}
+        <a href="/profile/totp/enroll" class="btn btn-secondary">Set up authenticator app</a>
+      {{end}}
+      <a href="/register/passkey" class="btn btn-secondary">Add passkey</a>
+    </div>
+  </div>
+  <form method="POST" action="/logout" style="margin-top:16px">
+    <button type="submit" class="btn btn-danger">Sign out</button>
+  </form>
+</div>
+{{end}}

@@ -1,0 +1,83 @@
+{{template "admin_base" .}}
+{{define "title"}}My account - GateKeeper Admin{{end}}
+{{define "content"}}
+<h1>My account</h1>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+{{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
+
+<div class="section">
+  <h2>Change password</h2>
+  <form method="POST" action="/admin/profile/password">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>Current password <input type="password" name="current_password" required autocomplete="current-password"></label>
+    <label>New password (12+ chars) <input type="password" name="new_password" required minlength="12" autocomplete="new-password"></label>
+    <label>Confirm new password <input type="password" name="confirm_password" required minlength="12" autocomplete="new-password"></label>
+    <button type="submit" class="btn btn-primary" style="width:auto">Change password</button>
+  </form>
+</div>
+
+<div class="section">
+  <h2>Authenticator app (TOTP)</h2>
+  {{if .TOTPEnabled}}
+    <p>An authenticator app is enrolled on this account.</p>
+    <form method="POST" action="/admin/profile/totp/disable">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <label>Current code to confirm removal
+        <input type="text" name="code" maxlength="6" inputmode="numeric" required autocomplete="one-time-code">
+      </label>
+      <button type="submit" class="btn btn-danger" style="width:auto">Remove authenticator</button>
+    </form>
+  {{else if .EnrollTOTP}}
+    <p>Scan the QR code with your authenticator app, then enter the 6-digit code to confirm.</p>
+    <div class="qr-code" style="display:inline-block">
+      <img src="data:image/png;base64,{{.QRCodeB64}}" width="220" height="220" alt="TOTP QR Code">
+    </div>
+    <details style="margin:12px 0"><summary>Can't scan?</summary><code class="secret-key">{{.Secret}}</code></details>
+    <form method="POST" action="/admin/profile/totp/enroll">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <input type="hidden" name="secret" value="{{.Secret}}">
+      <label>Confirmation code
+        <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+      </label>
+      <button type="submit" class="btn btn-primary" style="width:auto">Confirm and enable</button>
+    </form>
+  {{else}}
+    <p>No authenticator app enrolled.</p>
+    <a href="/admin/profile/totp/enroll" class="btn btn-secondary" style="width:auto;display:inline-block">Set up authenticator app</a>
+  {{end}}
+</div>
+
+<div class="section">
+  <h2>Passkeys</h2>
+  {{if .Passkeys}}
+  <table style="margin-bottom:16px">
+    <thead><tr><th>Name</th><th>Registered</th></tr></thead>
+    <tbody>
+    {{range .Passkeys}}<tr><td>{{.Name}}</td><td>{{.CreatedAt}}</td></tr>{{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No passkeys registered.</p>
+  {{end}}
+  {{if .RegisterPasskey}}
+    <div id="pk-error" class="alert alert-error" style="display:none"></div>
+    <div id="pk-success" class="alert alert-success" style="display:none">Passkey registered.</div>
+    <label>Name <input type="text" id="pk-name" value="Admin passkey"></label>
+    <button id="pk-btn" class="btn btn-primary" style="width:auto">Register passkey</button>
+    <script src="/static/js/passkey.js"></script>
+    <script>
+    document.getElementById('pk-btn').addEventListener('click', async () => {
+      const name = document.getElementById('pk-name').value;
+      await beginPasskeyRegister(
+        '/admin/profile/passkey/begin',
+        '/admin/profile/passkey/finish?name=' + encodeURIComponent(name),
+        document.getElementById('pk-error'),
+        document.getElementById('pk-success')
+      );
+    });
+    </script>
+  {{else}}
+    <a href="/admin/profile/passkey" class="btn btn-secondary" style="width:auto;display:inline-block">Add passkey</a>
+  {{end}}
+</div>
+{{end}}

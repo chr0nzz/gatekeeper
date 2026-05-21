@@ -1,0 +1,26 @@
+{{template "admin_base" .}}
+{{define "title"}}Users - GateKeeper Admin{{end}}
+{{define "content"}}
+<h1>Users</h1>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+<div class="toolbar">
+  <a href="/admin/users/new" class="btn btn-primary" style="width:auto;display:inline-block">New user</a>
+</div>
+<table>
+  <thead><tr><th>Email</th><th>Passwordless</th><th>TOTP</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {{range .Users}}
+  <tr>
+    <td><a href="/admin/users/{{.ID}}">{{.Email}}</a></td>
+    <td>{{if .PasswordlessEnabled}}Yes{{else}}No{{end}}</td>
+    <td>{{if .TOTPEnabled}}Enabled{{else}}Off{{end}}</td>
+    <td>{{if .Disabled}}<span class="badge badge-error">Disabled</span>{{else}}<span class="badge badge-ok">Active</span>{{end}}</td>
+    <td><a href="/admin/users/{{.ID}}">Manage</a></td>
+  </tr>
+  {{else}}
+  <tr><td colspan="5" style="color:var(--text-muted)">No users yet.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+
+{{end}}

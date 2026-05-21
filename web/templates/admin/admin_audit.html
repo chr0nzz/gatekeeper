@@ -1,0 +1,20 @@
+{{template "admin_base" .}}
+{{define "title"}}Audit Log - GateKeeper Admin{{end}}
+{{define "content"}}
+<h1>Audit Log</h1>
+<table>
+  <thead><tr><th>Time</th><th>Event</th><th>User</th><th>Actor</th><th>IP</th><th>Detail</th></tr></thead>
+  <tbody>
+  {{range .Entries}}
+  <tr>
+    <td>{{.CreatedAt}}</td>
+    <td><code>{{.Event}}</code></td>
+    <td>{{.UserID}}</td>
+    <td>{{.ActorID}}</td>
+    <td>{{.IP}}</td>
+    <td>{{.Detail}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}

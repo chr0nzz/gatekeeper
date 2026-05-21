@@ -1,0 +1,24 @@
+CLAUDE.md
+
+# build output
+gatekeeper
+/dist/
+build.sh
+
+# data
+*.db
+*.db-shm
+*.db-wal
+
+# env files
+.env
+.env.*
+
+# docs
+docs/node_modules/
+docs/.astro/
+docs/dist/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,24 @@
+{{template "base" .}}
+{{define "title"}}Sign in - GateKeeper{{end}}
+{{define "content"}}
+<div class="card">
+  <h1>Sign in</h1>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  {{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
+  <form method="POST" action="/login">
+    <input type="hidden" name="redirect_uri" value="{{.RedirectURI}}">
+    <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
+    <label>Email
+      <input type="email" name="email" required autofocus autocomplete="username">
+    </label>
+    <label>Password
+      <input type="password" name="password" autocomplete="current-password">
+    </label>
+    <button type="submit" class="btn btn-primary">Sign in</button>
+  </form>
+  <div class="links">
+    <a href="/login/passkey">Use a passkey instead</a>
+    <a href="/forgot-password">Forgot password?</a>
+  </div>
+</div>
+{{end}}

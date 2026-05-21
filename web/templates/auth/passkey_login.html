@@ -1,0 +1,19 @@
+{{template "base" .}}
+{{define "title"}}Sign in with passkey - GateKeeper{{end}}
+{{define "content"}}
+<div class="card">
+  <h1>Sign in with a passkey</h1>
+  <p>Use the fingerprint, face, or PIN saved on this device.</p>
+  <div id="error" class="alert alert-error" style="display:none"></div>
+  <button id="btn-passkey" class="btn btn-primary">Use passkey</button>
+  <div class="links">
+    <a href="/login">Sign in with password instead</a>
+  </div>
+</div>
+<script src="/static/js/passkey.js"></script>
+<script>
+document.getElementById('btn-passkey').addEventListener('click', async () => {
+  await beginPasskeyLogin('/login/passkey/begin', '/login/passkey/finish', document.getElementById('error'));
+});
+</script>
+{{end}}

@@ -1,0 +1,19 @@
+{{template "base" .}}
+{{define "title"}}Two-factor code - GateKeeper{{end}}
+{{define "content"}}
+<div class="card">
+  <h1>Authenticator code</h1>
+  <p>Enter the 6-digit code from your authenticator app.</p>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  <form method="POST" action="/login/totp">
+    <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
+    <label>Code
+      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    </label>
+    <button type="submit" class="btn btn-primary">Verify</button>
+  </form>
+  <div class="links">
+    <a href="/login/totp/recovery">Use a recovery code instead</a>
+  </div>
+</div>
+{{end}}

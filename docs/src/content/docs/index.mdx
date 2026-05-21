@@ -1,0 +1,34 @@
+---
+title: GateKeeper
+description: A lightweight, self-hosted authentication server with Traefik ForwardAuth, OIDC provider, and multiple login methods.
+template: splash
+hero:
+  tagline: Self-hosted auth that stays out of your way.
+  actions:
+    - text: Get started
+      link: /getting-started/installation
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/chr0nzz/gatekeeper
+      icon: external
+---
+
+GateKeeper is a single Docker container that adds authentication to any app behind Traefik. Point Traefik's ForwardAuth middleware at it and your app is protected - no SDK required.
+
+## What it does
+
+- Acts as a **Traefik ForwardAuth** middleware: every request to your app goes through GateKeeper first. If the user is logged in, the request passes. If not, they get redirected to a login page.
+- Acts as an **OpenID Connect (OIDC) provider** so your apps can use it as an identity provider, the same way you might use Google or GitHub login.
+- Supports **email + OTP**, **TOTP** (Google Authenticator, Authy), and **passkeys** (fingerprint, face, device PIN).
+- Ships with a full **admin UI** for managing users and OIDC clients.
+
+## Quick look
+
+```yaml
+# In your docker-compose.yml, add two labels to any service:
+labels:
+  - traefik.http.routers.myapp.middlewares=gatekeeper-auth
+```
+
+That's it. Users who aren't logged in get redirected to GateKeeper's login page, and on success they're sent back where they came from.

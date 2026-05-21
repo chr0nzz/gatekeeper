@@ -1,0 +1,22 @@
+{{template "admin_base" .}}
+{{define "title"}}New user - GateKeeper Admin{{end}}
+{{define "content"}}
+<h1>New user</h1>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+<div class="section" style="max-width:480px">
+  <form method="POST" action="/admin/users">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>Email address
+      <input type="email" name="email" required autofocus autocomplete="off">
+    </label>
+    <label>Password (12+ characters)
+      <input type="password" name="password" required minlength="12" autocomplete="new-password">
+    </label>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-top:-8px">The user will be required to change this password on first login.</p>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button type="submit" class="btn btn-primary" style="width:auto">Create user</button>
+      <a href="/admin/users" class="btn btn-secondary" style="width:auto">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

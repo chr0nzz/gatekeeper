@@ -1,0 +1,23 @@
+{{template "base" .}}
+{{define "title"}}Set up authenticator - GateKeeper{{end}}
+{{define "content"}}
+<div class="card wide">
+  <h1>Set up authenticator app</h1>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  <p>Scan this QR code with Google Authenticator, Authy, or any TOTP-compatible app.</p>
+  <div class="qr-code">
+    <img src="data:image/png;base64,{{.QRCodeB64}}" alt="TOTP QR Code" width="256" height="256">
+  </div>
+  <details>
+    <summary>Can't scan? Enter this key manually</summary>
+    <code class="secret-key">{{.Secret}}</code>
+  </details>
+  <form method="POST" action="/profile/totp/enroll">
+    <input type="hidden" name="secret" value="{{.Secret}}">
+    <label>Enter the 6-digit code from your app to confirm
+      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    </label>
+    <button type="submit" class="btn btn-primary">Confirm and enable</button>
+  </form>
+</div>
+{{end}}

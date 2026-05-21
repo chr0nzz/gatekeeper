@@ -1,0 +1,18 @@
+services:
+  gatekeeper:
+    container_name: gatekeeper
+    image: ghcr.io/chr0nzz/gatekeeper:latest
+    build: .
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      BASE_URL: "https://auth.example.com"
+      SECRET_KEY: "change-me-to-a-32-char-random-string!"
+      DB_PATH: "/data/gatekeeper.db"
+      SESSION_TTL_HOURS: "8"
+      LOG_LEVEL: "info"
+    volumes:
+      - gatekeeper_data:/data
+
+volumes:
+  gatekeeper_data:

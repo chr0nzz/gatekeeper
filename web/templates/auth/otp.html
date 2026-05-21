@@ -1,0 +1,16 @@
+{{template "base" .}}
+{{define "title"}}Enter code - GateKeeper{{end}}
+{{define "content"}}
+<div class="card">
+  <h1>Enter your code</h1>
+  <p>We sent a 6-digit code to your email. It expires in 10 minutes.</p>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  <form method="POST" action="/login/otp">
+    <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
+    <label>Code
+      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    </label>
+    <button type="submit" class="btn btn-primary">Verify</button>
+  </form>
+</div>
+{{end}}

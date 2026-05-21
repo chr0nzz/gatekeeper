@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup - GateKeeper</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<main>
+<div class="card">
+  <h1>Welcome to GateKeeper</h1>
+  <p style="color:var(--text-muted);margin-bottom:24px">Create your admin account to get started.</p>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  <form method="POST" action="/admin/setup">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>Email address
+      <input type="email" name="email" required autofocus autocomplete="email">
+    </label>
+    <label>Password (12+ characters)
+      <input type="password" name="password" required minlength="12" autocomplete="new-password">
+    </label>
+    <label>Confirm password
+      <input type="password" name="confirm" required minlength="12" autocomplete="new-password">
+    </label>
+    <button type="submit" class="btn btn-primary">Create admin account</button>
+  </form>
+</div>
+</main>
+</body>
+</html>

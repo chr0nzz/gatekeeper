@@ -1,0 +1,46 @@
+{{template "admin_base" .}}
+{{define "title"}}OIDC Clients - GateKeeper Admin{{end}}
+{{define "content"}}
+<h1>OIDC Clients</h1>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+<div class="toolbar">
+  <button onclick="document.getElementById('create-dialog').showModal()" class="btn btn-primary">New client</button>
+</div>
+<table>
+  <thead><tr><th>Client ID</th><th>Name</th><th>Redirect URIs</th><th></th></tr></thead>
+  <tbody>
+  {{range .Clients}}
+  <tr>
+    <td><code>{{.ClientID}}</code></td>
+    <td>{{.Name}}</td>
+    <td>{{range .RedirectURIs}}<code>{{.}}</code> {{end}}</td>
+    <td>
+      <form method="POST" action="/admin/clients/{{.ClientID}}/delete">
+        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete client?')">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="4" style="color:var(--text-muted)">No clients registered.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+
+<dialog id="create-dialog">
+  <h2>New OIDC client</h2>
+  <form method="POST" action="/admin/clients">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>Client ID <input type="text" name="client_id" required></label>
+    <label>Client secret <input type="text" name="client_secret" required></label>
+    <label>Display name <input type="text" name="name" required></label>
+    <label>Redirect URIs (one per line)
+      <textarea name="redirect_uris" rows="4" required></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button type="submit" class="btn btn-primary">Create</button>
+      <button type="button" onclick="this.closest('dialog').close()" class="btn btn-secondary">Cancel</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

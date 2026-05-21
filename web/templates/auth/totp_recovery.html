@@ -1,0 +1,18 @@
+{{template "base" .}}
+{{define "title"}}Recovery code - GateKeeper{{end}}
+{{define "content"}}
+<div class="card">
+  <h1>Recovery code</h1>
+  <p>Enter one of your saved recovery codes.</p>
+  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+  <form method="POST" action="/login/totp/recovery">
+    <label>Recovery code
+      <input type="text" name="code" required autofocus autocomplete="off" placeholder="xx-xx-xx-xx-xx">
+    </label>
+    <button type="submit" class="btn btn-primary">Verify</button>
+  </form>
+  <div class="links">
+    <a href="/login/totp">Back to authenticator code</a>
+  </div>
+</div>
+{{end}}

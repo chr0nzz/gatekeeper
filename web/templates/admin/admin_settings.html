@@ -1,0 +1,43 @@
+{{template "admin_base" .}}
+{{define "title"}}Settings - GateKeeper Admin{{end}}
+{{define "content"}}
+<h1>Settings</h1>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+{{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
+<p style="color:var(--text-muted);margin-bottom:24px">Changes take effect immediately - no restart needed.</p>
+
+<form method="POST" action="/admin/settings">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+  <div class="section">
+    <h2>Access control</h2>
+    <label>Allowed email domains
+      <input type="text" name="allowed_email_domains" value="{{.AllowedDomains}}"
+             placeholder="example.com, company.org">
+      <span style="font-size:0.8rem;color:var(--text-muted)">Comma-separated. Leave blank to allow any email address.</span>
+    </label>
+    <label>Session timeout (hours)
+      <input type="number" name="session_ttl_hours" value="{{.SessionTTL}}" min="1" max="720" placeholder="8">
+      <span style="font-size:0.8rem;color:var(--text-muted)">How long a session stays active after the last request. Default: 8.</span>
+    </label>
+  </div>
+
+  <div class="section">
+    <h2>SMTP</h2>
+    <label>Host <input type="text" name="smtp_host" value="{{.SMTPHost}}" placeholder="smtp.example.com"></label>
+    <label>Port <input type="number" name="smtp_port" value="{{.SMTPPort}}" placeholder="587"></label>
+    <label>Username <input type="text" name="smtp_username" value="{{.SMTPUsername}}" autocomplete="off"></label>
+    <label>Password <input type="password" name="smtp_password" placeholder="Leave blank to keep current" autocomplete="new-password"></label>
+    <label>From address <input type="email" name="smtp_from" value="{{.SMTPFrom}}"></label>
+    <label>TLS mode
+      <select name="smtp_tls">
+        <option value="starttls" {{if eq .SMTPTLS "starttls"}}selected{{end}}>STARTTLS (port 587)</option>
+        <option value="tls" {{if eq .SMTPTLS "tls"}}selected{{end}}>TLS (port 465)</option>
+        <option value="none" {{if eq .SMTPTLS "none"}}selected{{end}}>None</option>
+      </select>
+    </label>
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="width:auto">Save settings</button>
+</form>
+{{end}}

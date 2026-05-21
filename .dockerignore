@@ -1,0 +1,7 @@
+docs/
+docs/node_modules/
+docs/.astro/
+*.md
+.git/
+.gitignore
+build.sh
