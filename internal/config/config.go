@@ -27,6 +27,7 @@ type Config struct {
 	// SessionTTLHours and AllowedEmailDomains are fallback defaults; admin UI values take precedence.
 	SessionTTLHours     int    `env:"SESSION_TTL_HOURS" envDefault:"8"`
 	AllowedEmailDomains string `env:"ALLOWED_EMAIL_DOMAINS"`
+	CookieDomain        string `env:"COOKIE_DOMAIN"`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 }

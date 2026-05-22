@@ -1,16 +1,30 @@
 {{template "base" .}}
 {{define "title"}}Enter code - GateKeeper{{end}}
 {{define "content"}}
-<div class="card">
-  <h1>Enter your code</h1>
-  <p>We sent a 6-digit code to your email. It expires in 10 minutes.</p>
-  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-  <form method="POST" action="/login/otp">
-    <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
-    <label>Code
-      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-    </label>
-    <button type="submit" class="btn btn-primary">Verify</button>
-  </form>
+<div class="auth-wrap bg-grid">
+  <div class="auth-top">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+  </div>
+  <div class="auth-card">
+    <a href="/login" class="btn btn-quiet btn-xs" style="margin-bottom:14px;padding:4px 0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px"><path d="M10 12L6 8l4-4"/></svg>
+      Back to sign in
+    </a>
+    <h1>Check your email</h1>
+    <p class="lede">We sent a 6-digit code to your inbox. It expires in 10 minutes.</p>
+    {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
+    <form method="POST" action="/login/otp">
+      <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
+      <label class="field">
+        <span class="field-label">Verification code</span>
+        <input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.2em;font-size:22px;text-align:center">
+      </label>
+      <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px">Verify and continue</button>
+    </form>
+  </div>
 </div>
+<script src="/static/js/theme.js"></script>
 {{end}}

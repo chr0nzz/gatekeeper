@@ -1,0 +1,304 @@
+{{template "admin_base" .}}
+{{define "title"}}Dashboard - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Dashboard</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="sub">Authentication activity over the last 24 hours.</p>
+  </div>
+  <div class="head-actions">
+    <a href="/admin/users/new" class="btn btn-primary btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New user
+    </a>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="label">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+      Active users
+    </div>
+    <div class="value">{{.ActiveUsers}}</div>
+    <div class="delta">{{.TotalUsers}} total accounts</div>
+    <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
+      <polyline points="0,22 8,19 16,16 24,18 32,12 40,9 48,7 56,5 64,3" fill="none" stroke="var(--ac)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="stat">
+    <div class="label">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a5 5 0 1 1-5 5h-3v3H4v3H1v-3l9-9c.6-1.7 2.4-3 4.5-3z"/></svg>
+      Sign-ins (24h)
+    </div>
+    <div class="value">{{.SignIns24h}}</div>
+    <div class="delta">{{if gt .SuccessRate 0}}<b>{{.SuccessRate}}%</b> success{{else}}no attempts yet{{end}}</div>
+    <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
+      <polyline points="0,25 8,22 16,20 24,16 32,14 40,11 48,9 56,7 64,5" fill="none" stroke="var(--ac)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="stat">
+    <div class="label">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
+      OIDC tokens (24h)
+    </div>
+    <div class="value">{{.OIDCTokens24h}}</div>
+    <div class="delta">across {{.OIDCClients}} clients</div>
+    <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
+      <polyline points="0,24 8,22 16,18 24,20 32,15 40,12 48,10 56,8 64,6" fill="none" stroke="var(--ac)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="stat">
+    <div class="label">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
+      Failed attempts (24h)
+    </div>
+    <div class="value">{{.Failed24h}}</div>
+    <div class="delta" style="{{if gt .LockedUsers 0}}color:var(--warn){{end}}">{{if gt .LockedUsers 0}}{{.LockedUsers}} lockout{{if gt .LockedUsers 1}}s{{end}} active{{else}}no lockouts{{end}}</div>
+    <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
+      <polyline points="0,26 8,24 16,22 24,20 32,19 40,18 48,16 56,14 64,13" fill="none" stroke="var(--warn)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+    </svg>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px">
+  <div class="card">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+      <h3>Sign-in activity</h3>
+      <div class="head-actions">
+        <button class="btn btn-quiet btn-xs chart-range-btn active" data-range="24h">24h</button>
+        <button class="btn btn-ghost btn-xs chart-range-btn" data-range="7d">7d</button>
+        <button class="btn btn-ghost btn-xs chart-range-btn" data-range="30d">30d</button>
+      </div>
+    </div>
+    <div class="card-body" style="padding:14px 18px 18px;height:210px;position:relative">
+      <svg id="activity-chart" width="100%" height="100%" style="overflow:visible"></svg>
+      <div id="chart-tooltip" style="position:absolute;pointer-events:none;display:none;background:var(--bg-elev);border:1px solid var(--bd-1);border-radius:6px;padding:6px 10px;font-size:11.5px;box-shadow:var(--shadow-pop);white-space:nowrap;z-index:10"></div>
+    </div>
+  </div>
+<script>
+(function() {
+  var svg = document.getElementById('activity-chart');
+  var tip = document.getElementById('chart-tooltip');
+  var currentRange = '24h';
+
+  function fetchAndDraw(range) {
+    fetch('/admin/api/activity?range=' + range)
+      .then(function(r) { return r.json(); })
+      .then(function(data) { draw(data, range); })
+      .catch(function() { draw([], range); });
+  }
+
+  function draw(data, range) {
+    var W = svg.clientWidth || 600, H = svg.clientHeight || 160;
+    var pad = { l: 4, r: 4, t: 8, b: 20 };
+    var cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+
+    var maxOk = 0;
+    data.forEach(function(d) { if (d.ok > maxOk) maxOk = d.ok; });
+    if (maxOk === 0) maxOk = 1;
+
+    var ac = getComputedStyle(document.documentElement).getPropertyValue('--ac').trim();
+    var danger = getComputedStyle(document.documentElement).getPropertyValue('--danger').trim();
+    var bd = getComputedStyle(document.documentElement).getPropertyValue('--bd-0').trim();
+    var tx3 = getComputedStyle(document.documentElement).getPropertyValue('--tx-3').trim();
+    var mono = getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim();
+
+    var n = data.length || 1;
+    var pts = data.map(function(d, i) {
+      var x = pad.l + (i / (n - 1)) * cW;
+      var y = pad.t + cH - (d.ok / maxOk) * cH;
+      return { x: x, y: y, d: d };
+    });
+    var fpts = data.map(function(d, i) {
+      var x = pad.l + (i / (n - 1)) * cW;
+      var y = pad.t + cH - (d.fail / maxOk) * cH;
+      return { x: x, y: y };
+    });
+
+    var gridY = [0.25, 0.5, 0.75, 1].map(function(f) { return pad.t + cH * (1 - f); });
+    var gridLines = gridY.map(function(y) {
+      return '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y + '" y2="' + y + '" stroke="' + bd + '" stroke-dasharray="2 4"/>';
+    }).join('');
+
+    var line = pts.map(function(p, i) { return (i ? 'L' : 'M') + p.x + ',' + p.y; }).join(' ');
+    var area = line + ' L' + pts[pts.length-1].x + ',' + (pad.t+cH) + ' L' + pad.l + ',' + (pad.t+cH) + ' Z';
+    var failLine = fpts.map(function(p, i) { return (i ? 'L' : 'M') + p.x + ',' + p.y; }).join(' ');
+
+    var labels = '';
+    var labelCount = range === '30d' ? 6 : range === '7d' ? 7 : 5;
+    var step = Math.floor((n - 1) / (labelCount - 1));
+    for (var i = 0; i < labelCount; i++) {
+      var idx = Math.min(i * step, n - 1);
+      var x = pad.l + (idx / (n - 1)) * cW;
+      var t = data[idx] ? new Date(data[idx].t * 1000) : new Date();
+      var label = range === '24h'
+        ? t.getHours().toString().padStart(2,'0') + ':00'
+        : (t.getMonth()+1) + '/' + t.getDate();
+      var anchor = i === 0 ? 'start' : i === labelCount-1 ? 'end' : 'middle';
+      labels += '<text x="' + x + '" y="' + (H-2) + '" fill="' + tx3 + '" font-size="9" font-family="' + mono + '" text-anchor="' + anchor + '">' + label + '</text>';
+    }
+
+    var dots = pts.map(function(p, i) {
+      return '<circle cx="' + p.x + '" cy="' + p.y + '" r="3" fill="' + ac + '" opacity="0" class="chart-dot" data-idx="' + i + '" style="cursor:crosshair"/>';
+    }).join('');
+
+    svg.innerHTML = '<defs><linearGradient id="acg2" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="' + ac + '" stop-opacity="0.18"/><stop offset="100%" stop-color="' + ac + '" stop-opacity="0"/></linearGradient></defs>'
+      + gridLines
+      + '<path d="' + area + '" fill="url(#acg2)"/>'
+      + '<path d="' + line + '" fill="none" stroke="' + ac + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+      + (data.some(function(d){return d.fail>0;}) ? '<path d="' + failLine + '" fill="none" stroke="' + danger + '" stroke-width="1.4" stroke-dasharray="3 3" opacity="0.7"/>' : '')
+      + labels
+      + '<rect x="' + pad.l + '" y="' + pad.t + '" width="' + cW + '" height="' + cH + '" fill="transparent" id="chart-hover-area"/>'
+      + dots;
+
+    document.getElementById('chart-hover-area').addEventListener('mousemove', function(e) {
+      var rect = svg.getBoundingClientRect();
+      var mx = e.clientX - rect.left - pad.l;
+      var idx = Math.round((mx / cW) * (n - 1));
+      idx = Math.max(0, Math.min(n - 1, idx));
+      var d = data[idx];
+      if (!d) return;
+      var t = new Date(d.t * 1000);
+      var label = range === '24h'
+        ? t.getHours().toString().padStart(2,'0') + ':00'
+        : t.toLocaleDateString();
+      tip.innerHTML = '<b style="color:var(--tx-0)">' + label + '</b><br>'
+        + '<span style="color:var(--ac)">● ' + d.ok + ' success</span>'
+        + (d.fail ? '<br><span style="color:var(--danger)">● ' + d.fail + ' failed</span>' : '');
+      var tx = e.clientX - rect.left + 8;
+      var ty = e.clientY - rect.top - 4;
+      if (tx + 140 > W) tx = e.clientX - rect.left - 148;
+      tip.style.left = tx + 'px';
+      tip.style.top = ty + 'px';
+      tip.style.display = 'block';
+    });
+    document.getElementById('chart-hover-area').addEventListener('mouseleave', function() {
+      tip.style.display = 'none';
+    });
+  }
+
+  document.querySelectorAll('.chart-range-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.chart-range-btn').forEach(function(b) {
+        b.className = 'btn btn-ghost btn-xs chart-range-btn';
+      });
+      btn.className = 'btn btn-quiet btn-xs chart-range-btn active';
+      currentRange = btn.dataset.range;
+      fetchAndDraw(currentRange);
+    });
+  });
+
+  fetchAndDraw('24h');
+})();
+</script>
+
+  <div class="card">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+      <h3>Auth methods</h3>
+      <span class="tag" style="margin-left:auto;font-size:10px">24h</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+      {{if .HasAuthData}}
+      {{range .AuthMethods}}{{if gt .Pct 0}}
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:4px">
+          {{if eq .Icon "passkey"}}<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-2)"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+          {{else if eq .Icon "totp"}}<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-2)"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM8 12v9l4-2 4 2v-9"/></svg>
+          {{else if eq .Icon "mail"}}<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-2)"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
+          {{else}}<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-2)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>{{end}}
+          <span>{{.Name}}</span>
+          <span style="margin-left:auto;font-family:var(--font-mono);color:var(--tx-2)">{{.Pct}}%</span>
+        </div>
+        <div style="height:4px;background:var(--bg-3);border-radius:100;overflow:hidden"><div style="width:{{.Pct}}%;height:100%;background:var(--ac);border-radius:100"></div></div>
+      </div>
+      {{end}}{{end}}
+      {{else}}
+      <div style="text-align:center;padding:16px 0;color:var(--tx-3);font-size:12px">No sign-ins in the last 24 hours.</div>
+      {{end}}
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+  <div class="card">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+      <h3>Recent events</h3>
+      <div class="head-actions">
+        <a href="/admin/audit" class="btn btn-quiet btn-xs">
+          View all
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="card-body tight">
+      {{range .RecentEvents}}
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--bd-0);font-size:12px">
+        <span class="pill pill-{{.Kind}}" style="font-family:var(--font-mono);font-size:10px;flex-shrink:0"><span class="dot"></span>{{.Event}}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <span style="color:var(--tx-0);font-weight:500">{{.User}}</span>
+          {{if .Detail}}<span style="color:var(--tx-3)"> · </span><span style="color:var(--tx-2)">{{.Detail}}</span>{{end}}
+        </span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-3);flex-shrink:0">{{.Time}}</span>
+      </div>
+      {{else}}
+      <div style="padding:32px;text-align:center;color:var(--tx-3);font-size:13px">No events yet.</div>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
+      <h3>Needs attention</h3>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+      {{if gt .LockedUsers 0}}
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--warn-bg);border:1px solid rgba(182,95,0,0.15);border-radius:8px">
+        <div style="width:24px;height:24px;border-radius:6px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--warn)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
+        </div>
+        <div style="flex:1;font-size:12px">
+          <div style="font-weight:600;color:var(--tx-0)">{{.LockedUsers}} user{{if gt .LockedUsers 1}}s{{end}} locked out</div>
+          <div style="color:var(--tx-2);margin-top:1px">Too many failed OTP attempts in 10 minutes.</div>
+        </div>
+        <a href="/admin/users" class="btn btn-ghost btn-xs">Review</a>
+      </div>
+      {{end}}
+      {{if gt .No2FAUsers 0}}
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+        <div style="width:24px;height:24px;border-radius:6px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--tx-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
+        </div>
+        <div style="flex:1;font-size:12px">
+          <div style="font-weight:600;color:var(--tx-0)">{{.No2FAUsers}} user{{if gt .No2FAUsers 1}}s have{{else}} has{{end}} no 2-factor</div>
+          <div style="color:var(--tx-2);margin-top:1px">Password and email OTP only.</div>
+        </div>
+        <a href="/admin/users" class="btn btn-ghost btn-xs">Review</a>
+      </div>
+      {{end}}
+      {{if and (eq .LockedUsers 0) (eq .No2FAUsers 0)}}
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--ok-bg);border:1px solid rgba(47,111,63,0.15);border-radius:8px">
+        <div style="width:24px;height:24px;border-radius:6px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--ok)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14l-4-4 1.5-1.5L11 13l5-5L17.5 9.5z"/></svg>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--ok)">No issues detected</div>
+      </div>
+      {{end}}
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--ac-bg);border:1px solid var(--ac-bd);border-radius:8px">
+        <div style="width:24px;height:24px;border-radius:6px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--ac)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 9v6M12 7v.5"/></svg>
+        </div>
+        <div style="flex:1;font-size:12px">
+          <div style="font-weight:600;color:var(--tx-0)">OIDC signing key</div>
+          <div style="color:var(--tx-2);margin-top:1px">RS256, rotates every 30 days automatically.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

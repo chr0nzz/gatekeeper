@@ -4,23 +4,149 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{block "title" .}}Admin - GateKeeper{{end}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/static/css/main.css">
+<script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);})();</script>
 </head>
-<body class="admin">
-<nav class="sidebar">
-  <div class="logo">GateKeeper</div>
-  <a href="/admin/users">Users</a>
-  <a href="/admin/clients">OIDC Clients</a>
-  <a href="/admin/audit">Audit Log</a>
-  <a href="/admin/settings">Settings</a>
-  <a href="/admin/profile">My account</a>
-  <form method="POST" action="/admin/logout" style="margin-top:auto">
-    <button type="submit" class="btn-link">Sign out</button>
-  </form>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a href="/admin" style="text-decoration:none">
+      <div class="gk-mark" style="padding:4px 6px 18px">
+        <div class="gk-glyph"><i></i></div>
+        <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+      </div>
+    </a>
+    <div class="side-section">
+      <a class="side-link {{if eq .ActivePage "dashboard"}}active{{end}}" href="/admin">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a class="side-link {{if eq .ActivePage "users"}}active{{end}}" href="/admin/users">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+        <span>Users</span>
+        {{if .SidebarUserCount}}<span class="count">{{.SidebarUserCount}}</span>{{end}}
+      </a>
+      <a class="side-link {{if eq .ActivePage "clients"}}active{{end}}" href="/admin/clients">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
+        <span>OIDC Clients</span>
+        {{if .SidebarClientCount}}<span class="count">{{.SidebarClientCount}}</span>{{end}}
+      </a>
+      <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+        <span>Audit Log</span>
+      </a>
+    </div>
+    <div class="side-section">
+      <div class="side-label">System</div>
+      <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+        <span>Settings</span>
+      </a>
+      <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="/admin/profile">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/></svg>
+        <span>My account</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <form method="POST" action="/admin/logout">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-quiet btn-sm" style="width:100%;justify-content:flex-start;gap:8px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:14px;height:14px;flex-shrink:0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h4M15 17l5-5-5-5M20 12H9"/></svg>
+          Sign out
+        </button>
+      </form>
+      {{if .AdminEmail}}
+      <a href="/admin/profile" style="text-decoration:none;margin-top:6px;display:block">
+        <div class="user-chip">
+          <div class="av">{{slice .AdminEmail 0 2}}</div>
+          <div class="meta">
+            <b>{{.AdminEmail}}</b>
+            <span>admin{{if .AppVersion}} · v{{.AppVersion}}{{end}}</span>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:11px;height:11px;color:var(--tx-3);flex-shrink:0" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 14L20 4M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/></svg>
+        </div>
+      </a>
+      {{end}}
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span>Admin</span>
+        {{block "crumbs" .}}{{end}}
+      </div>
+      <div class="topbar-right">
+        <button class="search-trigger" id="search-trigger">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 4.2 12.6l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>
+          <span>Search anything…</span>
+          <span class="kbd">⌘K</span>
+        </button>
+        <div class="theme-toggle">
+          <button data-theme="light" title="Light">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+          </button>
+          <button data-theme="auto" title="System">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg>
+          </button>
+          <button data-theme="dark" title="Dark">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    <div class="page">
+      {{block "content" .}}{{end}}
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-nav">
+  <a class="mobile-nav-item {{if eq .ActivePage "dashboard"}}active{{end}}" href="/admin">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a class="mobile-nav-item {{if eq .ActivePage "users"}}active{{end}}" href="/admin/users">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+    <span>Users</span>
+  </a>
+  <a class="mobile-nav-item {{if eq .ActivePage "clients"}}active{{end}}" href="/admin/clients">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
+    <span>Clients</span>
+  </a>
+  <a class="mobile-nav-item {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+    <span>Audit</span>
+  </a>
+  <a class="mobile-nav-item {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+    <span>Settings</span>
+  </a>
 </nav>
-<main class="admin-content">
-{{block "content" .}}{{end}}
-</main>
+
+<div class="toast-stack" id="toast-stack"></div>
+
+<div class="cmdk-scrim" id="cmdk-scrim" style="display:none">
+  <div class="cmdk">
+    <input class="cmdk-input" placeholder="Search commands, pages, users…">
+    <div class="cmdk-list"></div>
+    <div class="cmdk-foot">
+      <span><span class="kbd">↑↓</span> navigate</span>
+      <span><span class="kbd">↵</span> select</span>
+      <span><span class="kbd">esc</span> close</span>
+      <span style="margin-left:auto">GateKeeper</span>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/admin.js"></script>
+<script src="/static/js/admin_search.js"></script>
+<script>
+</script>
 </body>
 </html>
 {{end}}

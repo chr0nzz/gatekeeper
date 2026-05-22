@@ -1,22 +1,75 @@
 {{template "admin_base" .}}
 {{define "title"}}New user - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/users">Users</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>New user</b>{{end}}
 {{define "content"}}
-<h1>New user</h1>
-{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-<div class="section" style="max-width:480px">
-  <form method="POST" action="/admin/users">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label>Email address
-      <input type="email" name="email" required autofocus autocomplete="off">
-    </label>
-    <label>Password (12+ characters)
-      <input type="password" name="password" required minlength="12" autocomplete="new-password">
-    </label>
-    <p style="font-size:0.85rem;color:var(--text-muted);margin-top:-8px">The user will be required to change this password on first login.</p>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button type="submit" class="btn btn-primary" style="width:auto">Create user</button>
-      <a href="/admin/users" class="btn btn-secondary" style="width:auto">Cancel</a>
-    </div>
-  </form>
+<div class="page-head">
+  <div>
+    <h1>New user</h1>
+    <p class="sub">Create an account with a password or email-code-only sign in.</p>
+  </div>
 </div>
+{{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
+<div class="card" style="max-width:600px">
+  <div class="card-body">
+    <form method="POST" action="/admin/users">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <label class="field">
+        <span class="field-label">Email address</span>
+        <input class="input" type="email" name="email" required autofocus autocomplete="off" placeholder="person@company.com">
+        <span class="field-hint">Must match the allowed email domains setting if configured.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Sign-in method</span>
+        <div class="seg" style="margin:0">
+          <button type="button" class="on" onclick="setMethod(this,'password')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
+            Email + Password
+          </button>
+          <button type="button" onclick="setMethod(this,'passwordless')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
+            Email Only
+          </button>
+        </div>
+        <input type="hidden" name="passwordless" id="method-input" value="0">
+        <span class="field-hint" id="method-hint">User signs in with password and a second factor.</span>
+      </label>
+      <div id="pw-section">
+        <label class="field">
+          <span class="field-label">Temporary password <span style="color:var(--tx-3);font-weight:400">(12+ characters)</span></span>
+          <input class="input" type="password" name="password" id="pw-input" minlength="12" autocomplete="new-password" placeholder="••••••••••••">
+          <span class="field-hint">The user should change this on first sign-in.</span>
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px">
+        <button type="submit" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Create user
+        </button>
+        <a href="/admin/users" class="btn btn-quiet">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function setMethod(btn, method) {
+  btn.closest('.seg').querySelectorAll('button').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  var pl = method === 'passwordless';
+  document.getElementById('method-input').value = pl ? '1' : '0';
+  var section = document.getElementById('pw-section');
+  var pwInput = document.getElementById('pw-input');
+  if (pl) {
+    section.style.display = 'none';
+    pwInput.removeAttribute('required');
+  } else {
+    section.style.display = '';
+    pwInput.setAttribute('required', '');
+  }
+  var hints = {
+    password: 'User signs in with password and a second factor.',
+    passwordless: 'User signs in with an email code only. No password required.'
+  };
+  document.getElementById('method-hint').textContent = hints[method] || '';
+}
+</script>
 {{end}}

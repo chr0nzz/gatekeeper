@@ -11,6 +11,9 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	jose "github.com/go-jose/go-jose/v4"
@@ -385,7 +388,7 @@ func (s *Storage) Health(ctx context.Context) error {
 // ListClients lists all OIDC clients.
 func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT client_id, name, redirect_uris, created_at FROM oidc_clients ORDER BY name`,
+		`SELECT client_id, name, icon_url, (icon_data IS NOT NULL AND LENGTH(icon_data)>0), redirect_uris, created_at FROM oidc_clients ORDER BY name`,
 	)
 	if err != nil {
 		return nil, err
@@ -394,7 +397,7 @@ func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 	var out []ClientRecord
 	for rows.Next() {
 		var c ClientRecord
-		if err := rows.Scan(&c.ClientID, &c.Name, &c.RedirectURIsRaw, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ClientID, &c.Name, &c.IconURL, &c.HasIcon, &c.RedirectURIsRaw, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(c.RedirectURIsRaw), &c.RedirectURIs)
@@ -404,18 +407,84 @@ func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 }
 
 // CreateClient registers a new OIDC client.
-func (s *Storage) CreateClient(ctx context.Context, clientID, secret, name string, redirectURIs []string) error {
+func (s *Storage) CreateClient(ctx context.Context, clientID, secret, name, iconURL string, redirectURIs []string) error {
 	raw, _ := json.Marshal(redirectURIs)
+	iconData, iconMime := fetchIcon(iconURL)
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO oidc_clients (id, client_id, client_secret, redirect_uris, name, created_at) VALUES (?,?,?,?,?,?)`,
-		uuid.New().String(), clientID, secret, string(raw), name, time.Now().Unix(),
+		`INSERT INTO oidc_clients (id, client_id, client_secret, redirect_uris, name, icon_url, icon_data, icon_mime, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+		uuid.New().String(), clientID, secret, string(raw), name, iconURL, iconData, iconMime, time.Now().Unix(),
 	)
 	return err
+}
+
+// ServeIcon writes the cached icon for a client to the response, or 404 if none.
+func (s *Storage) ServeIcon(w http.ResponseWriter, r *http.Request, clientID string) {
+	var data []byte
+	var mime string
+	s.db.QueryRowContext(r.Context(), `SELECT icon_data, icon_mime FROM oidc_clients WHERE client_id=?`, clientID).Scan(&data, &mime)
+	if len(data) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	if mime == "" {
+		mime = "image/png"
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write(data)
+}
+
+// HasIcon returns true if a client has a cached icon.
+func (s *Storage) HasIcon(ctx context.Context, clientID string) bool {
+	var n int
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_clients WHERE client_id=? AND icon_data IS NOT NULL AND LENGTH(icon_data)>0`, clientID).Scan(&n)
+	return n > 0
+}
+
+func fetchIcon(iconURL string) ([]byte, string) {
+	if iconURL == "" {
+		return nil, ""
+	}
+	resp, err := http.Get(iconURL) //nolint
+	if err != nil || resp.StatusCode != 200 {
+		return nil, ""
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
+	if err != nil || len(data) == 0 {
+		return nil, ""
+	}
+	mime := resp.Header.Get("Content-Type")
+	if idx := strings.Index(mime, ";"); idx > 0 {
+		mime = mime[:idx]
+	}
+	if mime == "" {
+		mime = "image/png"
+	}
+	return data, mime
 }
 
 // DeleteClient removes an OIDC client.
 func (s *Storage) DeleteClient(ctx context.Context, clientID string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM oidc_clients WHERE client_id=?`, clientID)
+	return err
+}
+
+// UpdateClient updates a client's name, icon, redirect URIs, and optionally its secret.
+func (s *Storage) UpdateClient(ctx context.Context, clientID, name, iconURL, newSecret string, redirectURIs []string) error {
+	raw, _ := json.Marshal(redirectURIs)
+	iconData, iconMime := fetchIcon(iconURL)
+	if newSecret != "" {
+		_, err := s.db.ExecContext(ctx,
+			`UPDATE oidc_clients SET name=?, icon_url=?, icon_data=?, icon_mime=?, redirect_uris=?, client_secret=? WHERE client_id=?`,
+			name, iconURL, iconData, iconMime, string(raw), newSecret, clientID,
+		)
+		return err
+	}
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE oidc_clients SET name=?, icon_url=?, icon_data=?, icon_mime=?, redirect_uris=? WHERE client_id=?`,
+		name, iconURL, iconData, iconMime, string(raw), clientID,
+	)
 	return err
 }
 
@@ -509,7 +578,7 @@ func (k *signingKey) ID() string                               { return k.id }
 func (k *signingKey) SignatureAlgorithm() jose.SignatureAlgorithm { return jose.RS256 }
 func (k *signingKey) Algorithm() jose.SignatureAlgorithm       { return jose.RS256 }
 func (k *signingKey) Use() string                              { return "sig" }
-func (k *signingKey) Key() any                                 { return &k.key.PublicKey }
+func (k *signingKey) Key() any                                 { return k.key }
 
 // -- ClientRecord for admin display --
 
@@ -517,6 +586,8 @@ func (k *signingKey) Key() any                                 { return &k.key.P
 type ClientRecord struct {
 	ClientID        string
 	Name            string
+	IconURL         string
+	HasIcon         bool
 	RedirectURIsRaw string
 	RedirectURIs    []string
 	CreatedAt       int64

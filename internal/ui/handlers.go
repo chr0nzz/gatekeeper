@@ -3,6 +3,7 @@ package ui
 import (
 	"database/sql"
 	"encoding/base64"
+	"log/slog"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -15,25 +16,30 @@ import (
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 	"github.com/chr0nzz/gatekeeper/internal/mailer"
+	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
 	"github.com/chr0nzz/gatekeeper/internal/templates"
 )
 
 
 // Handlers holds all user-facing handler dependencies.
 type Handlers struct {
-	db         *sql.DB
-	users      *queries.UserStore
-	sessions   *auth.SessionStore
-	otps       *auth.OTPStore
-	totp       *auth.TOTPStore
-	passkeys   *auth.PasskeyStore
-	resetStore *auth.PasswordResetStore
-	settings   *queries.SettingsStore
-	mailer     *mailer.Mailer
-	auditLog   *audit.Logger
-	renderer   *templates.Renderer
-	baseURL    string
-	issuer     string
+	db             *sql.DB
+	users          *queries.UserStore
+	sessions       *auth.SessionStore
+	otps           *auth.OTPStore
+	totp           *auth.TOTPStore
+	passkeys       *auth.PasskeyStore
+	resetStore     *auth.PasswordResetStore
+	settings       *queries.SettingsStore
+	trustedDevices *auth.TrustedDeviceStore
+	mailer         *mailer.Mailer
+	auditLog       *audit.Logger
+	renderer       *templates.Renderer
+	oidcStorage    *oidcstore.Storage
+	baseURL        string
+	issuer         string
+	secretKey      string
+	cookieDomain   string
 }
 
 // New creates a user-facing Handlers.
@@ -46,15 +52,20 @@ func New(
 	passkeys *auth.PasskeyStore,
 	resetStore *auth.PasswordResetStore,
 	settings *queries.SettingsStore,
+	trustedDevices *auth.TrustedDeviceStore,
 	m *mailer.Mailer,
 	auditLog *audit.Logger,
 	renderer *templates.Renderer,
-	baseURL, issuer string,
+	oidcStorage *oidcstore.Storage,
+	baseURL, issuer, secretKey, cookieDomain string,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, sessions: sessions, otps: otps, totp: totp,
-		passkeys: passkeys, resetStore: resetStore, settings: settings, mailer: m,
-		auditLog: auditLog, renderer: renderer, baseURL: baseURL, issuer: issuer,
+		passkeys: passkeys, resetStore: resetStore, settings: settings,
+		trustedDevices: trustedDevices, mailer: m,
+		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
+		baseURL: baseURL, issuer: issuer,
+		secretKey: secretKey, cookieDomain: cookieDomain,
 	}
 }
 
@@ -128,15 +139,50 @@ func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "login.html", map[string]string{
-		"RedirectURI": r.URL.Query().Get("redirect_uri"),
-		"OIDCRequest": r.URL.Query().Get("oidc_request"),
-	})
+	redirectURI := r.URL.Query().Get("redirect_uri")
+	oidcRequest := r.URL.Query().Get("oidc_request")
+	// If already authenticated, complete the OIDC flow or forward directly.
+	data, sessID, _ := h.sessions.Get(r)
+	if data != nil && data.UserID != "" && !data.PendingOTP && !data.PendingTOTP {
+		if oidcRequest != "" {
+			data.OIDCRequestID = oidcRequest
+			h.sessions.Update(r.Context(), sessID, *data)
+			h.completeLogin(w, r, sessID, data)
+		} else {
+			h.redirect(w, r, sessID, redirectURI)
+		}
+		return
+	}
+
+	tplData := map[string]string{
+		"RedirectURI": redirectURI,
+		"OIDCRequest": oidcRequest,
+		"AppName":     "",
+		"FaviconURL":  "",
+	}
+	if oidcRequest != "" && h.oidcStorage != nil {
+		if req, err := h.oidcStorage.AuthRequestByID(r.Context(), oidcRequest); err == nil {
+			clientID := req.GetClientID()
+			var name string
+			var hasIcon bool
+			h.db.QueryRowContext(r.Context(),
+				`SELECT name, (icon_data IS NOT NULL AND LENGTH(icon_data)>0) FROM oidc_clients WHERE client_id=?`,
+				clientID).Scan(&name, &hasIcon)
+			if name != "" {
+				tplData["AppName"] = name
+			}
+			if hasIcon {
+				tplData["FaviconURL"] = "/oidc/icon/" + clientID
+			}
+		}
+	}
+	h.render(w, "login.html", tplData)
 }
 
 func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")
+	loginMode := r.FormValue("login_mode")
 	redirectURI := r.FormValue("redirect_uri")
 	oidcRequest := r.FormValue("oidc_request")
 
@@ -152,7 +198,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if password == "" && user.PasswordlessEnabled {
+	if (password == "" || loginMode == "passwordless") && user.PasswordlessEnabled {
 		h.handleOTPDispatch(w, r, user.ID, redirectURI, oidcRequest)
 		return
 	}
@@ -163,18 +209,23 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trusted device - skip 2FA entirely.
+	if h.trustedDevices.IsTrusted(r, user.ID) {
+		sessID, _ := h.sessions.Create(w, r, auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest})
+		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, user.ID, "", r.RemoteAddr, "trusted-device")
+		data := &auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest}
+		h.completeLogin(w, r, sessID, data)
+		return
+	}
+
 	if user.TOTPEnabled {
-		sessID, _ := h.sessions.Create(w, r, auth.SessionData{
-			UserID:      user.ID,
-			PendingTOTP: true,
-			RedirectURI: redirectURI,
+		h.sessions.Create(w, r, auth.SessionData{
+			UserID:        user.ID,
+			PendingTOTP:   true,
+			RedirectURI:   redirectURI,
+			OIDCRequestID: oidcRequest,
 		})
-		_ = sessID
-		q := url.Values{}
-		if oidcRequest != "" {
-			q.Set("oidc_request", oidcRequest)
-		}
-		http.Redirect(w, r, "/login/totp?"+q.Encode(), http.StatusFound)
+		http.Redirect(w, r, "/login/totp", http.StatusFound)
 		return
 	}
 
@@ -193,15 +244,12 @@ func (h *Handlers) handleOTPDispatch(w http.ResponseWriter, r *http.Request, use
 	}
 	h.auditLog.Log(r.Context(), audit.EventOTPSent, userID, "", r.RemoteAddr, "")
 	h.sessions.Create(w, r, auth.SessionData{
-		UserID:      userID,
-		PendingOTP:  true,
-		RedirectURI: redirectURI,
+		UserID:        userID,
+		PendingOTP:    true,
+		RedirectURI:   redirectURI,
+		OIDCRequestID: oidcRequest,
 	})
-	q := url.Values{}
-	if oidcRequest != "" {
-		q.Set("oidc_request", oidcRequest)
-	}
-	http.Redirect(w, r, "/login/otp?"+q.Encode(), http.StatusFound)
+	http.Redirect(w, r, "/login/otp", http.StatusFound)
 }
 
 func (h *Handlers) GetOTP(w http.ResponseWriter, r *http.Request) {
@@ -223,6 +271,7 @@ func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.auditLog.Log(r.Context(), audit.EventOTPVerified, data.UserID, "", r.RemoteAddr, "")
+	h.trustedDevices.Trust(w, r, data.UserID)
 	h.completeLogin(w, r, sessID, data)
 }
 
@@ -245,6 +294,7 @@ func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.auditLog.Log(r.Context(), audit.EventTOTPVerified, data.UserID, "", r.RemoteAddr, "")
+	h.trustedDevices.Trust(w, r, data.UserID)
 	h.completeLogin(w, r, sessID, data)
 }
 
@@ -264,6 +314,7 @@ func (h *Handlers) PostTOTPRecovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.auditLog.Log(r.Context(), audit.EventTOTPRecoveryUsed, data.UserID, "", r.RemoteAddr, "")
+	h.trustedDevices.Trust(w, r, data.UserID)
 	h.completeLogin(w, r, sessID, data)
 }
 
@@ -273,18 +324,61 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 		data.PendingOTP = false
 		data.PendingTOTP = false
 		h.sessions.Update(r.Context(), sessID, *data)
-		http.Redirect(w, r, "/profile/password?forced=1", http.StatusFound)
+		http.Redirect(w, r, "/profile/password?forced=1&redirect_uri="+url.QueryEscape(data.RedirectURI), http.StatusFound)
 		return
 	}
 	data.PendingOTP = false
 	data.PendingTOTP = false
 	h.sessions.Update(r.Context(), sessID, *data)
 	h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, "", r.RemoteAddr, "")
-	target := data.RedirectURI
+
+	if data.OIDCRequestID != "" && h.oidcStorage != nil {
+		if err := h.oidcStorage.AuthRequestDone(r.Context(), data.OIDCRequestID, data.UserID); err != nil {
+			slog.Error("oidc auth request done failed", "id", data.OIDCRequestID, "err", err)
+		} else {
+			http.Redirect(w, r, "/authorize/callback?id="+url.QueryEscape(data.OIDCRequestID), http.StatusFound)
+			return
+		}
+	}
+
+	h.redirect(w, r, sessID, data.RedirectURI)
+}
+
+// redirect sends the user to target, using cross-domain token handoff when
+// the target is outside the shared cookie domain.
+func (h *Handlers) redirect(w http.ResponseWriter, r *http.Request, sessID, target string) {
 	if target == "" {
 		target = "/"
 	}
+	if h.needsCrossDomain(target) {
+		token := auth.GenerateCrossToken(sessID, h.secretKey)
+		u, err := url.Parse(target)
+		if err != nil {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+		cb := u.Scheme + "://" + u.Host + "/_gk/auth" +
+			"?token=" + url.QueryEscape(token) +
+			"&redirect=" + url.QueryEscape(u.RequestURI())
+		http.Redirect(w, r, cb, http.StatusFound)
+		return
+	}
 	http.Redirect(w, r, target, http.StatusFound)
+}
+
+// needsCrossDomain returns true when the target URL's host is not covered by
+// the shared cookie domain (e.g. a completely different TLD).
+func (h *Handlers) needsCrossDomain(target string) bool {
+	if h.cookieDomain == "" {
+		return false
+	}
+	u, err := url.Parse(target)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	suffix := strings.TrimPrefix(h.cookieDomain, ".")
+	host := u.Hostname()
+	return host != suffix && !strings.HasSuffix(host, "."+suffix)
 }
 
 func (h *Handlers) GetPasskeyLogin(w http.ResponseWriter, r *http.Request) {
@@ -444,7 +538,11 @@ func (h *Handlers) PostLogout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) GetChangePassword(w http.ResponseWriter, r *http.Request) {
 	forced := r.URL.Query().Get("forced") == "1"
-	h.render(w, "change_password.html", map[string]bool{"Forced": forced})
+	redirectURI := r.URL.Query().Get("redirect_uri")
+	h.render(w, "change_password.html", map[string]interface{}{
+		"Forced":      forced,
+		"RedirectURI": redirectURI,
+	})
 }
 
 func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -492,7 +590,12 @@ func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
 	h.sessions.RevokeUser(r.Context(), user.ID, sessID)
 	h.auditLog.Log(r.Context(), audit.EventPasswordChanged, user.ID, "", r.RemoteAddr, "")
 	h.mailer.SendPasswordChanged(r.Context(), user.Email)
-	h.render(w, "change_password.html", map[string]string{"Success": "Password changed. All other sessions have been signed out."})
+	redirectURI := r.FormValue("redirect_uri")
+	if redirectURI != "" {
+		h.redirect(w, r, sessID, redirectURI)
+		return
+	}
+	h.render(w, "change_password.html", map[string]interface{}{"Success": "Password changed. All other sessions have been signed out."})
 }
 
 func (h *Handlers) GetTOTPEnroll(w http.ResponseWriter, r *http.Request) {

@@ -1,20 +1,22 @@
 {{template "base" .}}
 {{define "title"}}Recovery codes - GateKeeper{{end}}
 {{define "content"}}
-<div class="card wide">
-  <h1>Save your recovery codes</h1>
-  <div class="alert alert-warning">
-    <strong>Save these codes now.</strong> Each code can only be used once. These will not be shown again.
+<div class="auth-wrap bg-grid">
+  <div class="auth-card" style="max-width:480px">
+    <h1>Save your recovery codes</h1>
+    {{if .Codes}}
+    <div class="alert alert-warn" style="margin-bottom:20px"><b>Save these now.</b><p>Each code works once. They will not be shown again.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+      {{range .Codes}}
+      <code style="font-family:var(--font-mono);font-size:13px;padding:10px 14px;background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;text-align:center">{{.}}</code>
+      {{end}}
+    </div>
+    <a href="/" class="btn btn-primary" style="display:block;text-align:center;height:40px;line-height:40px;font-size:14px">I've saved my codes</a>
+    {{else}}
+    <p style="color:var(--tx-2)">Recovery codes are only shown immediately after TOTP enrollment.</p>
+    <a href="/" class="btn btn-ghost" style="display:block;text-align:center;margin-top:16px">Go home</a>
+    {{end}}
   </div>
-  {{if .Codes}}
-  <div class="recovery-codes">
-    {{range .Codes}}<code>{{.}}</code>{{end}}
-  </div>
-  <p>Store them somewhere safe, such as a password manager.</p>
-  <a href="/" class="btn btn-primary">I've saved my codes</a>
-  {{else}}
-  <p>Recovery codes are only displayed immediately after TOTP enrollment.</p>
-  <a href="/" class="btn btn-secondary">Go home</a>
-  {{end}}
 </div>
+<script src="/static/js/theme.js"></script>
 {{end}}

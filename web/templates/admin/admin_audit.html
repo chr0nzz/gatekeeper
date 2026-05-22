@@ -1,20 +1,75 @@
 {{template "admin_base" .}}
 {{define "title"}}Audit Log - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Audit Log</b>{{end}}
 {{define "content"}}
-<h1>Audit Log</h1>
-<table>
-  <thead><tr><th>Time</th><th>Event</th><th>User</th><th>Actor</th><th>IP</th><th>Detail</th></tr></thead>
-  <tbody>
+<div class="page-head">
+  <div>
+    <h1>Audit log</h1>
+    <p class="sub">Read-only record of every authentication and admin event.</p>
+  </div>
+  <div class="head-actions">
+    <button class="btn btn-ghost btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>
+      Export
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-toolbar" style="flex-wrap:wrap;gap:8px">
+    <div style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px;position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx-3)" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 4.2 12.6l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>
+      <input id="gk-audit-search" class="input" style="padding-left:28px;width:260px" placeholder="Search event, user, IP, detail…">
+    </div>
+    <div class="filter-chips">
+      <button class="fchip on" data-kind="all">All</button>
+      <button class="fchip" data-kind="ok"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:3px"></span>Success</button>
+      <button class="fchip" data-kind="warn"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--warn);display:inline-block;margin-right:3px"></span>Warn</button>
+      <button class="fchip" data-kind="err"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--danger);display:inline-block;margin-right:3px"></span>Fail</button>
+      <button class="fchip" data-kind="info"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--info);display:inline-block;margin-right:3px"></span>Info</button>
+    </div>
+    <div class="filter-chips">
+      <button class="fchip on" data-event-type="all">All events</button>
+      <button class="fchip" data-event-type="auth">auth</button>
+      <button class="fchip" data-event-type="admin">admin</button>
+      <button class="fchip" data-event-type="oidc">oidc</button>
+    </div>
+    <div id="audit-count" style="margin-left:auto;font-size:11px;color:var(--tx-3);align-self:center">{{.TotalEvents}} events</div>
+  </div>
+
+  <div class="audit-row" style="background:var(--bg-2);color:var(--tx-3);text-transform:uppercase;font-size:10px;letter-spacing:0.05em;font-weight:500;border-bottom:1px solid var(--bd-0)">
+    <span>Time</span><span>Event</span><span>User</span><span>Detail</span><span>IP</span><span></span>
+  </div>
+
+  {{range .Groups}}
+  <div data-day-header="{{.Date}}" style="padding:6px 16px;font-size:10.5px;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.08em;background:var(--bg-1);border-bottom:1px solid var(--bd-0)">
+    {{.Date}} <span style="text-transform:none;letter-spacing:0;color:var(--tx-3)">· {{len .Entries}} events</span>
+  </div>
   {{range .Entries}}
-  <tr>
-    <td>{{.CreatedAt}}</td>
-    <td><code>{{.Event}}</code></td>
-    <td>{{.UserID}}</td>
-    <td>{{.ActorID}}</td>
-    <td>{{.IP}}</td>
-    <td>{{.Detail}}</td>
-  </tr>
+  <div class="audit-row" data-audit-row="{{.Event}} {{.User}} {{.Actor}} {{.IP}} {{.Detail}}" data-kind="{{.Kind}}" data-day="{{.Date}}" data-event-prefix="{{.EventPrefix}}">
+    <span class="ts">{{.Time}}</span>
+    <span class="ev"><span class="pill pill-{{.Kind}}" style="font-size:10px;font-family:var(--font-mono)"><span class="dot"></span>{{.Event}}</span></span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500">{{if .User}}{{.User}}{{else}}<span style="color:var(--tx-3)">—</span>{{end}}</span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-2);font-size:11.5px">
+      {{if .Detail}}{{.Detail}}{{end}}
+      {{if .Actor}}<span style="color:var(--tx-3)"> · by </span><span style="color:var(--tx-1)">{{.Actor}}</span>{{end}}
+    </span>
+    <span class="ip">{{.IP}}</span>
+    <span style="text-align:right">
+      <button class="btn btn-quiet btn-xs audit-filter-btn" data-event="{{.Event}}" title="Filter to this event" style="opacity:0;color:var(--tx-3)">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>
+      </button>
+    </span>
+  </div>
   {{end}}
-  </tbody>
-</table>
+  {{else}}
+  <div class="empty">
+    <div class="ic-bg">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+    </div>
+    <h4>No events recorded yet</h4>
+    <p>Authentication and admin events will appear here.</p>
+  </div>
+  {{end}}
+</div>
 {{end}}

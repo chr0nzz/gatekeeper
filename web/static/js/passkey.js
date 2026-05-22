@@ -98,6 +98,7 @@ async function beginPasskeyRegister(beginURL, finishURL, errorEl, successEl) {
     });
     if (finishResp.ok) {
       successEl.style.display = '';
+      successEl.textContent = 'Passkey registered successfully.';
     } else {
       const text = await finishResp.text();
       errorEl.textContent = text || 'Registration failed.';
@@ -108,3 +109,32 @@ async function beginPasskeyRegister(beginURL, finishURL, errorEl, successEl) {
     errorEl.style.display = '';
   }
 }
+
+// Auto-initialize buttons from data attributes so templates need no inline scripts.
+document.addEventListener('DOMContentLoaded', () => {
+  const loginBtn = document.getElementById('gk-passkey-login-btn');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+      beginPasskeyLogin(
+        loginBtn.dataset.begin,
+        loginBtn.dataset.finish,
+        document.getElementById('gk-passkey-error')
+      );
+    });
+  }
+
+  const registerBtn = document.getElementById('gk-passkey-register-btn');
+  if (registerBtn) {
+    registerBtn.addEventListener('click', () => {
+      const nameEl = document.getElementById('gk-passkey-name');
+      const name = nameEl ? nameEl.value : 'Passkey';
+      const finish = registerBtn.dataset.finish + '?name=' + encodeURIComponent(name);
+      beginPasskeyRegister(
+        registerBtn.dataset.begin,
+        finish,
+        document.getElementById('gk-passkey-error'),
+        document.getElementById('gk-passkey-success')
+      );
+    });
+  }
+});

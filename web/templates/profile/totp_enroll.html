@@ -1,23 +1,26 @@
 {{template "base" .}}
 {{define "title"}}Set up authenticator - GateKeeper{{end}}
 {{define "content"}}
-<div class="card wide">
-  <h1>Set up authenticator app</h1>
-  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-  <p>Scan this QR code with Google Authenticator, Authy, or any TOTP-compatible app.</p>
-  <div class="qr-code">
-    <img src="data:image/png;base64,{{.QRCodeB64}}" alt="TOTP QR Code" width="256" height="256">
+<div class="auth-wrap bg-grid">
+  <div class="auth-card" style="max-width:420px">
+    <a href="/" class="btn btn-quiet btn-xs" style="margin-bottom:14px;padding:4px 0"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px"><path d="M10 12L6 8l4-4"/></svg> Back</a>
+    <h1>Set up authenticator</h1>
+    <p class="lede">Scan this QR code with Google Authenticator, Authy, or any TOTP app.</p>
+    {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
+    <div style="text-align:center;margin:20px 0">
+      <div style="display:inline-block;background:#fff;padding:12px;border-radius:8px">
+        <img src="data:image/png;base64,{{.QRCodeB64}}" width="200" height="200" alt="QR code">
+      </div>
+    </div>
+    <details style="margin-bottom:18px"><summary style="cursor:pointer;color:var(--tx-2);font-size:12px">Can't scan? Enter key manually</summary>
+      <code style="font-family:var(--font-mono);font-size:12px;display:block;padding:10px;background:var(--bg-2);border-radius:6px;margin-top:8px;word-break:break-all;letter-spacing:0.05em">{{.Secret}}</code>
+    </details>
+    <form method="POST" action="/profile/totp/enroll">
+      <input type="hidden" name="secret" value="{{.Secret}}">
+      <label class="field"><span class="field-label">Confirm with your app's code</span><input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.2em;font-size:20px;text-align:center"></label>
+      <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px">Confirm and enable</button>
+    </form>
   </div>
-  <details>
-    <summary>Can't scan? Enter this key manually</summary>
-    <code class="secret-key">{{.Secret}}</code>
-  </details>
-  <form method="POST" action="/profile/totp/enroll">
-    <input type="hidden" name="secret" value="{{.Secret}}">
-    <label>Enter the 6-digit code from your app to confirm
-      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-    </label>
-    <button type="submit" class="btn btn-primary">Confirm and enable</button>
-  </form>
 </div>
+<script src="/static/js/theme.js"></script>
 {{end}}

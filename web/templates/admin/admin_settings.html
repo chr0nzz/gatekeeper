@@ -1,43 +1,155 @@
 {{template "admin_base" .}}
 {{define "title"}}Settings - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Settings</b>{{end}}
 {{define "content"}}
-<h1>Settings</h1>
-{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-{{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
-<p style="color:var(--text-muted);margin-bottom:24px">Changes take effect immediately - no restart needed.</p>
+<div class="page-head">
+  <div>
+    <h1>Settings</h1>
+    <p class="sub">Changes apply immediately. No restart required.</p>
+  </div>
+</div>
 
-<form method="POST" action="/admin/settings">
+{{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
+{{if .Success}}<div class="alert alert-ok" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14l-4-4 1.5-1.5L11 13l5-5L17.5 9.5z"/></svg><div><b>{{.Success}}</b></div></div>{{end}}
+
+<form id="settings-form" method="POST" action="/admin/settings" style="max-width:820px">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-  <div class="section">
-    <h2>Access control</h2>
-    <label>Allowed email domains
-      <input type="text" name="allowed_email_domains" value="{{.AllowedDomains}}"
-             placeholder="example.com, company.org">
-      <span style="font-size:0.8rem;color:var(--text-muted)">Comma-separated. Leave blank to allow any email address.</span>
-    </label>
-    <label>Session timeout (hours)
-      <input type="number" name="session_ttl_hours" value="{{.SessionTTL}}" min="1" max="720" placeholder="8">
-      <span style="font-size:0.8rem;color:var(--text-muted)">How long a session stays active after the last request. Default: 8.</span>
-    </label>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+      <h3>Access control</h3>
+    </div>
+    <div class="card-body">
+      <label class="field">
+        <span class="field-label">Allowed email domains</span>
+        <input class="input" type="text" name="allowed_email_domains" value="{{.AllowedDomains}}" placeholder="example.com, company.org">
+        <span class="field-hint">Comma-separated. Leave blank to allow any email address.</span>
+      </label>
+      <label class="field" style="margin-bottom:0">
+        <span class="field-label">Session timeout (hours)</span>
+        <input class="input" type="number" name="session_ttl_hours" value="{{.SessionTTL}}" min="1" max="720" placeholder="8" style="max-width:140px">
+        <span class="field-hint">Default 8. Maximum 720 (30 days).</span>
+      </label>
+    </div>
   </div>
 
-  <div class="section">
-    <h2>SMTP</h2>
-    <label>Host <input type="text" name="smtp_host" value="{{.SMTPHost}}" placeholder="smtp.example.com"></label>
-    <label>Port <input type="number" name="smtp_port" value="{{.SMTPPort}}" placeholder="587"></label>
-    <label>Username <input type="text" name="smtp_username" value="{{.SMTPUsername}}" autocomplete="off"></label>
-    <label>Password <input type="password" name="smtp_password" placeholder="Leave blank to keep current" autocomplete="new-password"></label>
-    <label>From address <input type="email" name="smtp_from" value="{{.SMTPFrom}}"></label>
-    <label>TLS mode
-      <select name="smtp_tls">
-        <option value="starttls" {{if eq .SMTPTLS "starttls"}}selected{{end}}>STARTTLS (port 587)</option>
-        <option value="tls" {{if eq .SMTPTLS "tls"}}selected{{end}}>TLS (port 465)</option>
-        <option value="none" {{if eq .SMTPTLS "none"}}selected{{end}}>None</option>
-      </select>
-    </label>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
+      <h3>SMTP</h3>
+      <div class="head-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="smtp-test-btn">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+          Send test
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+        <label class="field"><span class="field-label">Host</span><input class="input mono" type="text" name="smtp_host" value="{{.SMTPHost}}" placeholder="smtp.example.com"></label>
+        <label class="field"><span class="field-label">Port</span><input class="input mono" type="number" name="smtp_port" value="{{.SMTPPort}}" placeholder="587"></label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field"><span class="field-label">Username</span><input class="input mono" type="text" name="smtp_username" value="{{.SMTPUsername}}" autocomplete="off"></label>
+        <label class="field"><span class="field-label">Password</span><input class="input" type="password" name="smtp_password" placeholder="•••••••• (unchanged)" autocomplete="new-password"></label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field" style="margin-bottom:0"><span class="field-label">From address</span><input class="input" type="email" name="smtp_from" value="{{.SMTPFrom}}" placeholder="noreply@example.com"></label>
+        <label class="field" style="margin-bottom:0"><span class="field-label">TLS mode</span>
+          <select class="input select" name="smtp_tls">
+            <option value="starttls" {{if eq .SMTPTLS "starttls"}}selected{{end}}>STARTTLS (port 587)</option>
+            <option value="tls" {{if eq .SMTPTLS "tls"}}selected{{end}}>TLS (port 465)</option>
+            <option value="none" {{if eq .SMTPTLS "none"}}selected{{end}}>None - plain</option>
+          </select>
+        </label>
+      </div>
+    </div>
   </div>
 
-  <button type="submit" class="btn btn-primary" style="width:auto">Save settings</button>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a5 5 0 1 1-5 5h-3v3H4v3H1v-3l9-9c.6-1.7 2.4-3 4.5-3z"/></svg>
+      <h3>OIDC provider</h3>
+    </div>
+    <div class="card-body">
+      <dl class="dlist">
+        <dt>Issuer</dt>
+        <dd style="display:flex;align-items:center;gap:6px">
+          <span class="mono" style="font-family:var(--font-mono);font-size:12px">{{.BaseURL}}</span>
+          <button type="button" class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+          </button>
+        </dd>
+        <dt>Discovery</dt>
+        <dd style="display:flex;align-items:center;gap:6px">
+          <span class="mono" style="font-family:var(--font-mono);font-size:12px">/.well-known/openid-configuration</span>
+          <button type="button" class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/.well-known/openid-configuration">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+          </button>
+        </dd>
+        <dt>Signing</dt>
+        <dd>RS256 · keys rotate every 30 days</dd>
+        <dt>Scopes</dt>
+        <dd><span class="tag">openid</span> <span class="tag">email</span> <span class="tag">profile</span> <span class="tag">offline_access</span></dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+      <h3>Traefik ForwardAuth</h3>
+    </div>
+    <div class="card-body">
+      <p style="font-size:12px;color:var(--tx-2);margin:0 0 12px">Drop this middleware in your dynamic config to protect any service:</p>
+      <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:14px;font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">http:
+  middlewares:
+    gk-auth:
+      forwardAuth:
+        address: "{{.BaseURL}}/auth/verify"
+        authResponseHeaders:
+          - X-Auth-User
+          - X-Auth-Email</pre>
+    </div>
+  </div>
+
+  <div id="save-bar" style="display:none;position:sticky;bottom:16px;padding:12px 16px;background:var(--bg-elev);border:1px solid var(--bd-2);border-radius:10px;display:none;align-items:center;gap:10px;box-shadow:var(--shadow-pop)">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--ac)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 9v6M12 7v.5"/></svg>
+    <span style="font-size:13px">Unsaved changes</span>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button type="button" class="btn btn-quiet btn-sm" id="discard-btn">Discard</button>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12l4 4 10-10"/></svg>
+        Save changes
+      </button>
+    </div>
+  </div>
 </form>
+
+<script>
+(function() {
+  var form = document.getElementById('settings-form');
+  var bar = document.getElementById('save-bar');
+  var initial = new FormData(form);
+  var dirty = false;
+
+  function markDirty() {
+    if (!dirty) { dirty = true; bar.style.display = 'flex'; }
+  }
+
+  form.querySelectorAll('input, select, textarea').forEach(function(el) {
+    el.addEventListener('input', markDirty);
+    el.addEventListener('change', markDirty);
+  });
+
+  document.getElementById('discard-btn').addEventListener('click', function() {
+    form.reset(); dirty = false; bar.style.display = 'none';
+  });
+
+  document.getElementById('smtp-test-btn').addEventListener('click', function() {
+    GK.toast({ kind: 'info', title: 'Save settings first, then use the test button.' });
+  });
+})();
+</script>
 {{end}}

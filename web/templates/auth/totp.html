@@ -1,19 +1,33 @@
 {{template "base" .}}
-{{define "title"}}Two-factor code - GateKeeper{{end}}
+{{define "title"}}Authenticator code - GateKeeper{{end}}
 {{define "content"}}
-<div class="card">
-  <h1>Authenticator code</h1>
-  <p>Enter the 6-digit code from your authenticator app.</p>
-  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-  <form method="POST" action="/login/totp">
-    <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
-    <label>Code
-      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-    </label>
-    <button type="submit" class="btn btn-primary">Verify</button>
-  </form>
-  <div class="links">
-    <a href="/login/totp/recovery">Use a recovery code instead</a>
+<div class="auth-wrap bg-grid">
+  <div class="auth-top">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+  </div>
+  <div class="auth-card">
+    <a href="/login" class="btn btn-quiet btn-xs" style="margin-bottom:14px;padding:4px 0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px"><path d="M10 12L6 8l4-4"/></svg>
+      Back
+    </a>
+    <h1>Two-factor code</h1>
+    <p class="lede">Open your authenticator app and enter the 6-digit code.</p>
+    {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
+    <form method="POST" action="/login/totp">
+      <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
+      <label class="field">
+        <span class="field-label">Code</span>
+        <input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.2em;font-size:22px;text-align:center">
+      </label>
+      <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px">Verify</button>
+    </form>
+    <div class="auth-foot">
+      <a href="/login/totp/recovery">Use a recovery code instead</a>
+    </div>
   </div>
 </div>
+<script src="/static/js/theme.js"></script>
 {{end}}

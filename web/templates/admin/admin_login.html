@@ -4,23 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin sign in - GateKeeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="/static/css/main.css">
+<script>(function(){var t=localStorage.getItem('gk_theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}else if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.setAttribute('data-theme','light');}})();</script>
 </head>
 <body>
-<main>
-<div class="card">
-  <h1>Admin sign in</h1>
-  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-  <form method="POST" action="/admin/login">
-    <label>Email
-      <input type="email" name="email" required autofocus autocomplete="username">
-    </label>
-    <label>Password
-      <input type="password" name="password" required autocomplete="current-password">
-    </label>
-    <button type="submit" class="btn btn-primary">Sign in</button>
-  </form>
+<div class="auth-wrap bg-grid">
+  <div class="auth-toggle">
+    <div class="theme-toggle compact">
+      <button data-theme="light" title="Light"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15"/></svg></button>
+      <button data-theme="auto" title="System"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="9" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg></button>
+      <button data-theme="dark" title="Dark"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg></button>
+    </div>
+  </div>
+  <div class="auth-top">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+    <span style="font-size:11px;color:var(--tx-3);margin-left:8px;padding:2px 8px;border:1px solid var(--bd-1);border-radius:100px">Admin</span>
+  </div>
+  <div class="auth-card">
+    <h1>Admin sign in</h1>
+    <p class="lede">Access the GateKeeper administration panel.</p>
+    {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
+    <form method="POST" action="/admin/login" style="margin-top:4px">
+      <label class="field">
+        <span class="field-label">Email address</span>
+        <input class="input" type="email" name="email" required autofocus autocomplete="username" placeholder="admin@example.com">
+      </label>
+      <label class="field">
+        <span class="field-label">Password</span>
+        <input class="input" type="password" name="password" required autocomplete="current-password" placeholder="••••••••••••">
+      </label>
+      <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px;margin-top:4px">Sign in</button>
+    </form>
+  </div>
 </div>
-</main>
+<script src="/static/js/theme.js"></script>
 </body>
 </html>

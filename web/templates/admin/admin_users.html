@@ -1,26 +1,102 @@
 {{template "admin_base" .}}
 {{define "title"}}Users - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Users</b>{{end}}
 {{define "content"}}
-<h1>Users</h1>
-{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-<div class="toolbar">
-  <a href="/admin/users/new" class="btn btn-primary" style="width:auto;display:inline-block">New user</a>
+<div class="page-head">
+  <div>
+    <h1>Users</h1>
+    <p class="sub">{{.Total}} total accounts</p>
+  </div>
+  <div class="head-actions">
+    <a href="/admin/users/new" class="btn btn-primary btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New user
+    </a>
+  </div>
 </div>
-<table>
-  <thead><tr><th>Email</th><th>Passwordless</th><th>TOTP</th><th>Status</th><th></th></tr></thead>
-  <tbody>
-  {{range .Users}}
-  <tr>
-    <td><a href="/admin/users/{{.ID}}">{{.Email}}</a></td>
-    <td>{{if .PasswordlessEnabled}}Yes{{else}}No{{end}}</td>
-    <td>{{if .TOTPEnabled}}Enabled{{else}}Off{{end}}</td>
-    <td>{{if .Disabled}}<span class="badge badge-error">Disabled</span>{{else}}<span class="badge badge-ok">Active</span>{{end}}</td>
-    <td><a href="/admin/users/{{.ID}}">Manage</a></td>
-  </tr>
-  {{else}}
-  <tr><td colspan="5" style="color:var(--text-muted)">No users yet.</td></tr>
-  {{end}}
-  </tbody>
-</table>
+{{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
 
+<div class="card">
+  <div class="table-toolbar">
+    <div style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px;position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx-3)" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 4.2 12.6l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>
+      <input id="gk-search" class="input" style="padding-left:28px;width:280px" placeholder="Search email or user ID…">
+    </div>
+    <div class="filter-chips">
+      <button class="fchip on" data-filter="all">All <span>{{.Total}}</span></button>
+      <button class="fchip" data-filter="active">Active <span>{{.Active}}</span></button>
+      {{if gt .Locked 0}}<button class="fchip" data-filter="locked">Locked <span>{{.Locked}}</span></button>{{end}}
+      {{if gt .Disabled 0}}<button class="fchip" data-filter="disabled">Disabled <span>{{.Disabled}}</span></button>{{end}}
+      {{if gt .No2FA 0}}<button class="fchip" data-filter="no2fa">No 2FA <span>{{.No2FA}}</span></button>{{end}}
+    </div>
+  </div>
+
+  {{if .Users}}
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:36px"></th>
+        <th>Email</th>
+        <th>2-factor</th>
+        <th>Passkeys</th>
+        <th>Sessions</th>
+        <th>Last seen</th>
+        <th>Status</th>
+        <th style="width:100px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Users}}
+    <tr data-searchable="{{.Email}} {{.ID}}" data-status="{{.Status}}" data-totp="{{if .TOTPEnabled}}1{{else}}0{{end}}">
+      <td>
+        <div style="width:26px;height:26px;border-radius:6px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--tx-1)">{{.Initials}}</div>
+      </td>
+      <td>
+        <a href="/admin/users/{{.ID}}" style="font-weight:500;color:var(--tx-0)">{{.Email}}</a>
+      </td>
+      <td>
+        {{if .TOTPEnabled}}
+          <span class="pill pill-ok"><span class="dot"></span>TOTP</span>
+        {{else if .PasswordlessEnabled}}
+          <span class="pill pill-info"><span class="dot"></span>Email</span>
+        {{else}}
+          <span class="pill pill-warn"><span class="dot"></span>Email only</span>
+        {{end}}
+      </td>
+      <td class="num" style="color:var(--tx-2)"><span style="color:var(--tx-3)">-</span></td>
+      <td class="num">{{if gt .Sessions 0}}{{.Sessions}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
+      <td style="color:var(--tx-2)"><span style="color:var(--tx-3)">-</span></td>
+      <td>
+        {{if eq .Status "active"}}<span class="pill pill-ok"><span class="dot"></span>Active</span>
+        {{else if eq .Status "locked"}}<span class="pill pill-warn"><span class="dot"></span>Locked</span>
+        {{else}}<span class="pill pill-off"><span class="dot"></span>Disabled</span>{{end}}
+      </td>
+      <td>
+        <div class="row-actions">
+          <a href="/admin/users/{{.ID}}" class="btn btn-ghost btn-xs">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <button class="btn btn-ghost btn-xs" data-copy="{{.ID}}" title="Copy user ID">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">
+    <div class="ic-bg">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+    </div>
+    <h4>No users yet</h4>
+    <p>Create the first account to get started.</p>
+    <a href="/admin/users/new" class="btn btn-primary btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+      New user
+    </a>
+  </div>
+  {{end}}
+</div>
 {{end}}

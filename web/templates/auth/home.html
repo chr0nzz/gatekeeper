@@ -1,29 +1,46 @@
 {{template "base" .}}
 {{define "title"}}Home - GateKeeper{{end}}
 {{define "content"}}
-<div class="card wide">
-  <h1>You are signed in</h1>
-  <p>{{.User.Email}}</p>
-  <div class="section">
-    <h2>Security</h2>
-    <dl>
-      <dt>Two-factor</dt>
-      <dd>{{if .TOTPEnabled}}Authenticator app enabled{{else}}Email OTP (no authenticator app enrolled){{end}}</dd>
-      <dt>Passkeys</dt>
-      <dd>{{len .Passkeys}} registered</dd>
-    </dl>
-    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/profile/password" class="btn btn-secondary">Change password</a>
-      {{if .TOTPEnabled}}
-        <a href="/profile/totp/disable" class="btn btn-secondary">Remove authenticator</a>
-      {{else}}
-        <a href="/profile/totp/enroll" class="btn btn-secondary">Set up authenticator app</a>
-      {{end}}
-      <a href="/register/passkey" class="btn btn-secondary">Add passkey</a>
+<div class="auth-wrap bg-grid">
+  <div class="auth-toggle">
+    <div class="theme-toggle">
+      <button data-theme="light" title="Light">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+      </button>
+      <button data-theme="auto" title="System">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg>
+      </button>
+      <button data-theme="dark" title="Dark">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
     </div>
   </div>
-  <form method="POST" action="/logout" style="margin-top:16px">
-    <button type="submit" class="btn btn-danger">Sign out</button>
-  </form>
+  <div class="auth-card" style="min-width:340px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px">
+      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac-hi));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--ac-fg)">{{slice .User.Email 0 1}}</div>
+      <div>
+        <div style="font-weight:600;color:var(--tx-0)">{{.User.Email}}</div>
+        <div style="font-size:12px;color:var(--tx-2)">Authenticated</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <a href="/profile/password" class="btn btn-ghost btn-sm" style="justify-content:flex-start">Change password</a>
+      {{if .TOTPEnabled}}
+        <a href="/profile/totp/disable" class="btn btn-ghost btn-sm" style="justify-content:flex-start">Remove authenticator app</a>
+      {{else}}
+        <a href="/profile/totp/enroll" class="btn btn-ghost btn-sm" style="justify-content:flex-start">Set up authenticator app</a>
+      {{end}}
+      <a href="/register/passkey" class="btn btn-ghost btn-sm" style="justify-content:flex-start">
+        Add passkey
+        {{if .Passkeys}}<span style="margin-left:auto;color:var(--tx-3);font-size:11px">{{len .Passkeys}} registered</span>{{end}}
+      </a>
+    </div>
+    <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--bd-0)">
+      <form method="POST" action="/logout">
+        <button type="submit" class="btn btn-ghost btn-sm" style="width:100%;color:var(--danger)">Sign out</button>
+      </form>
+    </div>
+  </div>
 </div>
+<script src="/static/js/theme.js"></script>
 {{end}}

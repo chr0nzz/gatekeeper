@@ -15,22 +15,26 @@ const sessionCookieName = "gk_session"
 
 // SessionData holds the data stored server-side for a session.
 type SessionData struct {
-	UserID      string
-	PendingOTP  bool
-	PendingTOTP bool
-	RedirectURI string
+	UserID        string
+	PendingOTP    bool
+	PendingTOTP   bool
+	RedirectURI   string
+	OIDCRequestID string
 }
 
 // SessionStore manages server-side sessions backed by SQLite.
 type SessionStore struct {
-	db     *sql.DB
-	getTTL func() time.Duration
+	db           *sql.DB
+	getTTL       func() time.Duration
+	cookieDomain string
 }
 
 // NewSessionStore creates a SessionStore. getTTL is called on every session
 // operation so the TTL can be changed at runtime without a restart.
-func NewSessionStore(db *sql.DB, getTTL func() time.Duration) *SessionStore {
-	return &SessionStore{db: db, getTTL: getTTL}
+// cookieDomain, when non-empty, sets the Domain attribute on the session cookie
+// (e.g. ".xyzlab.dev") so it is shared across all subdomains.
+func NewSessionStore(db *sql.DB, getTTL func() time.Duration, cookieDomain string) *SessionStore {
+	return &SessionStore{db: db, getTTL: getTTL, cookieDomain: cookieDomain}
 }
 
 // Create creates a new session and sets the session cookie.
@@ -56,6 +60,7 @@ func (s *SessionStore) Create(w http.ResponseWriter, r *http.Request, data Sessi
 		Name:     sessionCookieName,
 		Value:    id,
 		Path:     "/",
+		Domain:   s.cookieDomain,
 		Expires:  expires,
 		HttpOnly: true,
 		Secure:   true,

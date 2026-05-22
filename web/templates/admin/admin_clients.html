@@ -1,46 +1,279 @@
 {{template "admin_base" .}}
 {{define "title"}}OIDC Clients - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>OIDC Clients</b>{{end}}
 {{define "content"}}
-<h1>OIDC Clients</h1>
-{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-<div class="toolbar">
-  <button onclick="document.getElementById('create-dialog').showModal()" class="btn btn-primary">New client</button>
+<div class="page-head">
+  <div>
+    <h1>OIDC Clients</h1>
+    <p class="sub">Apps that authenticate users through GateKeeper.</p>
+  </div>
+  <div class="head-actions">
+    <a href="/admin/.well-known/openid-configuration" target="_blank" class="btn btn-ghost btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-10 10h20M12 2a16 16 0 0 1 0 20M12 2a16 16 0 0 0 0 20"/></svg>
+      Discovery
+    </a>
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-client-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New client
+    </button>
+  </div>
 </div>
-<table>
-  <thead><tr><th>Client ID</th><th>Name</th><th>Redirect URIs</th><th></th></tr></thead>
-  <tbody>
-  {{range .Clients}}
-  <tr>
-    <td><code>{{.ClientID}}</code></td>
-    <td>{{.Name}}</td>
-    <td>{{range .RedirectURIs}}<code>{{.}}</code> {{end}}</td>
-    <td>
-      <form method="POST" action="/admin/clients/{{.ClientID}}/delete">
-        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete client?')">Delete</button>
-      </form>
-    </td>
-  </tr>
-  {{else}}
-  <tr><td colspan="4" style="color:var(--text-muted)">No clients registered.</td></tr>
-  {{end}}
-  </tbody>
-</table>
 
-<dialog id="create-dialog">
-  <h2>New OIDC client</h2>
+{{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
+
+<div class="alert alert-info" style="margin-bottom:14px">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 9v6M12 7v.5"/></svg>
+  <div>
+    <b>Authorization Code + PKCE only</b>
+    <p>Implicit and password grants are disabled. Supported scopes: <span class="tag">openid</span> <span class="tag">email</span> <span class="tag">profile</span> <span class="tag">offline_access</span></p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+    <h3>Endpoint reference</h3>
+    <span style="margin-left:auto;font-size:11.5px;color:var(--tx-3)">Use these URLs when configuring apps</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    <table class="table" style="font-size:12px">
+      <thead><tr><th style="width:200px">Field</th><th>URL</th><th style="width:32px"></th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--tx-2);font-weight:500">Discovery / OIDC Config</td>
+          <td class="mono" style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/.well-known/openid-configuration</td>
+          <td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/.well-known/openid-configuration"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td>
+        </tr>
+        <tr>
+          <td style="color:var(--tx-2);font-weight:500">Authorization URL</td>
+          <td class="mono" style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/authorize</td>
+          <td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/authorize"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td>
+        </tr>
+        <tr>
+          <td style="color:var(--tx-2);font-weight:500">Token URL</td>
+          <td class="mono" style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/oauth/token</td>
+          <td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/oauth/token"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td>
+        </tr>
+        <tr>
+          <td style="color:var(--tx-2);font-weight:500">Userinfo URL</td>
+          <td class="mono" style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/userinfo</td>
+          <td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/userinfo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td>
+        </tr>
+        <tr>
+          <td style="color:var(--tx-2);font-weight:500">Issuer / Base URL</td>
+          <td class="mono" style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}</td>
+          <td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td>
+        </tr>
+        <tr>
+          <td style="color:var(--tx-2);font-weight:500">JWKS URI</td>
+          <td class="mono" style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/keys</td>
+          <td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/keys"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Client ID</th>
+        <th>Redirect URIs</th>
+        <th style="width:80px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Clients}}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:6px;background:var(--bg-2);border:1px solid var(--bd-0);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+            {{if .HasIcon}}<img src="/oidc/icon/{{.ClientID}}" width="22" height="22" style="object-fit:contain">
+            {{else}}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>{{end}}
+          </div>
+          <span style="font-weight:500">{{.Name}}</span>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="tag">{{.ClientID}}</span>
+          <button class="btn btn-ghost btn-xs" data-copy="{{.ClientID}}">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+          </button>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          {{range .RedirectURIs}}
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1);display:flex;align-items:center;gap:5px">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3)"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+            {{.}}
+          </span>
+          {{end}}
+        </div>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-xs" data-open-dialog="edit-client-{{.ClientID}}">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11-4-4L4 16zM14 5l4 4"/></svg>
+          </button>
+          <form method="POST" action="/admin/clients/{{.ClientID}}/delete">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete client {{.ClientID}}?')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="4">
+        <div class="empty">
+          <div class="ic-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg></div>
+          <h4>No clients registered</h4>
+          <p>Connect an app like Jellyfin, Grafana, or Portainer.</p>
+          <button class="btn btn-primary btn-sm" data-open-dialog="new-client-dialog">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+            New client
+          </button>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var iconInput = document.getElementById('icon-url-input');
+  var iconPreview = document.getElementById('icon-preview');
+  if (iconInput && iconPreview) {
+    iconInput.addEventListener('input', function() {
+      var url = iconInput.value.trim();
+      if (url) {
+        iconPreview.innerHTML = '<img src="' + url + '" width="28" height="28" style="object-fit:contain;border-radius:4px" onerror="this.parentNode.innerHTML=\'<svg viewBox=\\\"0 0 24 24\\\" width=\\\"14\\\" height=\\\"14\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"1.6\\\"><path d=\\\"M4 7h16v10H4zM4 7l8 6 8-6M4 4h16\\\"/></svg>\'">';
+      } else {
+        iconPreview.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>';
+      }
+    });
+  }
+
+  document.querySelectorAll('.edit-gen-secret-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var arr = new Uint8Array(32);
+      crypto.getRandomValues(arr);
+      var secret = Array.from(arr).map(function(b) { return b.toString(16).padStart(2,'0'); }).join('');
+      var inp = btn.closest('form').querySelector('input[name="client_secret"]');
+      if (inp) { inp.value = secret; GK.toast({ kind: 'ok', title: 'Secret generated', body: 'Copy it now before saving.' }); }
+    });
+  });
+
+  document.getElementById('gen-secret-btn')?.addEventListener('click', function() {
+    var arr = new Uint8Array(32);
+    crypto.getRandomValues(arr);
+    var secret = Array.from(arr).map(function(b) { return b.toString(16).padStart(2,'0'); }).join('');
+    var inp = document.getElementById('client-secret-input');
+    inp.value = secret;
+    inp.type = 'text';
+    GK.toast({ kind: 'ok', title: 'Secret generated', body: 'Copy it now before saving.' });
+  });
+});
+</script>
+
+<dialog id="new-client-dialog">
+  <div class="modal-head">
+    <h2>Register new OIDC client</h2>
+    <p>Configures an application to authenticate users via GateKeeper.</p>
+  </div>
   <form method="POST" action="/admin/clients">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label>Client ID <input type="text" name="client_id" required></label>
-    <label>Client secret <input type="text" name="client_secret" required></label>
-    <label>Display name <input type="text" name="name" required></label>
-    <label>Redirect URIs (one per line)
-      <textarea name="redirect_uris" rows="4" required></textarea>
-    </label>
-    <div class="dialog-actions">
-      <button type="submit" class="btn btn-primary">Create</button>
-      <button type="button" onclick="this.closest('dialog').close()" class="btn btn-secondary">Cancel</button>
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Display name</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="icon-preview" style="width:28px;height:28px;border-radius:6px;background:var(--bg-3);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
+          </div>
+          <input class="input" type="text" name="name" required autofocus placeholder="Jellyfin" style="flex:1">
+        </div>
+      </label>
+      <label class="field">
+        <span class="field-label">Icon URL <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="url" name="icon_url" id="icon-url-input" placeholder="https://example.com/icon.png or leave blank for auto-detect">
+        <span class="field-hint">Paste a direct image URL, or browse <a href="https://selfh.st/icons/" target="_blank" style="color:var(--ac)">selfh.st/icons</a> for app icons. Leave blank to auto-detect.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Client ID</span>
+        <input class="input mono" type="text" name="client_id" required placeholder="jellyfin-prod" pattern="[a-z0-9_-]+" title="Lowercase letters, digits, dashes, underscores">
+        <span class="field-hint">Lowercase, digits, dashes, underscores. Cannot be changed.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Client secret</span>
+        <div style="display:flex;gap:6px">
+          <input class="input mono" type="text" name="client_secret" id="client-secret-input" required placeholder="Click generate or paste your own" style="flex:1;font-size:11.5px">
+          <button type="button" class="btn btn-ghost btn-sm" id="gen-secret-btn" style="flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
+            Generate
+          </button>
+        </div>
+        <span class="field-hint">Store this securely - GateKeeper will not show it again.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Redirect URIs <span style="color:var(--tx-3);font-weight:400">(one per line)</span></span>
+        <textarea class="textarea" name="redirect_uris" rows="3" required placeholder="https://media.example.com/sso/oidc/redirect"></textarea>
+        <span class="field-hint">Exact match required. Must be HTTPS in production.</span>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create client</button>
     </div>
   </form>
 </dialog>
+
+{{range .Clients}}
+<dialog id="edit-client-{{.ClientID}}">
+  <div class="modal-head">
+    <h2>Edit {{.Name}}</h2>
+    <p>Client ID <span class="tag" style="font-size:11px">{{.ClientID}}</span> cannot be changed.</p>
+  </div>
+  <form method="POST" action="/admin/clients/{{.ClientID}}/edit">
+    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Display name</span>
+        <input class="input" type="text" name="name" required value="{{.Name}}">
+      </label>
+      <label class="field">
+        <span class="field-label">Icon URL <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="url" name="icon_url" value="{{.IconURL}}" placeholder="https://example.com/icon.png">
+        <span class="field-hint">Browse <a href="https://selfh.st/icons/" target="_blank" style="color:var(--ac)">selfh.st/icons</a> for app icons.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Redirect URIs <span style="color:var(--tx-3);font-weight:400">(one per line)</span></span>
+        <textarea class="textarea" name="redirect_uris" rows="3">{{range .RedirectURIs}}{{.}}
+{{end}}</textarea>
+      </label>
+      <label class="field">
+        <span class="field-label">New client secret <span style="color:var(--tx-3);font-weight:400">(leave blank to keep current)</span></span>
+        <div style="display:flex;gap:6px">
+          <input class="input mono" type="text" name="client_secret" placeholder="Leave blank to keep existing" style="flex:1;font-size:11.5px">
+          <button type="button" class="btn btn-ghost btn-sm edit-gen-secret-btn" style="flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
+            Generate
+          </button>
+        </div>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
 {{end}}

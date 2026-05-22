@@ -1,83 +1,197 @@
 {{template "admin_base" .}}
 {{define "title"}}My account - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>My account</b>{{end}}
 {{define "content"}}
-<h1>My account</h1>
-{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-{{if .Success}}<div class="alert alert-success">{{.Success}}</div>{{end}}
-
-<div class="section">
-  <h2>Change password</h2>
-  <form method="POST" action="/admin/profile/password">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <label>Current password <input type="password" name="current_password" required autocomplete="current-password"></label>
-    <label>New password (12+ chars) <input type="password" name="new_password" required minlength="12" autocomplete="new-password"></label>
-    <label>Confirm new password <input type="password" name="confirm_password" required minlength="12" autocomplete="new-password"></label>
-    <button type="submit" class="btn btn-primary" style="width:auto">Change password</button>
-  </form>
+<div class="page-head">
+  <div>
+    <h1>My account</h1>
+    {{if .Admin}}<p class="sub">Signed in as <b style="color:var(--tx-0)">{{.Admin.Email}}</b></p>{{end}}
+  </div>
 </div>
 
-<div class="section">
-  <h2>Authenticator app (TOTP)</h2>
-  {{if .TOTPEnabled}}
-    <p>An authenticator app is enrolled on this account.</p>
-    <form method="POST" action="/admin/profile/totp/disable">
+{{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
+{{if .Success}}<div class="alert alert-ok" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14l-4-4 1.5-1.5L11 13l5-5L17.5 9.5z"/></svg><div><b>{{.Success}}</b></div></div>{{end}}
+
+<div style="max-width:760px;display:flex;flex-direction:column;gap:14px">
+
+<div class="card">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
+    <h3>Change password</h3>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/admin/profile/password">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <label>Current code to confirm removal
-        <input type="text" name="code" maxlength="6" inputmode="numeric" required autocomplete="one-time-code">
+      <label class="field" style="grid-column:1/-1">
+        <span class="field-label">Current password</span>
+        <input class="input" type="password" name="current_password" required autocomplete="current-password">
       </label>
-      <button type="submit" class="btn btn-danger" style="width:auto">Remove authenticator</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">New password</span>
+          <input class="input" type="password" name="new_password" required minlength="12" autocomplete="new-password" placeholder="12+ characters">
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Confirm new password</span>
+          <input class="input" type="password" name="confirm_password" required minlength="12" autocomplete="new-password">
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm" style="margin-top:16px">Change password</button>
     </form>
-  {{else if .EnrollTOTP}}
-    <p>Scan the QR code with your authenticator app, then enter the 6-digit code to confirm.</p>
-    <div class="qr-code" style="display:inline-block">
-      <img src="data:image/png;base64,{{.QRCodeB64}}" width="220" height="220" alt="TOTP QR Code">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM8 12v9l4-2 4 2v-9"/></svg>
+    <h3>Authenticator app (TOTP)</h3>
+  </div>
+  <div class="card-body">
+    {{if .TOTPEnabled}}
+      {{if .EnrollTOTP}}
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:flex-start">
+          <div class="qr-card">
+            <div style="background:#fff;padding:10px;border-radius:6px;display:inline-block"><img src="data:image/png;base64,{{.QRCodeB64}}" width="160" height="160" alt="QR Code"></div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">Scan, then verify</div>
+            <div style="font-size:12px;color:var(--tx-2);margin-bottom:14px">Scan with 1Password, Authy, Google Authenticator, or any RFC 6238 app.</div>
+            <details style="margin-bottom:12px;font-size:12px">
+              <summary style="color:var(--tx-2);cursor:pointer">Can't scan? Enter manually</summary>
+              <div style="margin-top:8px;display:flex;gap:6px;align-items:center;padding:8px 10px;background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:0.06em">
+                {{.Secret}}
+                <button type="button" class="btn btn-ghost btn-xs" data-copy="{{.Secret}}">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+                </button>
+              </div>
+            </details>
+            <form method="POST" action="/admin/profile/totp/enroll">
+              <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+              <input type="hidden" name="secret" value="{{.Secret}}">
+              <label class="field">
+                <span class="field-label">Confirmation code</span>
+                <input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="max-width:140px;letter-spacing:0.15em;font-size:18px">
+              </label>
+              <div style="display:flex;gap:8px">
+                <button type="submit" class="btn btn-primary btn-sm">Confirm and enable</button>
+                <a href="/admin/profile" class="btn btn-quiet btn-sm">Cancel</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      {{else}}
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;margin-bottom:2px">Authenticator enrolled</div>
+            <div style="font-size:12px;color:var(--tx-2)">Your account is protected by a second factor.</div>
+          </div>
+          <a href="/admin/profile/totp/enroll" class="btn btn-ghost btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
+            Re-enroll
+          </a>
+        </div>
+        <div style="border-top:1px solid var(--bd-0);margin-top:16px;padding-top:14px">
+          <form method="POST" action="/admin/profile/totp/disable">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <label class="field" style="margin-bottom:8px">
+              <span class="field-label">Enter current code to remove</span>
+              <input class="input mono" type="text" name="code" maxlength="6" inputmode="numeric" required autocomplete="one-time-code" placeholder="000000" style="max-width:140px;letter-spacing:0.12em">
+            </label>
+            <button type="submit" class="btn btn-danger btn-sm">Remove authenticator</button>
+          </form>
+        </div>
+      {{end}}
+    {{else if .EnrollTOTP}}
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:flex-start">
+        <div class="qr-card">
+          <div style="background:#fff;padding:10px;border-radius:6px;display:inline-block"><img src="data:image/png;base64,{{.QRCodeB64}}" width="160" height="160" alt="QR Code"></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">Scan, then verify</div>
+          <div style="font-size:12px;color:var(--tx-2);margin-bottom:14px">Scan with 1Password, Authy, Google Authenticator, or any RFC 6238 app.</div>
+          <details style="margin-bottom:12px;font-size:12px">
+            <summary style="color:var(--tx-2);cursor:pointer">Can't scan? Enter manually</summary>
+            <div style="margin-top:8px;padding:8px 10px;background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:0.06em">{{.Secret}}</div>
+          </details>
+          <form method="POST" action="/admin/profile/totp/enroll">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="secret" value="{{.Secret}}">
+            <label class="field">
+              <span class="field-label">Confirmation code</span>
+              <input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="max-width:140px;letter-spacing:0.15em;font-size:18px">
+            </label>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="btn btn-primary btn-sm">Confirm and enable</button>
+              <a href="/admin/profile" class="btn btn-quiet btn-sm">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    {{else}}
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;margin-bottom:2px">No authenticator enrolled</div>
+          <div style="font-size:12px;color:var(--tx-2)">Add TOTP to protect your admin account with a second factor.</div>
+        </div>
+        <a href="/admin/profile/totp/enroll" class="btn btn-ghost btn-sm">Set up</a>
+      </div>
+    {{end}}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+    <h3>Passkeys</h3>
+    <div class="head-actions">
+      <a href="/admin/profile/passkey" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add passkey
+      </a>
     </div>
-    <details style="margin:12px 0"><summary>Can't scan?</summary><code class="secret-key">{{.Secret}}</code></details>
-    <form method="POST" action="/admin/profile/totp/enroll">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="secret" value="{{.Secret}}">
-      <label>Confirmation code
-        <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-      </label>
-      <button type="submit" class="btn btn-primary" style="width:auto">Confirm and enable</button>
-    </form>
-  {{else}}
-    <p>No authenticator app enrolled.</p>
-    <a href="/admin/profile/totp/enroll" class="btn btn-secondary" style="width:auto;display:inline-block">Set up authenticator app</a>
-  {{end}}
+  </div>
+  <div class="card-body tight">
+    {{if .Passkeys}}
+    <table class="table">
+      <thead><tr><th>Name</th><th>Registered</th></tr></thead>
+      <tbody>
+      {{range .Passkeys}}
+      <tr>
+        <td style="font-weight:500">{{.Name}}</td>
+        <td class="mono" style="color:var(--tx-2)">{{.CreatedAt}}</td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="empty">
+      <div class="ic-bg">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+      </div>
+      <h4>No passkeys registered</h4>
+      <p>Passkeys let you sign in with Touch ID, Face ID, or a security key.</p>
+      <a href="/admin/profile/passkey" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+        Add passkey
+      </a>
+    </div>
+    {{end}}
+    {{if .RegisterPasskey}}
+    <div style="padding:16px;border-top:1px solid var(--bd-0)">
+      <div id="gk-passkey-error" class="alert alert-err" style="display:none;margin-bottom:12px"></div>
+      <div id="gk-passkey-success" class="alert alert-ok" style="display:none;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <label class="field" style="margin:0;flex:1">
+          <span class="field-label">Passkey name</span>
+          <input class="input" type="text" id="gk-passkey-name" value="Admin passkey">
+        </label>
+        <button id="gk-passkey-register-btn" data-begin="/admin/profile/passkey/begin" data-finish="/admin/profile/passkey/finish" class="btn btn-ghost btn-sm">Register</button>
+      </div>
+    </div>
+    <script src="/static/js/passkey.js"></script>
+    {{end}}
+  </div>
 </div>
 
-<div class="section">
-  <h2>Passkeys</h2>
-  {{if .Passkeys}}
-  <table style="margin-bottom:16px">
-    <thead><tr><th>Name</th><th>Registered</th></tr></thead>
-    <tbody>
-    {{range .Passkeys}}<tr><td>{{.Name}}</td><td>{{.CreatedAt}}</td></tr>{{end}}
-    </tbody>
-  </table>
-  {{else}}
-  <p>No passkeys registered.</p>
-  {{end}}
-  {{if .RegisterPasskey}}
-    <div id="pk-error" class="alert alert-error" style="display:none"></div>
-    <div id="pk-success" class="alert alert-success" style="display:none">Passkey registered.</div>
-    <label>Name <input type="text" id="pk-name" value="Admin passkey"></label>
-    <button id="pk-btn" class="btn btn-primary" style="width:auto">Register passkey</button>
-    <script src="/static/js/passkey.js"></script>
-    <script>
-    document.getElementById('pk-btn').addEventListener('click', async () => {
-      const name = document.getElementById('pk-name').value;
-      await beginPasskeyRegister(
-        '/admin/profile/passkey/begin',
-        '/admin/profile/passkey/finish?name=' + encodeURIComponent(name),
-        document.getElementById('pk-error'),
-        document.getElementById('pk-success')
-      );
-    });
-    </script>
-  {{else}}
-    <a href="/admin/profile/passkey" class="btn btn-secondary" style="width:auto;display:inline-block">Add passkey</a>
-  {{end}}
 </div>
 {{end}}

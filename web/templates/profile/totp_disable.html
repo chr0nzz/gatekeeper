@@ -1,15 +1,17 @@
 {{template "base" .}}
 {{define "title"}}Disable authenticator - GateKeeper{{end}}
 {{define "content"}}
-<div class="card">
-  <h1>Disable authenticator</h1>
-  <p>Enter your current authenticator code to confirm removal of two-factor authentication.</p>
-  {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
-  <form method="POST" action="/profile/totp/disable">
-    <label>Authenticator code
-      <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-    </label>
-    <button type="submit" class="btn btn-danger">Disable two-factor authentication</button>
-  </form>
+<div class="auth-wrap bg-grid">
+  <div class="auth-card">
+    <a href="/" class="btn btn-quiet btn-xs" style="margin-bottom:14px;padding:4px 0"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px"><path d="M10 12L6 8l4-4"/></svg> Back</a>
+    <h1>Disable authenticator</h1>
+    <p class="lede">Enter your current authenticator code to confirm removal.</p>
+    {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
+    <form method="POST" action="/profile/totp/disable">
+      <label class="field"><span class="field-label">Authenticator code</span><input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.2em;font-size:20px;text-align:center"></label>
+      <button type="submit" class="btn btn-danger" style="width:100%;height:40px;font-size:14px">Disable two-factor authentication</button>
+    </form>
+  </div>
 </div>
+<script src="/static/js/theme.js"></script>
 {{end}}

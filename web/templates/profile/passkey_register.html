@@ -1,26 +1,23 @@
 {{template "base" .}}
 {{define "title"}}Add a passkey - GateKeeper{{end}}
 {{define "content"}}
-<div class="card">
-  <h1>Add a passkey</h1>
-  <p>A passkey lets you sign in using your device's fingerprint, face, or PIN.</p>
-  <div id="error" class="alert alert-error" style="display:none"></div>
-  <div id="success" class="alert alert-success" style="display:none">Passkey registered successfully.</div>
-  <label>Passkey name (optional)
-    <input type="text" id="passkey-name" placeholder="My laptop" value="My passkey">
-  </label>
-  <button id="btn-register" class="btn btn-primary">Register passkey</button>
+<div class="auth-wrap bg-grid">
+  <div class="auth-card">
+    <a href="/" class="btn btn-quiet btn-xs" style="margin-bottom:14px;padding:4px 0"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px"><path d="M10 12L6 8l4-4"/></svg> Back</a>
+    <h1>Add a passkey</h1>
+    <p class="lede">Sign in with your device's fingerprint, face, or PIN - no password needed.</p>
+    <div id="gk-passkey-error" class="alert alert-err" style="display:none;margin-bottom:18px"></div>
+    <div id="gk-passkey-success" class="alert alert-ok" style="display:none;margin-bottom:18px"></div>
+    <label class="field">
+      <span class="field-label">Passkey name <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+      <input class="input" type="text" id="gk-passkey-name" placeholder="My laptop" value="My passkey">
+    </label>
+    <button id="gk-passkey-register-btn"
+      data-begin="/register/passkey/begin"
+      data-finish="/register/passkey/finish"
+      class="btn btn-primary" style="width:100%;height:40px;font-size:14px">Register passkey</button>
+  </div>
 </div>
 <script src="/static/js/passkey.js"></script>
-<script>
-document.getElementById('btn-register').addEventListener('click', async () => {
-  const name = document.getElementById('passkey-name').value;
-  await beginPasskeyRegister(
-    '/register/passkey/begin',
-    '/register/passkey/finish?name=' + encodeURIComponent(name),
-    document.getElementById('error'),
-    document.getElementById('success')
-  );
-});
-</script>
+<script src="/static/js/theme.js"></script>
 {{end}}

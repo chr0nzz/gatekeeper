@@ -1,69 +1,196 @@
 {{template "admin_base" .}}
-{{define "title"}}User - GateKeeper Admin{{end}}
+{{define "title"}}{{.User.Email}} - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/users">Users</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.User.Email}}</b>{{end}}
 {{define "content"}}
-<h1>{{.User.Email}}</h1>
-<div class="section">
-  <h2>Account</h2>
-  <dl>
-    <dt>Status</dt><dd>{{if .User.Disabled}}Disabled{{else}}Active{{end}}</dd>
-    <dt>Passwordless</dt><dd>{{if .User.PasswordlessEnabled}}Enabled{{else}}Disabled{{end}}</dd>
-    <dt>TOTP</dt><dd>{{if .User.TOTPEnabled}}Enabled ({{.RecoveryCodes}} recovery codes remaining){{else}}Not enrolled{{end}}</dd>
-    <dt>Passkeys</dt><dd>{{len .Passkeys}}</dd>
-  </dl>
+<div class="page-head">
+  <div style="display:flex;align-items:center;gap:14px">
+    <div style="width:44px;height:44px;border-radius:10px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:var(--tx-1)">{{.User.Initials}}</div>
+    <div>
+      <h1 style="font-size:18px;margin:0">{{.User.Email}}</h1>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span class="tag" style="font-family:var(--font-mono)">{{.User.ID}}</span>
+        <button class="btn btn-ghost btn-xs" data-copy="{{.User.ID}}">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+        </button>
+        <span style="color:var(--tx-3)">·</span>
+        <span style="font-size:12px;color:var(--tx-2)">Last seen {{.User.LastSeen}}</span>
+      </div>
+    </div>
+  </div>
+  <div class="head-actions">
+    {{if .User.Disabled}}<span class="pill pill-off"><span class="dot"></span>Disabled</span>
+    {{else if .User.Locked}}<span class="pill pill-warn"><span class="dot"></span>Locked</span>
+    {{else}}<span class="pill pill-ok"><span class="dot"></span>Active</span>{{end}}
+  </div>
 </div>
 
-<div class="section">
-  <h2>Actions</h2>
-  <form method="POST" action="/admin/users/{{.User.ID}}/password" class="inline-form">
+{{if .User.Locked}}
+<div class="alert alert-warn" style="margin-bottom:14px">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
+  <div><b>Locked out</b><p>Too many OTP failures. Auto-unlocks after the lockout period, or unlock now.</p></div>
+  <form method="POST" action="/admin/users/{{.User.ID}}/unlock" style="margin-left:auto">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <input type="password" name="password" placeholder="New password (12+ chars)" required minlength="12">
-    <button type="submit" class="btn btn-secondary">Set password</button>
+    <button type="submit" class="btn btn-warning btn-sm">Unlock now</button>
   </form>
-  <form method="POST" action="/admin/users/{{.User.ID}}/reset-email">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-secondary">Send reset email</button>
-  </form>
-  <form method="POST" action="/admin/users/{{.User.ID}}/revoke-sessions">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-warning">Revoke all sessions</button>
-  </form>
-  {{if .User.TOTPEnabled}}
-  <form method="POST" action="/admin/users/{{.User.ID}}/revoke-totp">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-warning">Revoke TOTP enrollment</button>
-  </form>
-  {{end}}
-  <form method="POST" action="/admin/users/{{.User.ID}}/passwordless">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <input type="hidden" name="enabled" value="{{if .User.PasswordlessEnabled}}0{{else}}1{{end}}">
-    <button type="submit" class="btn btn-secondary">{{if .User.PasswordlessEnabled}}Disable{{else}}Enable{{end}} passwordless</button>
-  </form>
-  {{if .User.Disabled}}
-  <form method="POST" action="/admin/users/{{.User.ID}}/enable">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-primary">Enable account</button>
-  </form>
-  {{else}}
-  <form method="POST" action="/admin/users/{{.User.ID}}/disable">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-danger">Disable account</button>
-  </form>
-  {{end}}
-  <form method="POST" action="/admin/users/{{.User.ID}}/delete">
-    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this user permanently?')">Delete user</button>
-  </form>
+</div>
+{{end}}
+
+{{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
+{{if .Success}}<div class="alert alert-ok" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14l-4-4 1.5-1.5L11 13l5-5L17.5 9.5z"/></svg><div><b>{{.Success}}</b></div></div>{{end}}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+  <div class="card">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/></svg>
+      <h3>Account</h3>
+    </div>
+    <div class="card-body">
+      <dl class="dlist">
+        <dt>Status</dt>
+        <dd>{{if .User.Disabled}}<span class="pill pill-off"><span class="dot"></span>Disabled</span>
+        {{else if .User.Locked}}<span class="pill pill-warn"><span class="dot"></span>Locked</span>
+        {{else}}<span class="pill pill-ok"><span class="dot"></span>Active</span>{{end}}</dd>
+        <dt>TOTP</dt>
+        <dd>{{if .User.TOTPEnabled}}<span class="pill pill-ok"><span class="dot"></span>Enrolled</span>{{if .RecoveryCodes}} <span style="font-size:11.5px;color:var(--tx-2);margin-left:4px">{{.RecoveryCodes}} codes left</span>{{end}}
+        {{else}}<span class="pill pill-off">Not enrolled</span>{{end}}</dd>
+        <dt>Passwordless</dt>
+        <dd>{{if .User.PasswordlessEnabled}}<span class="pill pill-info"><span class="dot"></span>Enabled</span>{{else}}<span class="pill pill-off">Disabled</span>{{end}}</dd>
+        <dt>Active sessions</dt>
+        <dd>{{if gt .User.Sessions 0}}{{.User.Sessions}}{{else}}<span style="color:var(--tx-3)">none</span>{{end}}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+      <h3>Account actions</h3>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600">Set password</div>
+          <div style="font-size:11.5px;color:var(--tx-2)">Replace this user's password. Signs them out everywhere.</div>
+        </div>
+        <form method="POST" action="/admin/users/{{.User.ID}}/password" style="display:flex;gap:6px;align-items:center">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="12+ chars" style="height:28px;max-width:160px;font-size:12px">
+          <button type="submit" class="btn btn-ghost btn-sm">Set</button>
+        </form>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600">Send password reset email</div>
+          <div style="font-size:11.5px;color:var(--tx-2)">Link expires in 30 minutes. Single-use.</div>
+        </div>
+        <form method="POST" action="/admin/users/{{.User.ID}}/reset-email">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <button type="submit" class="btn btn-ghost btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
+            Send
+          </button>
+        </form>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600">Revoke all sessions</div>
+          <div style="font-size:11.5px;color:var(--tx-2)">Ends all {{.User.Sessions}} active sessions immediately.</div>
+        </div>
+        <form method="POST" action="/admin/users/{{.User.ID}}/revoke-sessions">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <button type="submit" class="btn btn-warning btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM5 5l14 14"/></svg>
+            Revoke
+          </button>
+        </form>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600">Toggle passwordless</div>
+          <div style="font-size:11.5px;color:var(--tx-2)">{{if .User.PasswordlessEnabled}}Currently can sign in with email code only.{{else}}Allow sign-in with email code, no password.{{end}}</div>
+        </div>
+        <form method="POST" action="/admin/users/{{.User.ID}}/passwordless">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="enabled" value="{{if .User.PasswordlessEnabled}}0{{else}}1{{end}}">
+          <button type="submit" class="btn btn-ghost btn-sm">{{if .User.PasswordlessEnabled}}Disable{{else}}Enable{{end}}</button>
+        </form>
+      </div>
+      {{if .User.TOTPEnabled}}
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600">Reset TOTP</div>
+          <div style="font-size:11.5px;color:var(--tx-2)">Removes their authenticator enrollment and recovery codes.</div>
+        </div>
+        <form method="POST" action="/admin/users/{{.User.ID}}/revoke-totp">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <button type="submit" class="btn btn-warning btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
+            Reset
+          </button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+  </div>
+
 </div>
 
 {{if .Passkeys}}
-<div class="section">
-  <h2>Passkeys</h2>
-  <table>
-    <thead><tr><th>Name</th><th>Registered</th></tr></thead>
-    <tbody>
-    {{range .Passkeys}}<tr><td>{{.Name}}</td><td>{{.CreatedAt}}</td></tr>{{end}}
-    </tbody>
-  </table>
+<div class="card" style="margin-top:14px">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+    <h3>Passkeys</h3>
+  </div>
+  <div class="card-body tight">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Registered</th></tr></thead>
+      <tbody>
+        {{range .Passkeys}}
+        <tr><td style="font-weight:500">{{.Name}}</td><td class="mono" style="color:var(--tx-2)">{{.CreatedAt}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
 </div>
 {{end}}
+
+<div class="card" style="margin-top:14px;border-color:rgba(193,53,42,0.2)">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
+    <h3 style="color:var(--danger)">Danger zone</h3>
+  </div>
+  <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600">{{if .User.Disabled}}Enable account{{else}}Disable account{{end}}</div>
+        <div style="font-size:11.5px;color:var(--tx-2)">{{if .User.Disabled}}User can sign in again. No data is lost.{{else}}User can no longer sign in. Sessions revoked. Reversible.{{end}}</div>
+      </div>
+      {{if .User.Disabled}}
+      <form method="POST" action="/admin/users/{{.User.ID}}/enable">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-primary btn-sm">Enable</button>
+      </form>
+      {{else}}
+      <form method="POST" action="/admin/users/{{.User.ID}}/disable">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-danger btn-sm">Disable</button>
+      </form>
+      {{end}}
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600">Delete user</div>
+        <div style="font-size:11.5px;color:var(--tx-2)">Permanently removes the account, sessions, and credentials. Cannot be undone.</div>
+      </div>
+      <form method="POST" action="/admin/users/{{.User.ID}}/delete">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{.User.Email}}? This cannot be undone.')">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+          Delete
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 {{end}}
