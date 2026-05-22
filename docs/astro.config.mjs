@@ -7,7 +7,7 @@ export default defineConfig({
   integrations: [
     sitemap(),
     starlight({
-      title: 'GateKeeper Docs',
+      title: 'GateKeeper',
       defaultLocale: 'root',
       locales: { root: { label: 'English', lang: 'en' } },
       customCss: ['./src/styles/custom.css'],
@@ -23,31 +23,38 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Authentication',
+          label: 'Sign-in methods',
           items: [
             { label: 'Password + email OTP', link: '/auth/password-otp' },
-            { label: 'Passwordless OTP', link: '/auth/passwordless' },
-            { label: 'Password recovery', link: '/auth/password-recovery' },
-            { label: 'Password change', link: '/auth/password-change' },
+            { label: 'Passwordless (email OTP)', link: '/auth/passwordless' },
             { label: 'TOTP (authenticator app)', link: '/auth/totp' },
             { label: 'TOTP recovery codes', link: '/auth/totp-recovery' },
             { label: 'Passkeys', link: '/auth/passkeys' },
+            { label: 'Password recovery', link: '/auth/password-recovery' },
+            { label: 'Password change', link: '/auth/password-change' },
           ],
         },
         {
-          label: 'Traefik integration',
+          label: 'OIDC provider',
           items: [
-            { label: 'ForwardAuth setup', link: '/traefik/forwardauth' },
-            { label: 'OIDC provider', link: '/traefik/oidc-provider' },
+            { label: 'Overview', link: '/oidc/provider' },
+            { label: 'Managing clients', link: '/admin/managing-clients' },
           ],
         },
         {
           label: 'Admin guide',
           items: [
             { label: 'Managing users', link: '/admin/managing-users' },
-            { label: 'Managing OIDC clients', link: '/admin/managing-clients' },
             { label: 'Audit log', link: '/admin/audit-log' },
             { label: 'Settings', link: '/admin/settings' },
+          ],
+        },
+        {
+          label: 'Integrations',
+          items: [
+            { label: 'Traefik ForwardAuth', link: '/integrations/traefik-forwardauth' },
+            { label: 'Protecting an app (example)', link: '/integrations/example-app' },
+            { label: 'OIDC client examples', link: '/integrations/oidc-client-examples' },
           ],
         },
         {
@@ -62,18 +69,11 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Integrations',
-          items: [
-            { label: 'Protecting an app', link: '/integrations/example-app' },
-            { label: 'OIDC client examples', link: '/integrations/oidc-client-examples' },
-          ],
-        },
-        {
           label: 'Reference',
           items: [
-            { label: 'API endpoints', link: '/reference/api' },
             { label: 'Environment variables', link: '/reference/env-vars' },
             { label: 'Database schema', link: '/reference/database-schema' },
+            { label: 'API endpoints', link: '/reference/api' },
             { label: 'Changelog', link: '/reference/changelog' },
           ],
         },

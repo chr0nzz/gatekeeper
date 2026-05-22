@@ -3,44 +3,52 @@ title: Audit log
 description: What gets logged and how to read the audit log.
 ---
 
-Every significant authentication event is recorded in an append-only audit log at `/admin/audit`. The log cannot be modified or deleted through the admin UI.
+The audit log at `/admin/audit` is an append-only record of every authentication and admin event.
 
-## Events logged
+## Reading the log
 
-| Event | What triggered it |
-|---|---|
-| `login.success` | User completed full authentication |
-| `login.failure` | Wrong password or invalid email |
-| `login.passkey` | Successful passkey authentication |
-| `otp.sent` | OTP email was dispatched |
-| `otp.verified` | User entered a correct OTP |
-| `otp.failed` | User entered an incorrect OTP |
-| `totp.enrolled` | User successfully enrolled TOTP |
-| `totp.revoked` | TOTP enrollment removed (by user or admin) |
-| `totp.verified` | User entered a correct TOTP code |
-| `totp.failed` | User entered an incorrect TOTP code |
-| `totp.recovery_used` | A recovery code was consumed |
-| `passkey.registered` | A new passkey was added |
-| `passkey.revoked` | A passkey was removed |
-| `password.changed` | User changed their own password |
-| `password.reset_requested` | Forgot-password email was triggered |
-| `password.reset_completed` | Password was successfully reset |
-| `password.reset_invalid` | A bad or expired reset token was submitted |
-| `session.revoked` | Sessions were revoked (by admin or on password change) |
-| `user.created` | Admin created a new user |
-| `user.disabled` | Admin disabled an account |
-| `user.enabled` | Admin re-enabled an account |
-| `admin.password_set` | Admin directly set a user's password |
+Each row shows:
 
-## Columns
+- **Time** - `HH:MM:SS` in server local time
+- **Event** - dotted code like `login.success` or `totp.failed`
+- **User** - email address of the affected user (resolved from internal user ID)
+- **Detail** - additional context, e.g. `method=passkey`
+- **IP** - originating IP address
 
-- **Time** - timestamp in `YYYY-MM-DD HH:MM:SS` format (server local time)
-- **Event** - the event type from the table above
-- **User** - the user the event concerns (may be empty for failed logins with unrecognized emails)
-- **Actor** - the admin who triggered the event, if applicable
-- **IP** - the IP address of the request
-- **Detail** - extra context, such as the email address for a failed login attempt
+## Filtering
 
-## Retention
+**Kind chips** - All / Success / Warn / Fail / Info
 
-The audit log grows indefinitely. GateKeeper does not automatically prune it. If you need to manage log size, you can archive or delete old rows directly in the SQLite database. This does not affect application behavior.
+**Event type chips:**
+- `auth` - login, OTP, TOTP, passkey, password events
+- `admin` - admin panel actions
+- `oidc` - OIDC token events
+
+**Search** - filters by event code, email, IP, or detail text. The filter icon on any row sets the search to that event.
+
+## Event reference
+
+| Event | Kind | Description |
+|---|---|---|
+| `login.success` | ok | Password verified and 2FA passed |
+| `login.failure` | err | Wrong password or unknown email |
+| `login.passkey` | ok | Authenticated via passkey |
+| `otp.sent` | info | Email OTP dispatched |
+| `otp.verified` | ok | Email OTP accepted |
+| `otp.failed` | err | Wrong OTP code |
+| `totp.enrolled` | ok | Authenticator app enrolled |
+| `totp.verified` | ok | Authenticator code accepted |
+| `totp.failed` | err | Wrong authenticator code |
+| `totp.recovery_used` | warn | Recovery code consumed |
+| `totp.revoked` | warn | TOTP enrollment removed |
+| `passkey.registered` | ok | New passkey added |
+| `passkey.revoked` | warn | Passkey removed |
+| `password.changed` | ok | Password updated |
+| `password.reset_requested` | info | Reset link sent |
+| `password.reset_completed` | ok | Password reset via link |
+| `password.reset_invalid` | err | Invalid or expired reset token used |
+| `session.revoked` | warn | Session terminated |
+| `user.created` | ok | New user account created |
+| `user.disabled` | warn | Account disabled |
+| `user.enabled` | ok | Account re-enabled |
+| `admin.password_set` | warn | Admin set a user's password directly |

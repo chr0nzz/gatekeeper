@@ -1,15 +1,15 @@
 ---
 title: Installation
-description: Run GateKeeper with Docker and connect it to Traefik.
+description: Run GateKeeper with Docker Compose.
 ---
 
-GateKeeper runs as a single Docker container and stores everything in a SQLite database file. There are no external databases to set up.
+GateKeeper runs as a single Docker container. It creates its own SQLite database on first run and manages all schema migrations automatically.
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- Traefik already running (or follow the example below)
-- An SMTP server - you can add this later through the admin UI
+- A domain with TLS (or a local setup for testing)
+- An SMTP server - you can configure this later through the admin UI
 
 ## 1. Create a compose file
 
@@ -20,17 +20,17 @@ services:
     restart: unless-stopped
     environment:
       BASE_URL: "https://auth.example.com"
-      SECRET_KEY: "your-32-char-random-secret-here"
+      SECRET_KEY: "your-64-char-hex-secret"
     volumes:
       - gatekeeper_data:/data
+    ports:
+      - "8080:8080"
 
 volumes:
   gatekeeper_data:
 ```
 
-That's all that's required to start. SMTP, session timeout, and allowed domains are all configured through the admin UI after first login.
-
-Generate a `SECRET_KEY` with:
+Generate a `SECRET_KEY`:
 
 ```bash
 openssl rand -hex 32
@@ -42,25 +42,25 @@ openssl rand -hex 32
 docker compose up -d
 ```
 
-GateKeeper creates the SQLite database automatically on first run and applies all schema migrations.
-
 ## 3. Create your admin account
 
-Visit `https://auth.example.com/admin` in your browser. GateKeeper redirects you to `/admin/setup` where you choose your admin email and password. This page is only shown once - once an admin account exists, it redirects to the normal login.
+Visit `https://auth.example.com/admin`. GateKeeper redirects to `/admin/setup` on first run - enter your email and a password to create the admin account. This page only appears once.
 
 ## 4. Configure SMTP
 
-Go to `/admin/settings` and fill in your SMTP details. GateKeeper needs this to send one-time login codes and password reset emails.
-
-## 5. Connect Traefik
-
-Add GateKeeper to your Traefik file provider config. See [ForwardAuth setup](/traefik/forwardauth) for the full configuration.
+Go to `/admin/settings` and fill in your mail server details. GateKeeper needs this to send one-time login codes and password reset emails.
 
 ## Updating
 
 ```bash
-docker compose pull gatekeeper
-docker compose up -d gatekeeper
+docker compose pull
+docker compose up -d
 ```
 
 Schema migrations run automatically on startup.
+
+## Next steps
+
+- **Protect apps** - use [Traefik ForwardAuth](/integrations/traefik-forwardauth) to require login for any service, or connect apps via [OIDC](/oidc/provider)
+- **Add users** - go to `/admin/users` → New user
+- **Connect apps** - register OIDC clients at `/admin/clients`
