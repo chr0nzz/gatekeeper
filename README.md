@@ -53,25 +53,21 @@ Trusted device tokens skip 2FA for 30 days after first verification on a device.
 
 Register clients at `/admin/clients`. Point your app at the discovery endpoint:
 
-```
-https://auth.example.com/.well-known/openid-configuration
-```
-
 | Endpoint | URL |
 |---|---|
-| Discovery | `https://auth.example.com/.well-known/openid-configuration` |
-| Authorization | `https://auth.example.com/authorize` |
-| Token | `https://auth.example.com/oauth/token` |
-| Userinfo | `https://auth.example.com/userinfo` |
-| JWKS | `https://auth.example.com/keys` |
+| Discovery | `/.well-known/openid-configuration` |
+| Authorization | `/authorize` |
+| Token | `/oauth/token` |
+| Userinfo | `/userinfo` |
+| JWKS | `/keys` |
 
 Supports authorization code + PKCE only. Scopes: `openid`, `email`, `profile`, `offline_access`. Tokens signed RS256, keys rotate every 30 days.
 
 Login page shows the client's name and icon when accessed via OIDC.
 
-## Traefik ForwardAuth
+## ForwardAuth
 
-One of several ways to protect apps. Every request hits `GET /auth/verify` - GateKeeper returns `200` on success, `401` on failure.
+Every request to a protected app hits `GET /auth/verify` - GateKeeper returns `200` on success, `401` on failure.
 
 ```yaml
 # traefik/dynamic/middlewares-gk-auth.yml
@@ -87,37 +83,46 @@ http:
 
 Apply `gk-auth@file` to any router. On success, GateKeeper passes `X-Auth-User` (UUID) and `X-Auth-Email` to the upstream app.
 
+To restrict a route to a specific access policy, append `?policy=<name>` to the verify URL.
+
 ## Configuration
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `BASE_URL` | Yes | - | Public URL. Used as OIDC issuer and WebAuthn origin. |
 | `SECRET_KEY` | Yes | - | 32+ character secret. Signs sessions and encrypts TOTP secrets. |
-| `PORT` | No | `8080` | HTTP port to listen on |
-| `DB_PATH` | No | `/data/gatekeeper.db` | SQLite database path |
-| `COOKIE_DOMAIN` | No | - | Cookie domain for cross-subdomain sharing, e.g. `.example.com` |
-| `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn`, `error` |
+| `PORT` | No | `8080` | HTTP port to listen on. |
+| `DB_PATH` | No | `/data/gatekeeper.db` | SQLite database path. |
+| `COOKIE_DOMAIN` | No | - | Cookie domain for cross-subdomain sharing, e.g. `.example.com`. |
+| `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn`, or `error`. |
 
-**Admin UI overrides** (env vars are fallback defaults):
+The following can also be set as env vars and serve as fallback defaults - the admin UI values take precedence at runtime:
 
-| Variable | Description |
-|---|---|
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Mail server settings |
-| `SESSION_TTL_HOURS` | Session lifetime in hours (default: 8) |
-| `ALLOWED_EMAIL_DOMAINS` | Comma-separated allowed domains (empty = all) |
+| Variable | Default | Description |
+|---|---|---|
+| `SMTP_HOST` | - | Mail server hostname. |
+| `SMTP_PORT` | `587` | Mail server port. |
+| `SMTP_USERNAME` | - | SMTP username. |
+| `SMTP_PASSWORD` | - | SMTP password. |
+| `SMTP_FROM` | - | From address for outgoing mail. |
+| `SMTP_TLS` | `starttls` | TLS mode: `starttls`, `tls`, or `none`. |
+| `SESSION_TTL_HOURS` | `8` | Session lifetime in hours. |
+| `ALLOWED_EMAIL_DOMAINS` | - | Comma-separated allowed domains. Empty means all domains are allowed. |
 
 ## Admin UI
 
 | Page | Purpose |
 |---|---|
 | `/admin` | Dashboard - live stats, activity chart, auth methods breakdown |
-| `/admin/users` | Create and manage users, filter by status and 2FA |
+| `/admin/users` | Create and manage users, filter by status and 2FA method |
 | `/admin/clients` | Register and edit OIDC clients with icons |
-| `/admin/settings` | SMTP, session timeout, allowed domains |
+| `/admin/policies` | Create access policies and assign users to them |
 | `/admin/audit` | Filterable audit log of all auth and admin events |
+| `/admin/webhooks` | Configure webhook delivery channels and event subscriptions |
+| `/admin/settings` | SMTP, session timeout, allowed domains, audit log retention |
 | `/admin/profile` | Admin password, TOTP, passkeys |
 
-Keyboard shortcuts: `⌘K` command palette, `g d/u/c/a/s` navigate sections.
+Keyboard shortcuts: `⌘K` / `/` command palette, `g d/u/c/a/s/p` navigate sections.
 
 ## Security
 
@@ -142,26 +147,10 @@ cd gatekeeper
 go build -o gatekeeper ./cmd/gatekeeper
 ```
 
-With version string:
-
-```bash
-go build -ldflags="-X main.version=v0.2.0" -o gatekeeper ./cmd/gatekeeper
-```
-
 ## Docker
 
 ```bash
-docker build --build-arg VERSION=v0.2.0 -t gatekeeper:v0.2.0 .
-```
-
-Multi-stage: `golang:1.26-alpine` builder, `alpine:latest` runtime. No CGO, static binary.
-
-## Documentation
-
-Full docs in [`/docs`](docs/) - Astro Starlight site.
-
-```bash
-cd docs && npm install && npm run dev
+docker build --build-arg VERSION=v0.3.0 -t gatekeeper:v0.3.0 .
 ```
 
 ## Project layout
@@ -176,6 +165,7 @@ internal/
   db/                 SQLite init, migrations, query helpers
   mailer/             SMTP client
   middleware/         ForwardAuth, secure headers, CSRF
+  notify/             webhook dispatch
   oidc/               OIDC provider (zitadel/oidc v3)
   templates/          template renderer
   ui/                 user-facing handlers
