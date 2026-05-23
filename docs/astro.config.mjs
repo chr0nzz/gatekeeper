@@ -3,7 +3,7 @@ import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://auth.example.com',
+  site: 'https://gatekeeper.xyzlab.dev',
   integrations: [
     sitemap(),
     starlight({
