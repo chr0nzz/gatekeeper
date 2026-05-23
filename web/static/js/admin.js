@@ -96,26 +96,33 @@ var GK = (function () {
   var debounceTimer = null;
 
   var navCommands = [
-    { group: 'Navigate', icon: 'dashboard', label: 'Dashboard', href: '/admin' },
-    { group: 'Navigate', icon: 'users', label: 'Users', href: '/admin/users' },
-    { group: 'Navigate', icon: 'clients', label: 'OIDC Clients', href: '/admin/clients' },
-    { group: 'Navigate', icon: 'audit', label: 'Audit Log', href: '/admin/audit' },
-    { group: 'Navigate', icon: 'settings', label: 'Settings', href: '/admin/settings' },
-    { group: 'Navigate', icon: 'profile', label: 'My account', href: '/admin/profile' },
-    { group: 'Actions', icon: 'plus', label: 'New user', href: '/admin/users/new' },
-    { group: 'Actions', icon: 'plus', label: 'New OIDC client', href: '/admin/clients' },
+    { group: 'Navigate', icon: 'dashboard',     label: 'Dashboard',    href: '/admin' },
+    { group: 'Navigate', icon: 'users',          label: 'Users',        href: '/admin/users' },
+    { group: 'Navigate', icon: 'clients',        label: 'OIDC Clients', href: '/admin/clients' },
+    { group: 'Navigate', icon: 'policies',       label: 'Policies',     href: '/admin/policies' },
+    { group: 'Navigate', icon: 'audit',          label: 'Audit Log',    href: '/admin/audit' },
+    { group: 'Navigate', icon: 'integrations',   label: 'Integrations', href: '/admin/integrations' },
+    { group: 'Navigate', icon: 'webhooks',       label: 'Webhooks',     href: '/admin/webhooks' },
+    { group: 'Navigate', icon: 'settings',       label: 'Settings',     href: '/admin/settings' },
+    { group: 'Navigate', icon: 'profile',        label: 'My account',   href: '/admin/profile' },
+    { group: 'Actions',  icon: 'plus',           label: 'New user',     href: '/admin/users/new' },
+    { group: 'Actions',  icon: 'plus',           label: 'New OIDC client', href: '/admin/clients' },
+    { group: 'Actions',  icon: 'plus',           label: 'New policy',   href: '/admin/policies' },
   ];
 
   var iconPaths = {
-    dashboard: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
-    users: 'M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z',
-    clients: 'M4 7h16v10H4zM4 7l8 6 8-6M4 4h16',
-    audit: 'M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5',
-    settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
-    profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z',
-    plus: 'M12 5v14M5 12h14',
-    user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z',
-    arrow_r: 'M5 12h14M13 6l6 6-6 6',
+    dashboard:    'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+    users:        'M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z',
+    clients:      'M4 7h16v10H4zM4 7l8 6 8-6M4 4h16',
+    policies:     'M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z',
+    audit:        'M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5',
+    integrations: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
+    webhooks:     'M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2',
+    settings:     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+    profile:      'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z',
+    plus:         'M12 5v14M5 12h14',
+    user:         'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z',
+    arrow_r:      'M5 12h14M13 6l6 6-6 6',
   };
 
   function iconSvg(name) {
@@ -145,9 +152,14 @@ var GK = (function () {
         }).join('');
     }).join('');
     list.querySelectorAll('.cmdk-item').forEach(function (el) {
-      el.addEventListener('mouseenter', function () { sel = parseInt(el.dataset.idx); renderList(); });
+      el.addEventListener('mouseenter', function () {
+        sel = parseInt(el.dataset.idx);
+        list.querySelectorAll('.cmdk-item').forEach(function (e) { e.classList.toggle('on', e === el); });
+      });
       el.addEventListener('click', function () { run(allItems[parseInt(el.dataset.idx)]); });
     });
+    var active = list.querySelector('.cmdk-item.on');
+    if (active) active.scrollIntoView({ block: 'nearest' });
   }
 
   function setLoading() {
@@ -226,22 +238,20 @@ var GK = (function () {
     var gSeq = '';
     var gTimer = null;
     window.addEventListener('keydown', function (e) {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-        if (e.key === 'Escape' && open) closeCmd();
-        return;
-      }
+      var inInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         open ? closeCmd() : openCmd();
         return;
       }
       if (open) {
-        if (e.key === 'Escape') { closeCmd(); return; }
+        if (e.key === 'Escape') { e.preventDefault(); closeCmd(); return; }
         if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, allItems.length - 1); renderList(); return; }
         if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); renderList(); return; }
         if (e.key === 'Enter') { e.preventDefault(); run(allItems[sel]); return; }
         return;
       }
+      if (inInput) return;
       if (e.key === '/') { e.preventDefault(); openCmd(); return; }
       gSeq += e.key;
       clearTimeout(gTimer);

@@ -1,20 +1,25 @@
 package admin
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-webauthn/webauthn/protocol"
+	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 	"github.com/chr0nzz/gatekeeper/internal/mailer"
 	gkmiddleware "github.com/chr0nzz/gatekeeper/internal/middleware"
+	"github.com/chr0nzz/gatekeeper/internal/notify"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
 	"github.com/chr0nzz/gatekeeper/internal/templates"
 )
@@ -23,24 +28,27 @@ const adminCookieName = "gk_admin"
 
 // Handlers holds all admin handler dependencies.
 type Handlers struct {
-	db          *sql.DB
-	users       *queries.UserStore
-	admins      *queries.AdminStore
-	adminSess   *queries.AdminSessionStore
+	db             *sql.DB
+	users          *queries.UserStore
+	admins         *queries.AdminStore
+	adminSess      *queries.AdminSessionStore
 	sessions       *auth.SessionStore
 	totp           *auth.TOTPStore
 	passkeys       *auth.PasskeyStore
 	trustedDevices *auth.TrustedDeviceStore
-	oidcStorage *oidcstore.Storage
-	mailer      *mailer.Mailer
-	resetStore  *auth.PasswordResetStore
-	settings    *queries.SettingsStore
-	auditLog    *audit.Logger
-	renderer    *templates.Renderer
-	baseURL     string
-	version     string
-	envSMTP     mailer.Settings
-	envDefaults EnvDefaults
+	oidcStorage    *oidcstore.Storage
+	mailer         *mailer.Mailer
+	resetStore     *auth.PasswordResetStore
+	settings       *queries.SettingsStore
+	auditLog       *audit.Logger
+	renderer       *templates.Renderer
+	policies       *queries.PolicyStore
+	webhooks       *queries.WebhookStore
+	notifier       *notify.Service
+	baseURL        string
+	version        string
+	envSMTP        mailer.Settings
+	envDefaults    EnvDefaults
 }
 
 // EnvDefaults holds env var fallback values for settings that are managed in the UI.
@@ -68,6 +76,9 @@ func New(
 	baseURL, version string,
 	envSMTP mailer.Settings,
 	envDefaults EnvDefaults,
+	policies *queries.PolicyStore,
+	webhooks *queries.WebhookStore,
+	notifier *notify.Service,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, admins: admins, adminSess: adminSess,
@@ -75,6 +86,7 @@ func New(
 		trustedDevices: trustedDevices,
 		oidcStorage: oidcStorage, mailer: m, resetStore: resetStore,
 		settings: settings, auditLog: auditLog, renderer: renderer,
+		policies: policies, webhooks: webhooks, notifier: notifier,
 		baseURL: baseURL, version: version, envSMTP: envSMTP, envDefaults: envDefaults,
 	}
 }
@@ -138,12 +150,18 @@ func activePageFor(name string) string {
 		return "users"
 	case "admin_clients.html":
 		return "clients"
+	case "admin_policies.html", "admin_policy_detail.html":
+		return "policies"
 	case "admin_audit.html":
 		return "audit"
 	case "admin_settings.html":
 		return "settings"
 	case "admin_profile.html":
 		return "profile"
+	case "admin_integrations.html":
+		return "integrations"
+	case "admin_webhooks.html":
+		return "webhooks"
 	}
 	return ""
 }
@@ -163,12 +181,15 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Post("/setup", h.PostSetup)
 	r.Get("/login", h.GetLogin)
 	r.Post("/login", h.PostLogin)
+	r.Post("/login/passkey/begin", h.PostLoginPasskeyBegin)
+	r.Post("/login/passkey/finish", h.PostLoginPasskeyFinish)
 	r.Post("/logout", h.PostLogout)
 
 	r.Group(func(r chi.Router) {
 		r.Use(h.requireAdmin)
 		r.Get("/", h.GetDashboard)
 		r.Get("/api/activity", h.GetActivityData)
+		r.Get("/api/auth-methods", h.GetAuthMethodsData)
 		r.Get("/api/search", h.GetSearch)
 		r.Get("/users", h.GetUsers)
 		r.Get("/users/new", h.GetNewUser)
@@ -187,9 +208,22 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/clients/{id}/delete", h.PostDeleteClient)
 		r.Post("/clients/{id}/edit", h.PostEditClient)
 		r.Get("/clients/{id}/icon", h.GetClientIcon)
+		r.Get("/policies", h.GetPolicies)
+		r.Post("/policies", h.PostCreatePolicy)
+		r.Get("/policies/{id}", h.GetPolicy)
+		r.Post("/policies/{id}/delete", h.PostDeletePolicy)
+		r.Post("/policies/{id}/members", h.PostAddPolicyMember)
+		r.Post("/policies/{id}/members/{userID}/remove", h.PostRemovePolicyMember)
+		r.Get("/integrations", h.GetIntegrations)
 		r.Get("/audit", h.GetAudit)
 		r.Get("/settings", h.GetSettings)
 		r.Post("/settings", h.PostSettings)
+		r.Get("/webhooks", h.GetWebhooks)
+		r.Post("/webhooks", h.PostCreateWebhook)
+		r.Post("/webhooks/{id}/edit", h.PostEditWebhook)
+		r.Post("/webhooks/{id}/delete", h.PostDeleteWebhook)
+		r.Post("/webhooks/{id}/toggle", h.PostToggleWebhook)
+		r.Post("/webhooks/{id}/test", h.PostTestWebhook)
 		r.Get("/profile", h.GetProfile)
 		r.Post("/profile/password", h.PostProfilePassword)
 		r.Get("/profile/totp/enroll", h.GetProfileTOTPEnroll)
@@ -247,6 +281,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 
 	admin, err := h.admins.GetByEmail(r.Context(), email)
 	if err != nil || admin == nil || auth.VerifyPassword(password, admin.PasswordHash) != nil {
+		h.auditLog.Log(r.Context(), audit.EventAdminLoginFailed, "", "", r.RemoteAddr, email)
 		h.render(w, r, "admin_login.html", map[string]interface{}{"Error": "Invalid credentials"})
 		return
 	}
@@ -265,13 +300,81 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
+	h.auditLog.Log(r.Context(), audit.EventAdminLogin, admin.ID, "", r.RemoteAddr, "password")
 	http.Redirect(w, r, "/admin", http.StatusFound)
+}
+
+func (h *Handlers) PostLoginPasskeyBegin(w http.ResponseWriter, r *http.Request) {
+	options, session, err := h.passkeys.WebAuthn().BeginDiscoverableLogin()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	sessID, _ := auth.RandomTokenExport(32)
+	h.passkeys.SaveSession(r.Context(), sessID, nil, session)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Passkey-Session", sessID)
+	json.NewEncoder(w).Encode(options)
+}
+
+func (h *Handlers) PostLoginPasskeyFinish(w http.ResponseWriter, r *http.Request) {
+	sessID := r.Header.Get("X-Passkey-Session")
+	sessionData, err := h.passkeys.GetSession(r.Context(), sessID)
+	if err != nil {
+		http.Error(w, "session expired", http.StatusBadRequest)
+		return
+	}
+	parsedResponse, err := protocol.ParseCredentialRequestResponseBody(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	userID, email, _, err := h.passkeys.FindCredentialByID(r.Context(), parsedResponse.RawID)
+	if err != nil || !strings.HasPrefix(userID, "admin:") {
+		http.Error(w, "credential not found", http.StatusUnauthorized)
+		return
+	}
+	adminID := strings.TrimPrefix(userID, "admin:")
+	waUser, err := h.passkeys.LoadUser(r.Context(), userID, email)
+	if err != nil {
+		http.Error(w, "user load error", http.StatusInternalServerError)
+		return
+	}
+	_, err = h.passkeys.WebAuthn().ValidateDiscoverableLogin(
+		func(rawID, userHandle []byte) (webauthnlib.User, error) { return waUser, nil },
+		*sessionData, parsedResponse,
+	)
+	if err != nil {
+		http.Error(w, "authentication failed", http.StatusUnauthorized)
+		return
+	}
+	sessIDAdmin, err := h.adminSess.Create(r.Context(), adminID)
+	if err != nil {
+		http.Error(w, "session error", http.StatusInternalServerError)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     adminCookieName,
+		Value:    sessIDAdmin,
+		Path:     "/admin",
+		MaxAge:   8 * 3600,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	h.auditLog.Log(r.Context(), audit.EventAdminLoginPasskey, adminID, "", r.RemoteAddr, "")
+	w.Header().Set("X-Redirect", "/admin")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handlers) PostLogout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(adminCookieName)
 	if err == nil {
+		adminID, _ := h.adminSess.Get(r.Context(), cookie.Value)
 		h.adminSess.Destroy(r.Context(), cookie.Value)
+		if adminID != "" {
+			h.auditLog.Log(r.Context(), audit.EventAdminLogout, adminID, "", r.RemoteAddr, "")
+		}
 	}
 	http.SetCookie(w, &http.Cookie{Name: adminCookieName, Value: "", MaxAge: -1, Path: "/admin"})
 	http.Redirect(w, r, "/admin/login", http.StatusFound)
@@ -279,18 +382,21 @@ func (h *Handlers) PostLogout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	since24h := time.Now().Add(-24 * time.Hour).Unix()
 	now := time.Now().Unix()
+	since24h := now - 86400
 
-	var totalUsers, activeUsers, oidcClients int
+	var totalUsers, activeUsers, disabledUsers, oidcClientCount int
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&totalUsers)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE disabled=0`).Scan(&activeUsers)
-	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_clients`).Scan(&oidcClients)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE disabled=1`).Scan(&disabledUsers)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_clients`).Scan(&oidcClientCount)
 
 	var signIns24h, failed24h, oidcTokens24h, totalAttempts, lockedUsers, no2faUsers int
 	var passkeyLogins, totpLogins, otpLogins int
+	var activeSessions, trustedDevices, totalAuditEvents int
+	var usersWithPasskeys, usersWithTOTP, usersNoFactor int
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey') AND created_at > ?`, since24h).Scan(&signIns24h)
-	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE (event LIKE '%fail%' OR event LIKE '%failure%') AND created_at > ?`, since24h).Scan(&failed24h)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event LIKE '%fail%' AND created_at > ?`, since24h).Scan(&failed24h)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_tokens WHERE created_at > ?`, since24h).Scan(&oidcTokens24h)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.failure') AND created_at > ?`, since24h).Scan(&totalAttempts)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id) FROM otp_lockouts WHERE locked_until > ?`, now).Scan(&lockedUsers)
@@ -298,6 +404,12 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event='login.passkey' AND created_at > ?`, since24h).Scan(&passkeyLogins)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event='totp.verified' AND created_at > ?`, since24h).Scan(&totpLogins)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event='otp.verified' AND created_at > ?`, since24h).Scan(&otpLogins)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sessions WHERE expires_at > ?`, now).Scan(&activeSessions)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM trusted_devices WHERE expires_at > ?`, now).Scan(&trustedDevices)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log`).Scan(&totalAuditEvents)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id) FROM passkeys`).Scan(&usersWithPasskeys)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE totp_enabled=1`).Scan(&usersWithTOTP)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE disabled=0 AND totp_enabled=0`).Scan(&usersNoFactor)
 
 	successRate := 0
 	if totalAttempts > 0 {
@@ -320,18 +432,28 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		{"Passkey", "passkey", pct(passkeyLogins)},
 		{"TOTP", "totp", pct(totpLogins)},
 		{"Email OTP", "mail", pct(otpLogins)},
-		{"OIDC token", "clients", pct(oidcTokens24h)},
+		{"OIDC", "clients", pct(oidcTokens24h)},
 	}
 
+	// Sparklines: hourly counts for last 12 hours
+	sparkSignIns := hourlySparkline(ctx, h.db, 12, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey') AND created_at >= ? AND created_at < ?`)
+	sparkFailed := hourlySparkline(ctx, h.db, 12, `SELECT COUNT(*) FROM audit_log WHERE event LIKE '%fail%' AND created_at >= ? AND created_at < ?`)
+	sparkOIDC := hourlySparkline(ctx, h.db, 12, `SELECT COUNT(*) FROM oidc_tokens WHERE created_at >= ? AND created_at < ?`)
+
 	type RecentEvent struct {
-		Event  string
-		User   string
-		Detail string
-		Time   string
-		Kind   string
+		Event       string
+		User        string
+		UserName    string
+		UserID      string
+		HasAvatar   bool
+		Detail      string
+		Time        string
+		Kind        string
+		Method      string
+		MethodClass string
 	}
 	rows, _ := h.db.QueryContext(ctx,
-		`SELECT a.event, COALESCE(u.email, a.user_id, ''), COALESCE(a.detail,''), a.created_at
+		`SELECT a.event, COALESCE(u.email, a.user_id, ''), COALESCE(u.display_name,''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(a.detail,''), a.created_at
 		 FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
 		 ORDER BY a.created_at DESC LIMIT 8`,
 	)
@@ -341,27 +463,83 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var e RecentEvent
 			var ts int64
-			rows.Scan(&e.Event, &e.User, &e.Detail, &ts)
+			rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Detail, &ts)
 			e.Time = time.Unix(ts, 0).Format("15:04:05")
 			e.Kind = eventKind(e.Event)
+			e.Method, e.MethodClass = loginMethod(e.Event)
 			recentEvents = append(recentEvents, e)
 		}
 	}
 
+	clients, _ := h.oidcStorage.ListClients(ctx)
+
+	pctOf := func(n int) int {
+		if totalUsers == 0 {
+			return 0
+		}
+		return (n * 100) / totalUsers
+	}
+
 	h.render(w, r, "admin_dashboard.html", map[string]interface{}{
-		"TotalUsers":    totalUsers,
-		"ActiveUsers":   activeUsers,
-		"LockedUsers":   lockedUsers,
-		"No2FAUsers":    no2faUsers,
-		"OIDCClients":   oidcClients,
-		"SignIns24h":    signIns24h,
-		"Failed24h":     failed24h,
-		"OIDCTokens24h": oidcTokens24h,
-		"SuccessRate":   successRate,
-		"RecentEvents":  recentEvents,
-		"AuthMethods":   authMethods,
-		"HasAuthData":   totalMethods > 0,
+		"TotalUsers":       totalUsers,
+		"ActiveUsers":      activeUsers,
+		"DisabledUsers":    disabledUsers,
+		"LockedUsers":      lockedUsers,
+		"No2FAUsers":       no2faUsers,
+		"OIDCClientCount":  oidcClientCount,
+		"SignIns24h":       signIns24h,
+		"Failed24h":        failed24h,
+		"OIDCTokens24h":    oidcTokens24h,
+		"SuccessRate":      successRate,
+		"ActiveSessions":   activeSessions,
+		"TrustedDevices":   trustedDevices,
+		"TotalAuditEvents": totalAuditEvents,
+		"UsersWithPasskeys": usersWithPasskeys,
+		"UsersWithTOTP":    usersWithTOTP,
+		"UsersNoFactor":    usersNoFactor,
+		"PctPasskeys":      pctOf(usersWithPasskeys),
+		"PctTOTP":          pctOf(usersWithTOTP),
+		"PctNoFactor":      pctOf(usersNoFactor),
+		"RecentEvents":     recentEvents,
+		"AuthMethods":      authMethods,
+		"HasAuthData":      totalMethods > 0,
+		"SparkSignIns":     sparkSignIns,
+		"SparkFailed":      sparkFailed,
+		"SparkOIDC":        sparkOIDC,
+		"OIDCClients":      clients,
+		"Policies":         func() interface{} { p, _ := h.policies.List(ctx); return p }(),
 	})
+}
+
+func hourlySparkline(ctx context.Context, db *sql.DB, hours int, query string) string {
+	now := time.Now().Unix()
+	bucketSecs := int64(3600)
+	counts := make([]int, hours)
+	for i := 0; i < hours; i++ {
+		start := now - int64(hours-i)*bucketSecs
+		end := start + bucketSecs
+		db.QueryRowContext(ctx, query, start, end).Scan(&counts[i])
+	}
+	maxVal := 1
+	for _, v := range counts {
+		if v > maxVal {
+			maxVal = v
+		}
+	}
+	w, h := 64, 28
+	pts := ""
+	for i, v := range counts {
+		x := (i * w) / (hours - 1)
+		y := h - (v*h)/maxVal
+		if y < 1 {
+			y = 1
+		}
+		if pts != "" {
+			pts += " "
+		}
+		pts += fmt.Sprintf("%d,%d", x, y)
+	}
+	return pts
 }
 
 func (h *Handlers) GetActivityData(w http.ResponseWriter, r *http.Request) {
@@ -425,6 +603,44 @@ func (h *Handlers) GetActivityData(w http.ResponseWriter, r *http.Request) {
 	w.Write(enc)
 }
 
+func (h *Handlers) GetAuthMethodsData(w http.ResponseWriter, r *http.Request) {
+	now := time.Now().Unix()
+	var since int64
+	switch r.URL.Query().Get("range") {
+	case "7d":
+		since = now - 7*86400
+	case "30d":
+		since = now - 30*86400
+	default:
+		since = now - 86400
+	}
+	var passkey, totp, otp, oidc int
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='login.passkey' AND created_at > ?`, since).Scan(&passkey)
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='totp.verified' AND created_at > ?`, since).Scan(&totp)
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='otp.verified' AND created_at > ?`, since).Scan(&otp)
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM oidc_tokens WHERE created_at > ?`, since).Scan(&oidc)
+	total := passkey + totp + otp + oidc
+	pct := func(n int) int {
+		if total == 0 {
+			return 0
+		}
+		return (n * 100) / total
+	}
+	type method struct {
+		Name  string `json:"name"`
+		Icon  string `json:"icon"`
+		Pct   int    `json:"pct"`
+		Count int    `json:"count"`
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode([]method{
+		{"Passkey", "passkey", pct(passkey), passkey},
+		{"TOTP", "totp", pct(totp), totp},
+		{"Email OTP", "mail", pct(otp), otp},
+		{"OIDC", "clients", pct(oidc), oidc},
+	})
+}
+
 func (h *Handlers) GetSearch(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	type Result struct {
@@ -438,15 +654,15 @@ func (h *Handlers) GetSearch(w http.ResponseWriter, r *http.Request) {
 	if q != "" {
 		like := "%" + q + "%"
 		rows, err := h.db.QueryContext(r.Context(),
-			`SELECT id, email FROM users WHERE email LIKE ? LIMIT 8`,
-			like,
+			`SELECT id, COALESCE(NULLIF(display_name,''),email), email FROM users WHERE email LIKE ? OR display_name LIKE ? LIMIT 8`,
+			like, like,
 		)
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
-				var id, email string
-				rows.Scan(&id, &email)
-				results = append(results, Result{Label: email, Sub: id, Icon: "user", URL: "/admin/users/" + id})
+				var id, label, email string
+				rows.Scan(&id, &label, &email)
+				results = append(results, Result{Label: label, Sub: email, Icon: "user", URL: "/admin/users/" + id})
 			}
 		}
 
@@ -473,13 +689,31 @@ func eventKind(event string) string {
 	switch {
 	case strings.Contains(event, "fail") || strings.Contains(event, "failure") || strings.Contains(event, "lockout"):
 		return "err"
-	case strings.Contains(event, "disabled") || strings.Contains(event, "revoked"):
+	case strings.Contains(event, "disabled") || strings.Contains(event, "revoked") || strings.Contains(event, "deleted"):
 		return "warn"
-	case strings.Contains(event, "success") || strings.Contains(event, "passkey") || strings.Contains(event, "enrolled") || strings.Contains(event, "created") || strings.Contains(event, "verified") || strings.Contains(event, "changed") || strings.Contains(event, "registered"):
+	case strings.Contains(event, "logout"):
+		return "info"
+	case strings.Contains(event, "success") || strings.Contains(event, "passkey") || strings.Contains(event, "enrolled") || strings.Contains(event, "created") || strings.Contains(event, "verified") || strings.Contains(event, "changed") || strings.Contains(event, "registered") || event == "admin.login":
 		return "ok"
 	default:
 		return "info"
 	}
+}
+
+func loginMethod(event string) (string, string) {
+	switch event {
+	case "login.passkey", "admin.login.passkey":
+		return "Passkey", "method-passkey"
+	case "totp.verified":
+		return "TOTP", "method-totp"
+	case "otp.verified", "otp.sent":
+		return "Email OTP", "method-emailotp"
+	case "login.success":
+		return "Password", "method-password"
+	case "admin.login":
+		return "Password", "method-password"
+	}
+	return "", ""
 }
 
 func eventCategory(event string) string {
@@ -506,6 +740,8 @@ func (h *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
 	type UserRow struct {
 		queries.User
 		Sessions int
+		Passkeys int
+		LastSeen string
 		IsLocked bool
 		Initials string
 		Status   string
@@ -519,6 +755,25 @@ func (h *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
 		h.db.QueryRowContext(r.Context(), `SELECT MAX(locked_until) FROM otp_lockouts WHERE user_id=?`, u.ID).Scan(&lockedUntil)
 		isLocked := lockedUntil.Valid && lockedUntil.Int64 > now
 
+		var passkeys int
+		h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM passkeys WHERE user_id=?`, u.ID).Scan(&passkeys)
+
+		var lastSeenTs sql.NullInt64
+		h.db.QueryRowContext(r.Context(),
+			`SELECT MAX(created_at) FROM audit_log WHERE user_id=? AND event IN ('login.success','login.passkey','otp.verified','totp.verified')`,
+			u.ID).Scan(&lastSeenTs)
+		lastSeen := ""
+		if lastSeenTs.Valid && lastSeenTs.Int64 > 0 {
+			t := time.Unix(lastSeenTs.Int64, 0)
+			if time.Since(t) < 24*time.Hour {
+				lastSeen = t.Format("15:04")
+			} else if time.Since(t) < 7*24*time.Hour {
+				lastSeen = t.Format("Mon")
+			} else {
+				lastSeen = t.Format("Jan 2")
+			}
+		}
+
 		initials := strings.ToUpper(u.Email[:1])
 		if at := strings.Index(u.Email, "@"); at > 1 {
 			initials = strings.ToUpper(u.Email[:2])
@@ -529,7 +784,7 @@ func (h *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
 		} else if isLocked {
 			status = "locked"
 		}
-		rows = append(rows, UserRow{User: u, Sessions: sessions, IsLocked: isLocked, Initials: initials, Status: status})
+		rows = append(rows, UserRow{User: u, Sessions: sessions, Passkeys: passkeys, LastSeen: lastSeen, IsLocked: isLocked, Initials: initials, Status: status})
 	}
 	active := 0
 	locked := 0
@@ -712,9 +967,11 @@ func (h *Handlers) PostDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
+	adminID := h.adminIDFromRequest(r)
 	h.sessions.RevokeAll(r.Context(), id)
 	h.trustedDevices.RevokeAll(r.Context(), id)
 	h.users.Delete(r.Context(), id)
+	h.auditLog.Log(r.Context(), audit.EventUserDeleted, id, adminID, r.RemoteAddr, "")
 	http.Redirect(w, r, "/admin/users", http.StatusFound)
 }
 
@@ -760,7 +1017,37 @@ func (h *Handlers) GetClients(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
-	h.render(w, r, "admin_clients.html", map[string]interface{}{"Clients": clients, "BaseURL": h.baseURL})
+	policies, _ := h.policies.List(r.Context())
+	type PolicyOption struct {
+		ID   string
+		Name string
+	}
+	type ClientWithPolicy struct {
+		oidcstore.ClientRecord
+		PolicyID   string
+		PolicyName string
+	}
+	var enriched []ClientWithPolicy
+	for _, c := range clients {
+		var policyID, policyName string
+		h.db.QueryRowContext(r.Context(), `SELECT COALESCE(policy_id,'') FROM oidc_clients WHERE client_id=?`, c.ClientID).Scan(&policyID)
+		for _, p := range policies {
+			if p.ID == policyID {
+				policyName = p.Name
+				break
+			}
+		}
+		enriched = append(enriched, ClientWithPolicy{ClientRecord: c, PolicyID: policyID, PolicyName: policyName})
+	}
+	var policyOptions []PolicyOption
+	for _, p := range policies {
+		policyOptions = append(policyOptions, PolicyOption{ID: p.ID, Name: p.Name})
+	}
+	h.render(w, r, "admin_clients.html", map[string]interface{}{
+		"Clients":  enriched,
+		"Policies": policyOptions,
+		"BaseURL":  h.baseURL,
+	})
 }
 
 func (h *Handlers) PostCreateClient(w http.ResponseWriter, r *http.Request) {
@@ -772,6 +1059,7 @@ func (h *Handlers) PostCreateClient(w http.ResponseWriter, r *http.Request) {
 	clientSecret := strings.TrimSpace(r.FormValue("client_secret"))
 	name := strings.TrimSpace(r.FormValue("name"))
 	iconURL := strings.TrimSpace(r.FormValue("icon_url"))
+	policyID := strings.TrimSpace(r.FormValue("policy_id"))
 	urisRaw := strings.TrimSpace(r.FormValue("redirect_uris"))
 	var uris []string
 	for _, u := range strings.Split(urisRaw, "\n") {
@@ -784,6 +1072,9 @@ func (h *Handlers) PostCreateClient(w http.ResponseWriter, r *http.Request) {
 		clients, _ := h.oidcStorage.ListClients(r.Context())
 		h.render(w, r, "admin_clients.html", map[string]interface{}{"Clients": clients, "Error": err.Error()})
 		return
+	}
+	if policyID != "" {
+		h.db.ExecContext(r.Context(), `UPDATE oidc_clients SET policy_id=? WHERE client_id=?`, policyID, clientID)
 	}
 	http.Redirect(w, r, "/admin/clients", http.StatusFound)
 }
@@ -812,6 +1103,7 @@ func (h *Handlers) PostEditClient(w http.ResponseWriter, r *http.Request) {
 	iconURL := strings.TrimSpace(r.FormValue("icon_url"))
 	urisRaw := strings.TrimSpace(r.FormValue("redirect_uris"))
 	newSecret := strings.TrimSpace(r.FormValue("client_secret"))
+	policyID := strings.TrimSpace(r.FormValue("policy_id"))
 	var uris []string
 	for _, u := range strings.Split(urisRaw, "\n") {
 		if u = strings.TrimSpace(u); u != "" {
@@ -819,21 +1111,46 @@ func (h *Handlers) PostEditClient(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.oidcStorage.UpdateClient(r.Context(), id, name, iconURL, newSecret, uris)
+	h.db.ExecContext(r.Context(), `UPDATE oidc_clients SET policy_id=? WHERE client_id=?`, policyID, id)
 	http.Redirect(w, r, "/admin/clients", http.StatusFound)
 }
 
+func (h *Handlers) GetIntegrations(w http.ResponseWriter, r *http.Request) {
+	h.render(w, r, "admin_integrations.html", map[string]interface{}{
+		"BaseURL": h.baseURL,
+	})
+}
+
 func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT a.event,
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if n, err := strconv.Atoi(d); err == nil && n >= 0 {
+			days = n
+		}
+	}
+	base := `SELECT a.event,
 			COALESCE(u.email, a.user_id, ''),
+			COALESCE(u.display_name, ''),
+			COALESCE(a.user_id, ''),
+			(u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data) > 0),
 			COALESCE(act.email, aa.email, a.actor_id, ''),
 			COALESCE(a.ip,''), COALESCE(a.detail,''), a.created_at
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.user_id
 		LEFT JOIN admin_users aa ON aa.id = a.actor_id
-		LEFT JOIN users act ON act.id = a.actor_id
-		ORDER BY a.created_at DESC LIMIT 500`,
+		LEFT JOIN users act ON act.id = a.actor_id`
+	var (
+		queryStr string
+		args     []interface{}
 	)
+	if days > 0 {
+		cutoff := time.Now().AddDate(0, 0, -days).Unix()
+		queryStr = base + ` WHERE a.created_at >= ? ORDER BY a.created_at DESC LIMIT 1000`
+		args = []interface{}{cutoff}
+	} else {
+		queryStr = base + ` ORDER BY a.created_at DESC LIMIT 1000`
+	}
+	rows, err := h.db.QueryContext(r.Context(), queryStr, args...)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
@@ -843,9 +1160,14 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 	type AuditEntry struct {
 		Event       string
 		User        string
+		UserName    string
+		UserID      string
+		HasAvatar   bool
 		Actor       string
 		IP          string
 		Detail      string
+		Method      string
+		MethodClass string
 		Time        string
 		Date        string
 		Kind        string
@@ -864,11 +1186,12 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var e AuditEntry
 		var ts int64
-		rows.Scan(&e.Event, &e.User, &e.Actor, &e.IP, &e.Detail, &ts)
+		rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Actor, &e.IP, &e.Detail, &ts)
 		t := time.Unix(ts, 0)
 		e.Time = t.Format("15:04:05")
 		e.Kind = eventKind(e.Event)
 		e.EventPrefix = eventCategory(e.Event)
+		e.Method, e.MethodClass = loginMethod(e.Event)
 		rawDate := t.Format("2006-01-02")
 		switch rawDate {
 		case today:
@@ -889,23 +1212,28 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 	for _, g := range groups {
 		total += len(g.Entries)
 	}
-	h.render(w, r, "admin_audit.html", map[string]interface{}{"Groups": groups, "TotalEvents": total})
+	h.render(w, r, "admin_audit.html", map[string]interface{}{"Groups": groups, "TotalEvents": total, "ActiveDays": days})
 }
 
 func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 	get := func(key, fallback string) string {
 		return h.settings.Get(r.Context(), key, fallback)
 	}
-	h.render(w, r, "admin_settings.html", map[string]interface{}{
-		"AllowedDomains": get("allowed_email_domains", h.envDefaults.AllowedDomains),
-		"SessionTTL":     get("session_ttl_hours", intStr(h.envDefaults.SessionTTLHours)),
-		"SMTPHost":       get("smtp_host", h.envSMTP.Host),
-		"SMTPPort":       get("smtp_port", intStr(h.envSMTP.Port)),
-		"SMTPUsername":   get("smtp_username", h.envSMTP.Username),
-		"SMTPFrom":       get("smtp_from", h.envSMTP.From),
-		"SMTPTLS":        get("smtp_tls", h.envSMTP.TLS),
-		"BaseURL":        h.baseURL,
-	})
+	data := map[string]interface{}{
+		"AllowedDomains":     get("allowed_email_domains", h.envDefaults.AllowedDomains),
+		"SessionTTL":         get("session_ttl_hours", intStr(h.envDefaults.SessionTTLHours)),
+		"SMTPHost":           get("smtp_host", h.envSMTP.Host),
+		"SMTPPort":           get("smtp_port", intStr(h.envSMTP.Port)),
+		"SMTPUsername":       get("smtp_username", h.envSMTP.Username),
+		"SMTPFrom":           get("smtp_from", h.envSMTP.From),
+		"SMTPTLS":            get("smtp_tls", h.envSMTP.TLS),
+		"AuditRetentionDays": get("audit_retention_days", "90"),
+		"BaseURL":            h.baseURL,
+	}
+	if r.URL.Query().Get("saved") == "1" {
+		data["Success"] = "Settings saved."
+	}
+	h.render(w, r, "admin_settings.html", data)
 }
 
 func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
@@ -926,7 +1254,16 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 	if pw := r.FormValue("smtp_password"); pw != "" {
 		h.settings.Set(r.Context(), "smtp_password", pw)
 	}
-	h.render(w, r, "admin_settings.html", map[string]interface{}{"Success": "Settings saved."})
+	if rd := strings.TrimSpace(r.FormValue("audit_retention_days")); rd != "" {
+		if n, err := strconv.Atoi(rd); err == nil && n >= 0 {
+			h.settings.Set(r.Context(), "audit_retention_days", rd)
+			if n > 0 {
+				cutoff := time.Now().AddDate(0, 0, -n).Unix()
+				h.db.ExecContext(r.Context(), `DELETE FROM audit_log WHERE created_at < ?`, cutoff)
+			}
+		}
+	}
+	http.Redirect(w, r, "/admin/settings?saved=1", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetProfile(w http.ResponseWriter, r *http.Request) {
@@ -1098,6 +1435,279 @@ func (h *Handlers) PostProfilePasskeyFinish(w http.ResponseWriter, r *http.Reque
 	}
 	h.passkeys.RegisterCredential(r.Context(), "admin:"+adminID, name, cred)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handlers) GetPolicies(w http.ResponseWriter, r *http.Request) {
+	policies, err := h.policies.List(r.Context())
+	if err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+	type PolicyWithClients struct {
+		queries.Policy
+		Clients []string
+	}
+	var enriched []PolicyWithClients
+	for _, p := range policies {
+		rows, _ := h.db.QueryContext(r.Context(), `SELECT name FROM oidc_clients WHERE policy_id=?`, p.ID)
+		var clients []string
+		if rows != nil {
+			for rows.Next() {
+				var name string
+				rows.Scan(&name)
+				clients = append(clients, name)
+			}
+			rows.Close()
+		}
+		enriched = append(enriched, PolicyWithClients{Policy: p, Clients: clients})
+	}
+	h.render(w, r, "admin_policies.html", map[string]interface{}{"Policies": enriched, "BaseURL": h.baseURL})
+}
+
+func (h *Handlers) PostCreatePolicy(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("name"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	if name == "" {
+		http.Redirect(w, r, "/admin/policies", http.StatusFound)
+		return
+	}
+	if err := h.policies.Create(r.Context(), name, description); err != nil {
+		http.Error(w, "Could not create policy: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	pol, _ := h.policies.GetByName(r.Context(), name)
+	if pol != nil {
+		http.Redirect(w, r, "/admin/policies/"+pol.ID, http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, "/admin/policies", http.StatusFound)
+}
+
+func (h *Handlers) GetPolicy(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	pol, err := h.policies.GetByID(r.Context(), id)
+	if err != nil || pol == nil {
+		http.NotFound(w, r)
+		return
+	}
+	members, _ := h.policies.GetMembers(r.Context(), id)
+	allUsers, _ := h.users.List(r.Context())
+	memberSet := map[string]bool{}
+	for _, m := range members {
+		memberSet[m.ID] = true
+	}
+	var nonMembers []queries.User
+	for _, u := range allUsers {
+		if !memberSet[u.ID] {
+			nonMembers = append(nonMembers, u)
+		}
+	}
+	clientRows, _ := h.db.QueryContext(r.Context(), `SELECT name FROM oidc_clients WHERE policy_id=?`, id)
+	var clientNames []string
+	if clientRows != nil {
+		for clientRows.Next() {
+			var name string
+			clientRows.Scan(&name)
+			clientNames = append(clientNames, name)
+		}
+		clientRows.Close()
+	}
+	h.render(w, r, "admin_policy_detail.html", map[string]interface{}{
+		"Policy":     pol,
+		"Members":    members,
+		"NonMembers": nonMembers,
+		"Clients":    clientNames,
+		"BaseURL":    h.baseURL,
+	})
+}
+
+func (h *Handlers) PostDeletePolicy(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	h.policies.Delete(r.Context(), id)
+	http.Redirect(w, r, "/admin/policies", http.StatusFound)
+}
+
+func (h *Handlers) PostAddPolicyMember(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	userID := strings.TrimSpace(r.FormValue("user_id"))
+	if userID != "" {
+		h.policies.AddMember(r.Context(), id, userID)
+	}
+	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
+}
+
+func (h *Handlers) PostRemovePolicyMember(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	userID := chi.URLParam(r, "userID")
+	h.policies.RemoveMember(r.Context(), id, userID)
+	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
+}
+
+// GetWebhooks renders the webhooks management page.
+func (h *Handlers) GetWebhooks(w http.ResponseWriter, r *http.Request) {
+	whs, _ := h.webhooks.ListWebhooks(r.Context())
+	h.render(w, r, "admin_webhooks.html", map[string]interface{}{"Webhooks": whs})
+}
+
+// PostCreateWebhook creates a new webhook.
+func (h *Handlers) PostCreateWebhook(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	whType := r.FormValue("type")
+	whURL := strings.TrimSpace(r.FormValue("url"))
+	if whType == "email" {
+		whURL = strings.TrimSpace(r.FormValue("email_to"))
+	}
+	wh := queries.Webhook{
+		Name:     strings.TrimSpace(r.FormValue("name")),
+		Type:     whType,
+		URL:      whURL,
+		Token:    strings.TrimSpace(r.FormValue("token")),
+		ChatID:   strings.TrimSpace(r.FormValue("chat_id")),
+		Username: strings.TrimSpace(r.FormValue("username")),
+		Password: strings.TrimSpace(r.FormValue("password")),
+		Topic:    strings.TrimSpace(r.FormValue("topic")),
+		Events:   r.FormValue("events"),
+	}
+	if wh.Events == "" {
+		wh.Events = "all"
+	}
+	h.webhooks.CreateWebhook(r.Context(), wh)
+	http.Redirect(w, r, "/admin/webhooks", http.StatusFound)
+}
+
+// PostEditWebhook updates an existing webhook.
+func (h *Handlers) PostEditWebhook(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	events := r.FormValue("events")
+	if events == "" {
+		events = "all"
+	}
+	editType := r.FormValue("type")
+	editURL := strings.TrimSpace(r.FormValue("url"))
+	if editType == "email" {
+		editURL = strings.TrimSpace(r.FormValue("email_to"))
+	}
+	wh := queries.Webhook{
+		ID:       id,
+		Name:     strings.TrimSpace(r.FormValue("name")),
+		Type:     editType,
+		URL:      editURL,
+		Token:    strings.TrimSpace(r.FormValue("token")),
+		ChatID:   strings.TrimSpace(r.FormValue("chat_id")),
+		Username: strings.TrimSpace(r.FormValue("username")),
+		Password: strings.TrimSpace(r.FormValue("password")),
+		Topic:    strings.TrimSpace(r.FormValue("topic")),
+		Events:   events,
+	}
+	h.webhooks.UpdateWebhook(r.Context(), wh)
+	http.Redirect(w, r, "/admin/webhooks", http.StatusFound)
+}
+
+// PostDeleteWebhook removes a webhook.
+func (h *Handlers) PostDeleteWebhook(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	h.webhooks.DeleteWebhook(r.Context(), chi.URLParam(r, "id"))
+	http.Redirect(w, r, "/admin/webhooks", http.StatusFound)
+}
+
+// PostToggleWebhook toggles the enabled state of a webhook.
+func (h *Handlers) PostToggleWebhook(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	wh, _ := h.webhooks.GetWebhook(r.Context(), id)
+	if wh != nil {
+		h.webhooks.SetEnabled(r.Context(), id, !wh.Enabled)
+	}
+	http.Redirect(w, r, "/admin/webhooks", http.StatusFound)
+}
+
+// PostTestWebhook sends a test notification to a webhook.
+func (h *Handlers) PostTestWebhook(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	err := h.notifier.SendTest(r.Context(), id)
+	whs, _ := h.webhooks.ListWebhooks(r.Context())
+	if err != nil {
+		h.render(w, r, "admin_webhooks.html", map[string]interface{}{"Webhooks": whs, "TestError": err.Error(), "TestedID": id})
+		return
+	}
+	h.render(w, r, "admin_webhooks.html", map[string]interface{}{"Webhooks": whs, "TestOK": true, "TestedID": id})
+}
+
+// GetNotifications renders the notification log page and resets the unread counter.
+func (h *Handlers) GetNotifications(w http.ResponseWriter, r *http.Request) {
+	now := fmt.Sprintf("%d", time.Now().Unix())
+	h.settings.Set(r.Context(), "notifications_last_viewed", now)
+	raw, _ := h.webhooks.ListNotifications(r.Context(), 200)
+	type NotifRow struct {
+		Event       string
+		User        string
+		IP          string
+		Method      string
+		MethodClass string
+		Category    string
+		Time        string
+	}
+	var rows []NotifRow
+	for _, n := range raw {
+		user := n.UserID
+		if user != "" {
+			var display string
+			h.db.QueryRowContext(r.Context(), `SELECT COALESCE(NULLIF(display_name,''), email) FROM users WHERE id=?`, user).Scan(&display)
+			if display != "" {
+				user = display
+			}
+		}
+		method, methodClass := loginMethod(n.Event)
+		rows = append(rows, NotifRow{
+			Event:       n.Event,
+			User:        user,
+			IP:          n.IP,
+			Method:      method,
+			MethodClass: methodClass,
+			Category:    eventCategory(n.Event),
+			Time:        time.Unix(n.CreatedAt, 0).Format("15:04:05"),
+		})
+	}
+	h.render(w, r, "admin_notifications.html", map[string]interface{}{"Notifications": rows})
+}
+
+func (h *Handlers) GetNotificationsAPI(w http.ResponseWriter, r *http.Request) {
+	notifs, _ := h.webhooks.ListNotifications(r.Context(), 8)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(notifs)
 }
 
 func intStr(n int) string {

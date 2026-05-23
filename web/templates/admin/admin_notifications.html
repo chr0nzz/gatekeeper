@@ -1,0 +1,130 @@
+{{template "admin_base" .}}
+{{define "title"}}Notifications - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Notifications</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Notifications</h1>
+    <p class="sub">Notification history.</p>
+  </div>
+  <div class="head-actions">
+    <a href="/admin/webhooks" class="btn btn-ghost btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Manage webhooks
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-toolbar" style="flex-wrap:wrap;gap:8px">
+    <div style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px;position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx-3);pointer-events:none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 4.2 12.6l4.1 4.1 1.4-1.4-4.1-4.1A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/></svg>
+      <input id="notif-search" class="input" style="padding-left:28px;width:260px" placeholder="Search event, user, IP…">
+    </div>
+    <div class="filter-chips">
+      <button class="fchip on" data-notif-filter="all">All</button>
+      <button class="fchip" data-notif-filter="auth">Auth</button>
+      <button class="fchip" data-notif-filter="admin">Admin</button>
+    </div>
+    <div class="filter-chips">
+      <button class="fchip on" data-notif-method="all">All methods</button>
+      <button class="fchip" data-notif-method="method-password"><span class="method-badge method-password">Password</span></button>
+      <button class="fchip" data-notif-method="method-totp"><span class="method-badge method-totp">TOTP</span></button>
+      <button class="fchip" data-notif-method="method-passkey"><span class="method-badge method-passkey">Passkey</span></button>
+      <button class="fchip" data-notif-method="method-emailotp"><span class="method-badge method-emailotp">Email OTP</span></button>
+    </div>
+    <div id="notif-count" style="margin-left:auto;font-size:11px;color:var(--tx-3);align-self:center">{{len .Notifications}} notifications</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:80px minmax(140px,1fr) minmax(120px,1fr) 120px 90px;gap:10px;align-items:center;padding:9px 16px;background:var(--bg-2);color:var(--tx-3);text-transform:uppercase;font-size:10px;letter-spacing:0.05em;font-weight:500;border-bottom:1px solid var(--bd-0)">
+    <span>Time</span><span>Event</span><span>User</span><span>IP</span><span>Method</span>
+  </div>
+
+  {{if .Notifications}}
+  {{range .Notifications}}
+  <div class="notif-row"
+    data-notif-row="{{.Event}} {{.User}} {{.IP}}"
+    data-notif-cat="{{.Category}}"
+    data-notif-method="{{.MethodClass}}"
+    style="display:grid;grid-template-columns:80px minmax(140px,1fr) minmax(120px,1fr) 120px 90px;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--bd-0);font-size:12px;transition:background .08s">
+    <span style="font-family:var(--font-mono);color:var(--tx-3);font-size:11px">{{.Time}}</span>
+    <span>
+      <span class="pill pill-ok" style="font-size:10px;font-family:var(--font-mono)"><span class="dot"></span>{{.Event}}</span>
+    </span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-1)">
+      {{if .User}}{{.User}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
+    </span>
+    <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-2)">
+      {{if .IP}}{{.IP}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
+    </span>
+    <span>
+      {{if .Method}}<span class="method-badge {{.MethodClass}}">{{.Method}}</span>{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
+    </span>
+  </div>
+  {{end}}
+  {{else}}
+  <div class="empty">
+    <div class="ic-bg">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <h4>No notifications yet</h4>
+    <p>Add a webhook and trigger an event to see notifications here.</p>
+    <a href="/admin/webhooks" class="btn btn-primary btn-sm">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+      Add webhook
+    </a>
+  </div>
+  {{end}}
+</div>
+
+<script>
+(function(){
+  var rows = document.querySelectorAll('.notif-row');
+  var filterChips = document.querySelectorAll('[data-notif-filter]');
+  var methodChips = document.querySelectorAll('[data-notif-method]');
+  var search = document.getElementById('notif-search');
+  var count = document.getElementById('notif-count');
+  var activeFilter = 'all';
+  var activeMethod = 'all';
+
+  function applyFilters() {
+    var q = search ? search.value.toLowerCase() : '';
+    var visible = 0;
+    rows.forEach(function(row) {
+      var text = (row.dataset.notifRow || '').toLowerCase();
+      var cat = row.dataset.notifCat || '';
+      var method = row.dataset.notifMethod || '';
+      var ok = (!q || text.includes(q)) &&
+               (activeFilter === 'all' || cat === activeFilter) &&
+               (activeMethod === 'all' || method === activeMethod);
+      row.style.display = ok ? 'grid' : 'none';
+      if (ok) visible++;
+    });
+    if (count) count.textContent = visible + ' notification' + (visible !== 1 ? 's' : '');
+  }
+
+  filterChips.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      activeFilter = btn.dataset.notifFilter;
+      filterChips.forEach(function(b) { b.classList.toggle('on', b === btn); });
+      applyFilters();
+    });
+  });
+
+  methodChips.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      activeMethod = btn.dataset.notifMethod;
+      methodChips.forEach(function(b) { b.classList.toggle('on', b === btn); });
+      applyFilters();
+    });
+  });
+
+  if (search) search.addEventListener('input', applyFilters);
+
+  rows.forEach(function(row) {
+    row.addEventListener('mouseenter', function() { row.style.background = 'var(--bg-2)'; });
+    row.addEventListener('mouseleave', function() { row.style.background = ''; });
+  });
+})();
+</script>
+{{end}}

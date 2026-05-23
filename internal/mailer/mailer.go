@@ -122,6 +122,11 @@ func (m *Mailer) SendPasswordChanged(ctx context.Context, to string) error {
 	return m.send(ctx, to, "Your password was changed", buf.String())
 }
 
+// SendRaw sends a plain-text email with the given subject and body.
+func (m *Mailer) SendRaw(to, subject, body string) error {
+	return m.send(context.Background(), to, subject, "<pre>"+body+"</pre>")
+}
+
 // PortFromString converts a string port to int, returning 587 on failure.
 func PortFromString(s string) int {
 	n, err := strconv.Atoi(s)

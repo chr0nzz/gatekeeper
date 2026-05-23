@@ -1,0 +1,250 @@
+{{template "admin_base" .}}
+{{define "title"}}Webhooks - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Webhooks</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Webhooks</h1>
+    <p class="sub">Send notifications to external services when events occur.</p>
+  </div>
+  <div class="head-actions">
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-webhook-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add webhook
+    </button>
+  </div>
+</div>
+
+{{if .TestedID}}
+<div class="alert {{if .TestOK}}alert-ok{{else}}alert-err{{end}}" style="margin-bottom:14px">
+  {{if .TestOK}}<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12l4 4 10-10"/></svg><div>Test notification sent successfully.</div>
+  {{else}}<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>Test failed:</b> {{.TestError}}</div>{{end}}
+</div>
+{{end}}
+
+{{if .Webhooks}}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Events</th>
+        <th>Status</th>
+        <th style="width:130px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Webhooks}}
+    <tr>
+      <td style="font-weight:500">{{.Name}}</td>
+      <td><span class="tag">{{.Type}}</span></td>
+      <td style="font-size:12px;color:var(--tx-2)">{{if eq .Events "all"}}All events{{else}}Custom{{end}}</td>
+      <td>
+        {{if .Enabled}}<span class="pill pill-ok"><span class="dot"></span>Active</span>
+        {{else}}<span class="pill pill-off"><span class="dot"></span>Disabled</span>{{end}}
+      </td>
+      <td>
+        <div class="row-actions">
+          <form method="POST" action="/admin/webhooks/{{.ID}}/test" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-xs" title="Send test">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </form>
+          <form method="POST" action="/admin/webhooks/{{.ID}}/toggle" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-xs" title="{{if .Enabled}}Disable{{else}}Enable{{end}}">
+              {{if .Enabled}}<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+              {{else}}<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>{{end}}
+            </button>
+          </form>
+          <button class="btn btn-ghost btn-xs" data-open-dialog="edit-wh-{{.ID}}" title="Edit">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11-4-4L4 16zM14 5l4 4"/></svg>
+          </button>
+          <form method="POST" action="/admin/webhooks/{{.ID}}/delete" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete {{.Name}}?')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+
+{{range .Webhooks}}
+<dialog id="edit-wh-{{.ID}}" style="max-width:560px">
+  <div class="modal-head">
+    <h2>{{.Name}}</h2>
+  </div>
+  <form method="POST" action="/admin/webhooks/{{.ID}}/edit" class="wh-form" data-events="{{.Events}}">
+    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+    <input type="hidden" name="events" class="events-out" value="{{.Events}}">
+    <div class="modal-body">
+      <label class="field"><span class="field-label">Name</span><input class="input" type="text" name="name" value="{{.Name}}" required></label>
+        <label class="field"><span class="field-label">Type</span>
+          <select class="input wh-type-sel" name="type">
+            <option value="discord" {{if eq .Type "discord"}}selected{{end}}>Discord</option>
+            <option value="slack" {{if eq .Type "slack"}}selected{{end}}>Slack</option>
+            <option value="telegram" {{if eq .Type "telegram"}}selected{{end}}>Telegram</option>
+            <option value="ntfy" {{if eq .Type "ntfy"}}selected{{end}}>ntfy (public)</option>
+            <option value="ntfy_self" {{if eq .Type "ntfy_self"}}selected{{end}}>ntfy (self-hosted)</option>
+            <option value="generic" {{if eq .Type "generic"}}selected{{end}}>Generic JSON</option>
+            <option value="email" {{if eq .Type "email"}}selected{{end}}>Email</option>
+          </select>
+        </label>
+        <div class="wh-f wh-url"{{if not (or (eq .Type "discord") (eq .Type "slack") (eq .Type "ntfy_self") (eq .Type "generic"))}} style="display:none"{{end}}><label class="field"><span class="field-label">Webhook URL</span><input class="input" type="text" name="url" value="{{.URL}}" placeholder="https://"></label></div>
+        <div class="wh-f wh-token"{{if not (eq .Type "telegram")}} style="display:none"{{end}}><label class="field"><span class="field-label">Bot token</span><input class="input" type="text" name="token" value="{{.Token}}"></label></div>
+        <div class="wh-f wh-chat"{{if not (eq .Type "telegram")}} style="display:none"{{end}}><label class="field"><span class="field-label">Chat ID</span><input class="input" type="text" name="chat_id" value="{{.ChatID}}"></label></div>
+        <div class="wh-f wh-topic"{{if not (or (eq .Type "ntfy") (eq .Type "ntfy_self"))}} style="display:none"{{end}}><label class="field"><span class="field-label">Topic</span><input class="input" type="text" name="topic" value="{{.Topic}}"></label></div>
+        <div class="wh-f wh-uname"{{if not (eq .Type "ntfy_self")}} style="display:none"{{end}}><label class="field"><span class="field-label">Username (optional)</span><input class="input" type="text" name="username" value="{{.Username}}"></label></div>
+        <div class="wh-f wh-pass"{{if not (eq .Type "ntfy_self")}} style="display:none"{{end}}><label class="field"><span class="field-label">Password (optional)</span><input class="input" type="password" name="password" value="{{.Password}}"></label></div>
+        <div class="wh-f wh-email"{{if not (eq .Type "email")}} style="display:none"{{end}}><label class="field"><span class="field-label">Recipient email</span><input class="input" type="text" name="email_to" value="{{.URL}}" placeholder="admin@example.com"></label></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd-0)">
+          <div style="font-size:12px;font-weight:500;color:var(--tx-1);margin-bottom:8px">Events <span style="font-weight:400;color:var(--tx-3)">(unchecked = receive all)</span></div>
+          <div class="wh-events-grid">
+            <div class="ev-group-label">Auth</div>
+            <label class="ev-cb"><input type="checkbox" value="login.success" style="accent-color:var(--ac)"> login.success</label>
+            <label class="ev-cb"><input type="checkbox" value="login.failure" style="accent-color:var(--ac)"> login.failure</label>
+            <label class="ev-cb"><input type="checkbox" value="login.passkey" style="accent-color:var(--ac)"> login.passkey</label>
+            <label class="ev-cb"><input type="checkbox" value="otp.failed" style="accent-color:var(--ac)"> otp.failed</label>
+            <label class="ev-cb"><input type="checkbox" value="totp.failed" style="accent-color:var(--ac)"> totp.failed</label>
+            <label class="ev-cb"><input type="checkbox" value="totp.recovery_used" style="accent-color:var(--ac)"> totp.recovery_used</label>
+            <div class="ev-group-label">Account changes</div>
+            <label class="ev-cb"><input type="checkbox" value="password.changed" style="accent-color:var(--ac)"> password.changed</label>
+            <label class="ev-cb"><input type="checkbox" value="totp.enrolled" style="accent-color:var(--ac)"> totp.enrolled</label>
+            <label class="ev-cb"><input type="checkbox" value="totp.revoked" style="accent-color:var(--ac)"> totp.revoked</label>
+            <label class="ev-cb"><input type="checkbox" value="passkey.registered" style="accent-color:var(--ac)"> passkey.registered</label>
+            <label class="ev-cb"><input type="checkbox" value="passkey.revoked" style="accent-color:var(--ac)"> passkey.revoked</label>
+            <label class="ev-cb"><input type="checkbox" value="password.reset_requested" style="accent-color:var(--ac)"> password.reset_requested</label>
+            <label class="ev-cb"><input type="checkbox" value="password.reset_completed" style="accent-color:var(--ac)"> password.reset_completed</label>
+            <div class="ev-group-label">Admin actions</div>
+            <label class="ev-cb"><input type="checkbox" value="user.created" style="accent-color:var(--ac)"> user.created</label>
+            <label class="ev-cb"><input type="checkbox" value="user.disabled" style="accent-color:var(--ac)"> user.disabled</label>
+            <label class="ev-cb"><input type="checkbox" value="user.enabled" style="accent-color:var(--ac)"> user.enabled</label>
+            <label class="ev-cb"><input type="checkbox" value="admin.password_set" style="accent-color:var(--ac)"> admin.password_set</label>
+            <label class="ev-cb"><input type="checkbox" value="session.revoked" style="accent-color:var(--ac)"> session.revoked</label>
+          </div>
+        </div>
+      </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
+
+{{else}}
+<div class="card">
+  <div class="empty">
+    <div class="ic-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+    <h4>No webhooks configured</h4>
+    <p>Add a webhook to receive notifications when events occur.</p>
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-webhook-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+      Add webhook
+    </button>
+  </div>
+</div>
+{{end}}
+
+<dialog id="new-webhook-dialog" style="max-width:560px">
+  <div class="modal-head">
+    <h2>Add webhook</h2>
+    <p>Send notifications to an external service when events occur.</p>
+  </div>
+  <form method="POST" action="/admin/webhooks" class="wh-form" data-events="all">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="events" class="events-out" value="all">
+    <div class="modal-body">
+      <label class="field"><span class="field-label">Name</span><input class="input" type="text" name="name" required autofocus placeholder="e.g. Discord alerts"></label>
+      <label class="field"><span class="field-label">Type</span>
+        <select class="input wh-type-sel" name="type">
+          <option value="discord">Discord</option>
+          <option value="slack">Slack</option>
+          <option value="telegram">Telegram</option>
+          <option value="ntfy">ntfy (public)</option>
+          <option value="ntfy_self">ntfy (self-hosted)</option>
+          <option value="generic">Generic JSON</option>
+          <option value="email">Email</option>
+        </select>
+      </label>
+      <div class="wh-f wh-url"><label class="field"><span class="field-label">Webhook URL</span><input class="input" type="text" name="url" placeholder="https://"></label></div>
+      <div class="wh-f wh-token" style="display:none"><label class="field"><span class="field-label">Bot token</span><input class="input" type="text" name="token" placeholder="123456:ABC..."></label></div>
+      <div class="wh-f wh-chat" style="display:none"><label class="field"><span class="field-label">Chat ID</span><input class="input" type="text" name="chat_id" placeholder="-100123456789"></label></div>
+      <div class="wh-f wh-topic" style="display:none"><label class="field"><span class="field-label">Topic</span><input class="input" type="text" name="topic" placeholder="my-gatekeeper-alerts"></label></div>
+      <div class="wh-f wh-uname" style="display:none"><label class="field"><span class="field-label">Username (optional)</span><input class="input" type="text" name="username"></label></div>
+      <div class="wh-f wh-pass" style="display:none"><label class="field"><span class="field-label">Password (optional)</span><input class="input" type="password" name="password"></label></div>
+      <div class="wh-f wh-email" style="display:none"><label class="field"><span class="field-label">Recipient email</span><input class="input" type="email" name="email_to" placeholder="admin@example.com"></label></div>
+      <div style="padding-top:12px;border-top:1px solid var(--bd-0)">
+        <div style="font-size:12px;font-weight:500;color:var(--tx-1);margin-bottom:8px">Events <span style="font-weight:400;color:var(--tx-3)">(unchecked = receive all)</span></div>
+        <div class="wh-events-grid">
+          <div class="ev-group-label">Auth</div>
+          <label class="ev-cb"><input type="checkbox" value="login.success" style="accent-color:var(--ac)"> login.success</label>
+          <label class="ev-cb"><input type="checkbox" value="login.failure" style="accent-color:var(--ac)"> login.failure</label>
+          <label class="ev-cb"><input type="checkbox" value="login.passkey" style="accent-color:var(--ac)"> login.passkey</label>
+          <label class="ev-cb"><input type="checkbox" value="otp.failed" style="accent-color:var(--ac)"> otp.failed</label>
+          <label class="ev-cb"><input type="checkbox" value="totp.failed" style="accent-color:var(--ac)"> totp.failed</label>
+          <label class="ev-cb"><input type="checkbox" value="totp.recovery_used" style="accent-color:var(--ac)"> totp.recovery_used</label>
+          <div class="ev-group-label">Account changes</div>
+          <label class="ev-cb"><input type="checkbox" value="password.changed" style="accent-color:var(--ac)"> password.changed</label>
+          <label class="ev-cb"><input type="checkbox" value="totp.enrolled" style="accent-color:var(--ac)"> totp.enrolled</label>
+          <label class="ev-cb"><input type="checkbox" value="totp.revoked" style="accent-color:var(--ac)"> totp.revoked</label>
+          <label class="ev-cb"><input type="checkbox" value="passkey.registered" style="accent-color:var(--ac)"> passkey.registered</label>
+          <label class="ev-cb"><input type="checkbox" value="passkey.revoked" style="accent-color:var(--ac)"> passkey.revoked</label>
+          <label class="ev-cb"><input type="checkbox" value="password.reset_requested" style="accent-color:var(--ac)"> password.reset_requested</label>
+          <label class="ev-cb"><input type="checkbox" value="password.reset_completed" style="accent-color:var(--ac)"> password.reset_completed</label>
+          <div class="ev-group-label">Admin actions</div>
+          <label class="ev-cb"><input type="checkbox" value="user.created" style="accent-color:var(--ac)"> user.created</label>
+          <label class="ev-cb"><input type="checkbox" value="user.disabled" style="accent-color:var(--ac)"> user.disabled</label>
+          <label class="ev-cb"><input type="checkbox" value="user.enabled" style="accent-color:var(--ac)"> user.enabled</label>
+          <label class="ev-cb"><input type="checkbox" value="admin.password_set" style="accent-color:var(--ac)"> admin.password_set</label>
+          <label class="ev-cb"><input type="checkbox" value="session.revoked" style="accent-color:var(--ac)"> session.revoked</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Add webhook</button>
+    </div>
+  </form>
+</dialog>
+
+<style>
+.wh-events-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:12px; }
+.ev-group-label { grid-column:1/-1; font-size:10.5px; font-weight:600; color:var(--tx-3); text-transform:uppercase; letter-spacing:0.06em; margin:8px 0 2px; }
+.ev-cb { display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0; color:var(--tx-2); }
+</style>
+<script>
+function whToggleFields(form) {
+  var t = form.querySelector('.wh-type-sel').value;
+  form.querySelectorAll('.wh-f').forEach(function(el) { el.style.display = 'none'; });
+  if (t === 'discord' || t === 'slack' || t === 'ntfy_self' || t === 'generic') form.querySelector('.wh-url').style.display = '';
+  if (t === 'telegram') { form.querySelector('.wh-token').style.display = ''; form.querySelector('.wh-chat').style.display = ''; }
+  if (t === 'ntfy' || t === 'ntfy_self') form.querySelector('.wh-topic').style.display = '';
+  if (t === 'ntfy_self') { form.querySelector('.wh-uname').style.display = ''; form.querySelector('.wh-pass').style.display = ''; }
+  if (t === 'email') form.querySelector('.wh-email').style.display = '';
+}
+document.querySelectorAll('.wh-form').forEach(function(form) {
+  var sel = form.querySelector('.wh-type-sel');
+  if (sel) { whToggleFields(form); sel.addEventListener('change', function() { whToggleFields(form); }); }
+  var currentEvents = form.dataset.events || 'all';
+  if (currentEvents !== 'all') {
+    var active = currentEvents.split(',').map(function(s){ return s.trim(); });
+    form.querySelectorAll('.ev-cb input[type=checkbox]').forEach(function(cb) {
+      cb.checked = active.indexOf(cb.value) !== -1;
+    });
+  }
+  form.addEventListener('submit', function() {
+    var checked = [];
+    form.querySelectorAll('.ev-cb input[type=checkbox]:checked').forEach(function(cb) { checked.push(cb.value); });
+    form.querySelector('.events-out').value = checked.length ? checked.join(',') : 'all';
+  });
+});
+</script>
+{{end}}

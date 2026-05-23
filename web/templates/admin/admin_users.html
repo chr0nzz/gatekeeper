@@ -8,10 +8,10 @@
     <p class="sub">{{.Total}} total accounts</p>
   </div>
   <div class="head-actions">
-    <a href="/admin/users/new" class="btn btn-primary btn-sm">
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-user-dialog">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       New user
-    </a>
+    </button>
   </div>
 </div>
 {{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
@@ -38,8 +38,8 @@
         <th style="width:36px"></th>
         <th>Email</th>
         <th>2-factor</th>
-        <th>Passkeys</th>
-        <th>Sessions</th>
+        <th style="width:80px">Passkeys</th>
+        <th style="width:80px">Sessions</th>
         <th>Last seen</th>
         <th>Status</th>
         <th style="width:100px"></th>
@@ -49,10 +49,16 @@
     {{range .Users}}
     <tr data-searchable="{{.Email}} {{.ID}}" data-status="{{.Status}}" data-totp="{{if .TOTPEnabled}}1{{else}}0{{end}}">
       <td>
-        <div style="width:26px;height:26px;border-radius:6px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--tx-1)">{{.Initials}}</div>
+        <div style="width:26px;height:26px;border-radius:6px;overflow:hidden;flex-shrink:0">
+          {{if .HasAvatar}}<img src="/avatar/{{.ID}}" width="26" height="26" style="object-fit:cover;display:block">
+          {{else}}<div style="width:26px;height:26px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--tx-1)">{{.Initials}}</div>{{end}}
+        </div>
       </td>
       <td>
-        <a href="/admin/users/{{.ID}}" style="font-weight:500;color:var(--tx-0)">{{.Email}}</a>
+        <div>
+          <a href="/admin/users/{{.ID}}" style="font-weight:500;color:var(--tx-0)">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</a>
+          {{if .DisplayName}}<div style="font-size:11px;color:var(--tx-3)">{{.Email}}</div>{{end}}
+        </div>
       </td>
       <td>
         {{if .TOTPEnabled}}
@@ -63,9 +69,9 @@
           <span class="pill pill-warn"><span class="dot"></span>Email only</span>
         {{end}}
       </td>
-      <td class="num" style="color:var(--tx-2)"><span style="color:var(--tx-3)">-</span></td>
-      <td class="num">{{if gt .Sessions 0}}{{.Sessions}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
-      <td style="color:var(--tx-2)"><span style="color:var(--tx-3)">-</span></td>
+      <td>{{if gt .Passkeys 0}}{{.Passkeys}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
+      <td>{{if gt .Sessions 0}}{{.Sessions}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
+      <td style="color:var(--tx-2)">{{if .LastSeen}}{{.LastSeen}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
       <td>
         {{if eq .Status "active"}}<span class="pill pill-ok"><span class="dot"></span>Active</span>
         {{else if eq .Status "locked"}}<span class="pill pill-warn"><span class="dot"></span>Locked</span>
@@ -92,11 +98,69 @@
     </div>
     <h4>No users yet</h4>
     <p>Create the first account to get started.</p>
-    <a href="/admin/users/new" class="btn btn-primary btn-sm">
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-user-dialog">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
       New user
-    </a>
+    </button>
   </div>
   {{end}}
 </div>
+
+<dialog id="new-user-dialog">
+  <div class="modal-head">
+    <h2>New user</h2>
+    <p>Create an account with a password or email-code-only sign in.</p>
+  </div>
+  <form method="POST" action="/admin/users">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Email address</span>
+        <input class="input" type="email" name="email" required autofocus autocomplete="off" placeholder="person@company.com">
+        <span class="field-hint">Must match the allowed email domains setting if configured.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Sign-in method</span>
+        <div class="seg" style="margin:0">
+          <button type="button" class="on" onclick="setNewUserMethod(this,'password')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
+            Email + Password
+          </button>
+          <button type="button" onclick="setNewUserMethod(this,'passwordless')">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
+            Email Only
+          </button>
+        </div>
+        <input type="hidden" name="passwordless" id="nu-method-input" value="0">
+        <span class="field-hint" id="nu-method-hint">User signs in with password and a second factor.</span>
+      </label>
+      <div id="nu-pw-section">
+        <label class="field">
+          <span class="field-label">Temporary password <span style="color:var(--tx-3);font-weight:400">(12+ characters)</span></span>
+          <input class="input" type="password" name="password" id="nu-pw-input" minlength="12" autocomplete="new-password" placeholder="••••••••••••">
+          <span class="field-hint">The user should change this on first sign-in.</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create user</button>
+    </div>
+  </form>
+</dialog>
+<script>
+function setNewUserMethod(btn, method) {
+  btn.closest('.seg').querySelectorAll('button').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  var pl = method === 'passwordless';
+  document.getElementById('nu-method-input').value = pl ? '1' : '0';
+  var section = document.getElementById('nu-pw-section');
+  var pwInput = document.getElementById('nu-pw-input');
+  if (pl) { section.style.display = 'none'; pwInput.removeAttribute('required'); }
+  else { section.style.display = ''; pwInput.setAttribute('required', ''); }
+  document.getElementById('nu-method-hint').textContent = pl
+    ? 'User signs in with an email code only. No password required.'
+    : 'User signs in with password and a second factor.';
+}
+</script>
 {{end}}

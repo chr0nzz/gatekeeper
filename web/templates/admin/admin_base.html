@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/static/css/main.css">
-<script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);})();</script>
+<script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);})();</script>
 </head>
 <body>
 <div class="shell">
@@ -34,6 +34,10 @@
         <span>OIDC Clients</span>
         {{if .SidebarClientCount}}<span class="count">{{.SidebarClientCount}}</span>{{end}}
       </a>
+      <a class="side-link {{if eq .ActivePage "policies"}}active{{end}}" href="/admin/policies">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+        <span>Policies</span>
+      </a>
       <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
         <span>Audit Log</span>
@@ -41,9 +45,17 @@
     </div>
     <div class="side-section">
       <div class="side-label">System</div>
+      <a class="side-link {{if eq .ActivePage "integrations"}}active{{end}}" href="/admin/integrations">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        <span>Integrations</span>
+      </a>
       <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
         <span>Settings</span>
+      </a>
+      <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="/admin/webhooks">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2"/></svg>
+        <span>Webhooks</span>
       </a>
       <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="/admin/profile">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/></svg>
@@ -85,6 +97,18 @@
           <span>Search anything…</span>
           <span class="kbd">⌘K</span>
         </button>
+        <div class="accent-drop" id="accent-drop">
+          <button class="accent-trigger" id="accent-trigger" title="Accent color">
+            <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
+          </button>
+          <div class="accent-menu" id="accent-menu">
+            <button class="ac-swatch" data-accent="indigo" style="--sc:#4338ca" title="Indigo"></button>
+            <button class="ac-swatch" data-accent="blue"   style="--sc:#2563eb" title="Blue"></button>
+            <button class="ac-swatch" data-accent="purple" style="--sc:#7c3aed" title="Purple"></button>
+            <button class="ac-swatch" data-accent="teal"   style="--sc:#0d9488" title="Teal"></button>
+            <button class="ac-swatch" data-accent="rose"   style="--sc:#e11d48" title="Rose"></button>
+          </div>
+        </div>
         <div class="theme-toggle">
           <button data-theme="light" title="Light">
             <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>

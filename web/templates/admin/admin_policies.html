@@ -1,0 +1,115 @@
+{{template "admin_base" .}}
+{{define "title"}}Policies - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Policies</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Policies</h1>
+    <p class="sub">Control which users can access each application.</p>
+  </div>
+  <div class="head-actions">
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-policy-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New policy
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th style="width:90px">Members</th>
+        <th>Used by</th>
+        <th>ForwardAuth URL</th>
+        <th style="width:80px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Policies}}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:6px;background:var(--ac-bg);border:1px solid var(--ac-bd);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--ac)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+          </div>
+          <span style="font-weight:500">{{.Name}}</span>
+        </div>
+      </td>
+      <td style="color:var(--tx-2)">{{if .Description}}{{.Description}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
+      <td>{{.MemberCount}}</td>
+      <td>
+        {{if .Clients}}
+        <div style="display:flex;flex-direction:column;gap:2px">
+          {{range .Clients}}<span style="font-size:11px;color:var(--tx-2)">{{.}}</span>{{end}}
+        </div>
+        {{else}}<span style="color:var(--tx-3)">-</span>{{end}}
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-2)">?policy={{.Name}}</span>
+          <button class="btn btn-ghost btn-xs" data-copy="{{$.BaseURL}}/auth/verify?policy={{.Name}}" title="Copy full URL">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+          </button>
+        </div>
+      </td>
+      <td>
+        <div class="row-actions">
+          <a href="/admin/policies/{{.ID}}" class="btn btn-ghost btn-xs">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <form method="POST" action="/admin/policies/{{.ID}}/delete" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete policy {{.Name}}?')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="6">
+        <div class="empty">
+          <div class="ic-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg></div>
+          <h4>No policies yet</h4>
+          <p>Create a policy to restrict which users can access specific apps.</p>
+          <button class="btn btn-primary btn-sm" data-open-dialog="new-policy-dialog">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+            New policy
+          </button>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+
+<dialog id="new-policy-dialog">
+  <div class="modal-head">
+    <h2>New policy</h2>
+    <p>A policy is a named list of users. Attach it to an OIDC client or ForwardAuth route to restrict access.</p>
+  </div>
+  <form method="POST" action="/admin/policies">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input class="input" type="text" name="name" required autofocus placeholder="e.g. internal-team">
+        <span class="field-hint">Lowercase letters, digits, dashes. Used in the ?policy= URL parameter.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="text" name="description" placeholder="What this policy restricts">
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create policy</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

@@ -32,6 +32,7 @@ export default defineConfig({
             { label: 'Passkeys', link: '/auth/passkeys' },
             { label: 'Password recovery', link: '/auth/password-recovery' },
             { label: 'Password change', link: '/auth/password-change' },
+            { label: 'Your profile', link: '/auth/profile' },
           ],
         },
         {
@@ -47,6 +48,9 @@ export default defineConfig({
             { label: 'Managing users', link: '/admin/managing-users' },
             { label: 'Audit log', link: '/admin/audit-log' },
             { label: 'Settings', link: '/admin/settings' },
+            { label: 'Access policies', link: '/admin/policies' },
+            { label: 'Webhooks', link: '/admin/webhooks' },
+            { label: 'Notification log', link: '/admin/notifications' },
           ],
         },
         {

@@ -14,7 +14,7 @@ If allowed email domains are configured in `/admin/settings`, the email must mat
 
 ## User list
 
-The user list shows each user's email, 2FA status (TOTP enrolled / email only / none), session count, status (active / locked / disabled), and a copy button for the user ID.
+The user list shows each user's avatar, display name (or email if none is set), 2FA status (TOTP enrolled / email only / none), session count, status (active / locked / disabled), and a copy button for the user ID.
 
 Use the filter chips to narrow to **Active**, **Locked**, **Disabled**, or **No 2FA** users. Type in the search box to filter by email or user ID.
 

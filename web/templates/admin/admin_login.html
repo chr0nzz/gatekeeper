@@ -6,20 +6,38 @@
 <title>Admin sign in - GateKeeper</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/static/css/main.css">
-<script>(function(){var t=localStorage.getItem('gk_theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}else if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.setAttribute('data-theme','dark');}else{document.documentElement.setAttribute('data-theme','light');}})();</script>
+<script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);})();</script>
 </head>
 <body>
 <div class="auth-wrap bg-grid">
   <div class="auth-toggle">
-    <div class="theme-toggle compact">
-      <button data-theme="light" title="Light"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15"/></svg></button>
-      <button data-theme="auto" title="System"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="9" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg></button>
-      <button data-theme="dark" title="Dark"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg></button>
+    <div class="accent-drop" id="accent-drop">
+      <button class="accent-trigger" id="accent-trigger" title="Accent color">
+        <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
+      </button>
+      <div class="accent-menu" id="accent-menu">
+        <button class="ac-swatch" data-accent="indigo" style="--sc:#4338ca" title="Indigo"></button>
+        <button class="ac-swatch" data-accent="blue"   style="--sc:#2563eb" title="Blue"></button>
+        <button class="ac-swatch" data-accent="purple" style="--sc:#7c3aed" title="Purple"></button>
+        <button class="ac-swatch" data-accent="teal"   style="--sc:#0d9488" title="Teal"></button>
+        <button class="ac-swatch" data-accent="rose"   style="--sc:#e11d48" title="Rose"></button>
+      </div>
+    </div>
+    <div class="theme-toggle">
+      <button data-theme="light" title="Light">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+      </button>
+      <button data-theme="auto" title="System">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg>
+      </button>
+      <button data-theme="dark" title="Dark">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
     </div>
   </div>
-  <div class="auth-top">
+  <div class="auth-top" style="justify-content:center">
     <div class="gk-mark">
       <div class="gk-glyph"><i></i></div>
       <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
@@ -27,9 +45,11 @@
     <span style="font-size:11px;color:var(--tx-3);margin-left:8px;padding:2px 8px;border:1px solid var(--bd-1);border-radius:100px">Admin</span>
   </div>
   <div class="auth-card">
-    <h1>Admin sign in</h1>
-    <p class="lede">Access the GateKeeper administration panel.</p>
-    {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
+    <h1 style="text-align:center">Admin sign in</h1>
+    <p class="lede" style="text-align:center">Access the GateKeeper administration panel.</p>
+
+    {{if .Error}}<div class="alert alert-err" style="margin-bottom:16px"><b>{{.Error}}</b></div>{{end}}
+
     <form method="POST" action="/admin/login" style="margin-top:4px">
       <label class="field">
         <span class="field-label">Email address</span>
@@ -39,10 +59,82 @@
         <span class="field-label">Password</span>
         <input class="input" type="password" name="password" required autocomplete="current-password" placeholder="••••••••••••">
       </label>
-      <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px;margin-top:4px">Sign in</button>
+      <button type="submit" class="btn btn-primary" style="width:100%;height:42px;font-size:14px;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px">
+        Sign in
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </button>
     </form>
+
+    <div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--tx-3);font-size:12px">
+      <div style="flex:1;height:1px;background:var(--bd-0)"></div>
+      OR
+      <div style="flex:1;height:1px;background:var(--bd-0)"></div>
+    </div>
+
+    <button id="passkey-btn" class="btn btn-ghost" style="width:100%;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:15px;height:15px"><circle cx="8" cy="9" r="4"/><path d="M14 9h6M17 9v6M2 20c0-3 2.7-5 6-5"/></svg>
+      Continue with passkey
+    </button>
   </div>
 </div>
 <script src="/static/js/theme.js"></script>
+<script>
+(function(){
+  var btn = document.getElementById('passkey-btn');
+  if(!btn) return;
+  btn.addEventListener('click', async function() {
+    btn.disabled = true;
+    btn.textContent = 'Waiting for passkey…';
+    try {
+      var beginRes = await fetch('/admin/login/passkey/begin', {method:'POST'});
+      if(!beginRes.ok) throw new Error('Failed to begin');
+      var sessID = beginRes.headers.get('X-Passkey-Session');
+      var options = await beginRes.json();
+      options.publicKey.challenge = base64url(options.publicKey.challenge);
+      if(options.publicKey.allowCredentials) {
+        options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(function(c){
+          c.id = base64url(c.id); return c;
+        });
+      }
+      var cred = await navigator.credentials.get(options);
+      var body = {
+        id: cred.id, rawId: bufToB64(cred.rawId), type: cred.type,
+        response: {
+          authenticatorData: bufToB64(cred.response.authenticatorData),
+          clientDataJSON: bufToB64(cred.response.clientDataJSON),
+          signature: bufToB64(cred.response.signature),
+          userHandle: cred.response.userHandle ? bufToB64(cred.response.userHandle) : null
+        }
+      };
+      var finishRes = await fetch('/admin/login/passkey/finish', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Passkey-Session':sessID},
+        body: JSON.stringify(body)
+      });
+      if(!finishRes.ok) throw new Error('Authentication failed');
+      var redirect = finishRes.headers.get('X-Redirect') || '/admin';
+      window.location.href = redirect;
+    } catch(e) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:15px;height:15px"><circle cx="8" cy="9" r="4"/><path d="M14 9h6M17 9v6M2 20c0-3 2.7-5 6-5"/></svg> Continue with passkey';
+    }
+  });
+  function base64url(val) {
+    if(typeof val === 'string') {
+      var bin = atob(val.replace(/-/g,'+').replace(/_/g,'/'));
+      var bytes = new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      return bytes.buffer;
+    }
+    return val;
+  }
+  function bufToB64(buf) {
+    var bytes = new Uint8Array(buf);
+    var str = '';
+    for(var i=0;i<bytes.byteLength;i++) str+=String.fromCharCode(bytes[i]);
+    return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+})();
+</script>
 </body>
 </html>

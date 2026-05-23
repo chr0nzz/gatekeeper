@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/chr0nzz/gatekeeper/internal/auth"
+	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 )
 
 // ForwardAuth is the Traefik ForwardAuth middleware handler.
@@ -16,16 +17,18 @@ type ForwardAuth struct {
 	baseURL      string
 	secretKey    string
 	cookieDomain string
+	policies     *queries.PolicyStore
 }
 
 // NewForwardAuth creates a ForwardAuth handler.
-func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey, cookieDomain string) *ForwardAuth {
+func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore) *ForwardAuth {
 	return &ForwardAuth{
 		sessions:     sessions,
 		db:           db,
 		baseURL:      baseURL,
 		secretKey:    secretKey,
 		cookieDomain: cookieDomain,
+		policies:     policies,
 	}
 }
 
@@ -51,6 +54,14 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	if email == "" {
 		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
 		return
+	}
+
+	if policyName := r.URL.Query().Get("policy"); policyName != "" {
+		ok, err := f.policies.IsUserInPolicy(r.Context(), policyName, data.UserID)
+		if err != nil || !ok {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
 	}
 
 	w.Header().Set("X-Auth-User", data.UserID)

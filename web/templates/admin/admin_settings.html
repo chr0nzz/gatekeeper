@@ -12,7 +12,7 @@
 {{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
 {{if .Success}}<div class="alert alert-ok" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14l-4-4 1.5-1.5L11 13l5-5L17.5 9.5z"/></svg><div><b>{{.Success}}</b></div></div>{{end}}
 
-<form id="settings-form" method="POST" action="/admin/settings" style="max-width:820px">
+<form id="settings-form" method="POST" action="/admin/settings">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   <div class="card" style="margin-bottom:14px">
@@ -69,48 +69,15 @@
 
   <div class="card" style="margin-bottom:14px">
     <div class="card-head">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a5 5 0 1 1-5 5h-3v3H4v3H1v-3l9-9c.6-1.7 2.4-3 4.5-3z"/></svg>
-      <h3>OIDC provider</h3>
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+      <h3>Audit log</h3>
     </div>
     <div class="card-body">
-      <dl class="dlist">
-        <dt>Issuer</dt>
-        <dd style="display:flex;align-items:center;gap:6px">
-          <span class="mono" style="font-family:var(--font-mono);font-size:12px">{{.BaseURL}}</span>
-          <button type="button" class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
-          </button>
-        </dd>
-        <dt>Discovery</dt>
-        <dd style="display:flex;align-items:center;gap:6px">
-          <span class="mono" style="font-family:var(--font-mono);font-size:12px">/.well-known/openid-configuration</span>
-          <button type="button" class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/.well-known/openid-configuration">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
-          </button>
-        </dd>
-        <dt>Signing</dt>
-        <dd>RS256 · keys rotate every 30 days</dd>
-        <dt>Scopes</dt>
-        <dd><span class="tag">openid</span> <span class="tag">email</span> <span class="tag">profile</span> <span class="tag">offline_access</span></dd>
-      </dl>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:18px">
-    <div class="card-head">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
-      <h3>Traefik ForwardAuth</h3>
-    </div>
-    <div class="card-body">
-      <p style="font-size:12px;color:var(--tx-2);margin:0 0 12px">Drop this middleware in your dynamic config to protect any service:</p>
-      <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:14px;font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">http:
-  middlewares:
-    gk-auth:
-      forwardAuth:
-        address: "{{.BaseURL}}/auth/verify"
-        authResponseHeaders:
-          - X-Auth-User
-          - X-Auth-Email</pre>
+      <label class="field" style="margin-bottom:0">
+        <span class="field-label">Retention period (days)</span>
+        <input class="input" type="number" name="audit_retention_days" value="{{.AuditRetentionDays}}" min="0" max="3650" placeholder="90" style="max-width:140px">
+        <span class="field-hint">Events older than this are deleted automatically. Set to 0 to keep all events forever.</span>
+      </label>
     </div>
   </div>
 

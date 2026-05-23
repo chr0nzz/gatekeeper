@@ -19,6 +19,8 @@ type User struct {
 	TOTPEnabled         bool
 	Disabled            bool
 	CreatedAt           int64
+	DisplayName         string
+	HasAvatar           bool
 }
 
 // UserStore handles user CRUD operations.
@@ -48,7 +50,7 @@ func (u *UserStore) Create(ctx context.Context, email, passwordHash string, forc
 // GetByEmail retrieves a user by email.
 func (u *UserStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 	return u.scan(u.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
 		 FROM users WHERE email=?`,
 		email,
 	))
@@ -57,7 +59,7 @@ func (u *UserStore) GetByEmail(ctx context.Context, email string) (*User, error)
 // GetByID retrieves a user by ID.
 func (u *UserStore) GetByID(ctx context.Context, id string) (*User, error) {
 	return u.scan(u.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
 		 FROM users WHERE id=?`,
 		id,
 	))
@@ -66,7 +68,7 @@ func (u *UserStore) GetByID(ctx context.Context, id string) (*User, error) {
 // List returns all users.
 func (u *UserStore) List(ctx context.Context) ([]User, error) {
 	rows, err := u.db.QueryContext(ctx,
-		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
 		 FROM users ORDER BY email`,
 	)
 	if err != nil {
@@ -77,13 +79,39 @@ func (u *UserStore) List(ctx context.Context) ([]User, error) {
 	for rows.Next() {
 		var usr User
 		var ph sql.NullString
-		if err := rows.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.CreatedAt); err != nil {
+		if err := rows.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar); err != nil {
 			return nil, err
 		}
 		usr.PasswordHash = ph.String
 		users = append(users, usr)
 	}
 	return users, nil
+}
+
+// SetDisplayName updates a user's display name.
+func (u *UserStore) SetDisplayName(ctx context.Context, userID, name string) error {
+	_, err := u.db.ExecContext(ctx,
+		`UPDATE users SET display_name=?, updated_at=? WHERE id=?`,
+		name, time.Now().Unix(), userID,
+	)
+	return err
+}
+
+// SetAvatar stores a cached avatar image for a user.
+func (u *UserStore) SetAvatar(ctx context.Context, userID string, data []byte, mime string) error {
+	_, err := u.db.ExecContext(ctx,
+		`UPDATE users SET avatar_data=?, avatar_mime=?, updated_at=? WHERE id=?`,
+		data, mime, time.Now().Unix(), userID,
+	)
+	return err
+}
+
+// GetAvatar returns the cached avatar image for a user.
+func (u *UserStore) GetAvatar(ctx context.Context, userID string) ([]byte, string) {
+	var data []byte
+	var mime string
+	u.db.QueryRowContext(ctx, `SELECT avatar_data, avatar_mime FROM users WHERE id=?`, userID).Scan(&data, &mime)
+	return data, mime
 }
 
 // SetPassword updates a user's password hash.
@@ -122,7 +150,7 @@ func (u *UserStore) Delete(ctx context.Context, userID string) error {
 func (u *UserStore) scan(row *sql.Row) (*User, error) {
 	var usr User
 	var ph sql.NullString
-	err := row.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.CreatedAt)
+	err := row.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -22,6 +23,7 @@ import (
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 	"github.com/chr0nzz/gatekeeper/internal/mailer"
 	gkmiddleware "github.com/chr0nzz/gatekeeper/internal/middleware"
+	"github.com/chr0nzz/gatekeeper/internal/notify"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
 	"github.com/chr0nzz/gatekeeper/internal/ui"
 	"github.com/zitadel/oidc/v3/pkg/op"
@@ -55,6 +57,7 @@ func main() {
 	defer database.Close()
 
 	auditLog := audit.New(database)
+	webhookStore := queries.NewWebhookStore(database)
 	userStore := queries.NewUserStore(database)
 	adminStore := queries.NewAdminStore(database)
 	adminSessStore := queries.NewAdminSessionStore(database)
@@ -96,6 +99,9 @@ func main() {
 		}
 	})
 
+	notifyService := notify.New(database, webhookStore, m)
+	auditLog.AddHook(notifyService.Dispatch)
+
 	parsedBase, err := url.Parse(cfg.BaseURL)
 	if err != nil {
 		slog.Error("invalid BASE_URL", "err", err)
@@ -107,6 +113,8 @@ func main() {
 		slog.Error("passkey store error", "err", err)
 		os.Exit(1)
 	}
+
+	policyStore := queries.NewPolicyStore(database)
 
 	oidcStorage := oidcstore.NewStorage(database, cfg.BaseURL)
 	if err := oidcStorage.EnsureSigningKey(context.Background()); err != nil {
@@ -122,11 +130,11 @@ func main() {
 
 	staticSub, _ := fs.Sub(gatekeeper.Assets, "web/static")
 
-	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain)
+	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore)
 
-	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain)
+	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, envSMTP,
-		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours})
+		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours}, policyStore, webhookStore, notifyService)
 
 	secretKey := [32]byte{}
 	copy(secretKey[:], []byte(cfg.SecretKey))
@@ -179,6 +187,23 @@ func main() {
 		ticker := time.NewTicker(15 * time.Minute)
 		for range ticker.C {
 			sessionStore.CleanExpired(context.Background())
+		}
+	}()
+
+	go func() {
+		purgeAuditLog := func() {
+			val := settingsStore.Get(context.Background(), "audit_retention_days", "90")
+			n, err := strconv.Atoi(val)
+			if err != nil || n <= 0 {
+				return
+			}
+			cutoff := time.Now().AddDate(0, 0, -n).Unix()
+			database.ExecContext(context.Background(), `DELETE FROM audit_log WHERE created_at < ?`, cutoff)
+		}
+		purgeAuditLog()
+		ticker := time.NewTicker(24 * time.Hour)
+		for range ticker.C {
+			purgeAuditLog()
 		}
 	}()
 

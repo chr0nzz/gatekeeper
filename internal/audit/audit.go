@@ -30,17 +30,28 @@ const (
 	EventUserCreated        = "user.created"
 	EventUserDisabled       = "user.disabled"
 	EventUserEnabled        = "user.enabled"
+	EventUserDeleted        = "user.deleted"
 	EventAdminPasswordSet   = "admin.password_set"
+	EventAdminLogin         = "admin.login"
+	EventAdminLoginFailed   = "admin.login_failed"
+	EventAdminLoginPasskey  = "admin.login.passkey"
+	EventAdminLogout        = "admin.logout"
 )
 
 // Logger writes audit events to the database.
 type Logger struct {
-	db *sql.DB
+	db    *sql.DB
+	hooks []func(event, userID, actorID, ip, detail string)
 }
 
 // New creates an audit Logger.
 func New(db *sql.DB) *Logger {
 	return &Logger{db: db}
+}
+
+// AddHook registers a function called after each audit event is logged.
+func (l *Logger) AddHook(fn func(event, userID, actorID, ip, detail string)) {
+	l.hooks = append(l.hooks, fn)
 }
 
 // Log writes an audit event. userID and actorID may be empty.
@@ -52,6 +63,9 @@ func (l *Logger) Log(ctx context.Context, event, userID, actorID, ip, detail str
 		nullStr(userID), nullStr(actorID), nullStr(ip), nullStr(detail),
 		time.Now().Unix(),
 	)
+	for _, h := range l.hooks {
+		go h(event, userID, actorID, ip, detail)
+	}
 }
 
 func nullStr(s string) interface{} {

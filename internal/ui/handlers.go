@@ -1,10 +1,13 @@
 package ui
 
 import (
+	"crypto/md5"
 	"database/sql"
 	"encoding/base64"
-	"log/slog"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -36,6 +39,7 @@ type Handlers struct {
 	auditLog       *audit.Logger
 	renderer       *templates.Renderer
 	oidcStorage    *oidcstore.Storage
+	policies       *queries.PolicyStore
 	baseURL        string
 	issuer         string
 	secretKey      string
@@ -58,12 +62,14 @@ func New(
 	renderer *templates.Renderer,
 	oidcStorage *oidcstore.Storage,
 	baseURL, issuer, secretKey, cookieDomain string,
+	policies *queries.PolicyStore,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, sessions: sessions, otps: otps, totp: totp,
 		passkeys: passkeys, resetStore: resetStore, settings: settings,
 		trustedDevices: trustedDevices, mailer: m,
 		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
+		policies: policies,
 		baseURL: baseURL, issuer: issuer,
 		secretKey: secretKey, cookieDomain: cookieDomain,
 	}
@@ -87,6 +93,7 @@ func (h *Handlers) requireSession(next http.Handler) http.Handler {
 // Mount registers all user-facing routes.
 func (h *Handlers) Mount(r chi.Router) {
 	r.Get("/", h.GetHome)
+	r.Get("/avatar/{id}", h.GetAvatar)
 	r.Get("/login", h.GetLogin)
 	r.Post("/login", h.PostLogin)
 	r.Get("/login/otp", h.GetOTP)
@@ -106,6 +113,8 @@ func (h *Handlers) Mount(r chi.Router) {
 
 	r.Group(func(r chi.Router) {
 		r.Use(h.requireSession)
+		r.Post("/profile/name", h.PostProfileName)
+		r.Post("/profile/avatar", h.PostProfileAvatar)
 		r.Get("/profile/password", h.GetChangePassword)
 		r.Post("/profile/password", h.PostChangePassword)
 		r.Get("/profile/totp/enroll", h.GetTOTPEnroll)
@@ -131,10 +140,12 @@ func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	passkeys, _ := h.passkeys.ListCredentials(r.Context(), user.ID)
+	avatarErr := r.URL.Query().Get("avatar_err")
 	h.render(w, "home.html", map[string]interface{}{
 		"User":        user,
 		"Passkeys":    passkeys,
 		"TOTPEnabled": user.TOTPEnabled,
+		"AvatarErr":   avatarErr,
 	})
 }
 
@@ -333,6 +344,18 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 	h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, "", r.RemoteAddr, "")
 
 	if data.OIDCRequestID != "" && h.oidcStorage != nil {
+		req, reqErr := h.oidcStorage.AuthRequestByID(r.Context(), data.OIDCRequestID)
+		if reqErr == nil && req != nil {
+			var policyID string
+			h.db.QueryRowContext(r.Context(), `SELECT policy_id FROM oidc_clients WHERE client_id=?`, req.GetClientID()).Scan(&policyID)
+			if policyID != "" {
+				ok, _ := h.policies.IsUserInPolicyByID(r.Context(), policyID, data.UserID)
+				if !ok {
+					h.render(w, "access_denied.html", map[string]interface{}{"AppName": req.GetClientID()})
+					return
+				}
+			}
+		}
 		if err := h.oidcStorage.AuthRequestDone(r.Context(), data.OIDCRequestID, data.UserID); err != nil {
 			slog.Error("oidc auth request done failed", "id", data.OIDCRequestID, "err", err)
 		} else {
@@ -534,6 +557,64 @@ func (h *Handlers) PostLogout(w http.ResponseWriter, r *http.Request) {
 		h.sessions.Destroy(w, r, sessID)
 	}
 	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+func (h *Handlers) GetAvatar(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	data, mime := h.users.GetAvatar(r.Context(), id)
+	if len(data) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	if mime == "" {
+		mime = "image/jpeg"
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write(data)
+}
+
+func (h *Handlers) PostProfileName(w http.ResponseWriter, r *http.Request) {
+	data, _, err := h.sessions.Get(r)
+	if err != nil || data == nil || data.UserID == "" {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("display_name"))
+	h.users.SetDisplayName(r.Context(), data.UserID, name)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *Handlers) PostProfileAvatar(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := h.sessions.Get(r)
+	if err != nil || sess == nil || sess.UserID == "" {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	user, _ := h.users.GetByID(r.Context(), sess.UserID)
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	hash := md5.Sum([]byte(strings.ToLower(strings.TrimSpace(user.Email))))
+	gravatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%x?s=160&d=404", hash)
+	resp, err := http.Get(gravatarURL) //nolint
+	if err != nil || resp.StatusCode != 200 {
+		http.Redirect(w, r, "/?avatar_err=not_found", http.StatusFound)
+		return
+	}
+	defer resp.Body.Close()
+	imgData, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
+	if err != nil || len(imgData) == 0 {
+		http.Redirect(w, r, "/?avatar_err=fetch_failed", http.StatusFound)
+		return
+	}
+	mime := resp.Header.Get("Content-Type")
+	if idx := strings.Index(mime, ";"); idx > 0 {
+		mime = mime[:idx]
+	}
+	h.users.SetAvatar(r.Context(), sess.UserID, imgData, mime)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func (h *Handlers) GetChangePassword(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,255 @@
+{{template "admin_base" .}}
+{{define "title"}}Integrations - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Integrations</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Integrations</h1>
+    <p class="sub">Connect any app to GateKeeper via OIDC or reverse proxy forward auth.</p>
+  </div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+
+    <div class="card" id="oidc">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        <h3>OIDC endpoints</h3>
+        <span style="margin-left:auto;font-size:11.5px;color:var(--tx-3)">Use these when configuring an app that supports OIDC / OAuth2</span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="table" style="font-size:12px">
+          <thead><tr><th style="width:190px">Field</th><th>Value</th><th style="width:32px"></th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--tx-2);font-weight:500">Issuer / Base URL</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+            <tr><td style="color:var(--tx-2);font-weight:500">Discovery document</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/.well-known/openid-configuration</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/.well-known/openid-configuration"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+            <tr><td style="color:var(--tx-2);font-weight:500">Authorization URL</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/authorize</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/authorize"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+            <tr><td style="color:var(--tx-2);font-weight:500">Token URL</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/oauth/token</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/oauth/token"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+            <tr><td style="color:var(--tx-2);font-weight:500">Userinfo URL</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/userinfo</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/userinfo"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+            <tr><td style="color:var(--tx-2);font-weight:500">JWKS URI</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}/keys</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/keys"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:10px 16px;border-top:1px solid var(--bd-0);display:flex;flex-wrap:wrap;gap:16px;font-size:11.5px;color:var(--tx-3)">
+        <span>Signing: <span style="color:var(--tx-2)">RS256</span></span>
+        <span>Key rotation: <span style="color:var(--tx-2)">every 30 days</span></span>
+        <span>Grant: <span style="color:var(--tx-2)">Authorization Code + PKCE only</span></span>
+        <span>Scopes: <span class="tag" style="font-size:10px">openid</span> <span class="tag" style="font-size:10px">email</span> <span class="tag" style="font-size:10px">profile</span> <span class="tag" style="font-size:10px">offline_access</span></span>
+        <a href="/admin/clients" style="margin-left:auto;color:var(--ac);font-size:11.5px">Manage clients</a>
+      </div>
+    </div>
+
+    <div class="card" id="forwardauth">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h7"/></svg>
+        <h3>Reverse proxy auth</h3>
+        <span style="margin-left:auto;font-size:11.5px;color:var(--tx-3)">Protect any service - no app changes needed</span>
+      </div>
+      <div style="border-bottom:1px solid var(--bd-0)">
+        <div class="seg" style="margin:0;border:0;border-radius:0;padding:10px 16px;background:transparent;gap:6px">
+          <button type="button" class="int-tab on" data-tab="traefik">Traefik</button>
+          <button type="button" class="int-tab" data-tab="nginx">Nginx</button>
+          <button type="button" class="int-tab" data-tab="caddy">Caddy</button>
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="traefik">
+        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">1. Define the middleware</div>
+            <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">http:
+  middlewares:
+    gk-auth:
+      forwardAuth:
+        address: "{{.BaseURL}}/auth/verify"
+        authResponseHeaders:
+          - X-Auth-User
+          - X-Auth-Email</pre>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">2. Apply to a router</div>
+            <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">http:
+  routers:
+    my-app:
+      rule: "Host(`app.example.com`)"
+      middlewares:
+        - gk-auth@file
+      service: my-app</pre>
+          </div>
+        </div>
+        <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
+          On success GateKeeper sets <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-User</span> (user ID) and <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-Email</span> headers on the forwarded request.
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="nginx" style="display:none">
+        <div style="padding:16px">
+          <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">server {
+    listen 443 ssl;
+    server_name app.example.com;
+
+    location / {
+        auth_request     /gk-auth;
+        auth_request_set $auth_user  $upstream_http_x_auth_user;
+        auth_request_set $auth_email $upstream_http_x_auth_email;
+        proxy_set_header X-Auth-User  $auth_user;
+        proxy_set_header X-Auth-Email $auth_email;
+        proxy_pass       http://localhost:3000;
+    }
+
+    location = /gk-auth {
+        internal;
+        proxy_pass              {{.BaseURL}}/auth/verify;
+        proxy_pass_request_body off;
+        proxy_set_header        Content-Length "";
+    }
+}</pre>
+        </div>
+        <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
+          Requires <span style="font-family:var(--font-mono);color:var(--tx-2)">ngx_http_auth_request_module</span> - included in most Nginx builds.
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="caddy" style="display:none">
+        <div style="padding:16px">
+          <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">app.example.com {
+    forward_auth {{.BaseURL}} {
+        uri /auth/verify
+        copy_headers X-Auth-User X-Auth-Email
+    }
+    reverse_proxy localhost:3000
+}</pre>
+        </div>
+        <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
+          Requires Caddy v2.5+ with the <span style="font-family:var(--font-mono);color:var(--tx-2)">forward_auth</span> directive.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="policies">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+        <h3>Access policies</h3>
+        <span style="margin-left:auto;font-size:11.5px;color:var(--tx-3)">Restrict specific routes to named user groups</span>
+      </div>
+      <div style="border-bottom:1px solid var(--bd-0)">
+        <div class="seg" style="margin:0;border:0;border-radius:0;padding:10px 16px;background:transparent;gap:6px">
+          <button type="button" class="int-tab on" data-tab="pol-traefik">Traefik</button>
+          <button type="button" class="int-tab" data-tab="pol-nginx">Nginx</button>
+          <button type="button" class="int-tab" data-tab="pol-caddy">Caddy</button>
+        </div>
+      </div>
+      <div style="padding:14px 16px;border-bottom:1px solid var(--bd-0);background:var(--bg-2);font-size:12px;color:var(--tx-2);line-height:1.6">
+        Add <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1)">?policy=<i>name</i></span> to the verify URL. GateKeeper returns <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1)">403</span> if the user is not in that policy. Create and manage policies in <a href="/admin/policies" style="color:var(--ac)">Policies</a>.
+      </div>
+
+      <div class="int-panel" data-panel="pol-traefik">
+        <div style="padding:16px">
+          <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">http:
+  middlewares:
+    gk-open:
+      forwardAuth:
+        address: "{{.BaseURL}}/auth/verify"
+        authResponseHeaders: [X-Auth-User, X-Auth-Email]
+    gk-staff:
+      forwardAuth:
+        address: "{{.BaseURL}}/auth/verify?policy=staff"
+        authResponseHeaders: [X-Auth-User, X-Auth-Email]
+    gk-admins:
+      forwardAuth:
+        address: "{{.BaseURL}}/auth/verify?policy=admins"
+        authResponseHeaders: [X-Auth-User, X-Auth-Email]</pre>
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="pol-nginx" style="display:none">
+        <div style="padding:16px">
+          <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">location /admin {
+    auth_request /gk-admins;
+    proxy_pass   http://localhost:3000;
+}
+
+location / {
+    auth_request /gk-staff;
+    proxy_pass   http://localhost:3000;
+}
+
+location = /gk-admins {
+    internal;
+    proxy_pass              {{.BaseURL}}/auth/verify?policy=admins;
+    proxy_pass_request_body off;
+    proxy_set_header        Content-Length "";
+}
+
+location = /gk-staff {
+    internal;
+    proxy_pass              {{.BaseURL}}/auth/verify?policy=staff;
+    proxy_pass_request_body off;
+    proxy_set_header        Content-Length "";
+}</pre>
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="pol-caddy" style="display:none">
+        <div style="padding:16px">
+          <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">app.example.com {
+    handle /admin* {
+        forward_auth {{.BaseURL}} {
+            uri /auth/verify?policy=admins
+            copy_headers X-Auth-User X-Auth-Email
+        }
+        reverse_proxy localhost:3000
+    }
+
+    handle {
+        forward_auth {{.BaseURL}} {
+            uri /auth/verify?policy=staff
+            copy_headers X-Auth-User X-Auth-Email
+        }
+        reverse_proxy localhost:3000
+    }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+</div>
+
+<script>
+document.querySelectorAll('.int-tab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var tab = btn.dataset.tab;
+    var card = btn.closest('.card');
+    card.querySelectorAll('.int-tab').forEach(function(b) { b.classList.toggle('on', b === btn); });
+    card.querySelectorAll('.int-panel').forEach(function(p) { p.style.display = p.dataset.panel === tab ? '' : 'none'; });
+  });
+});
+
+document.querySelectorAll('pre').forEach(function(pre) {
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative';
+  pre.parentNode.insertBefore(wrap, pre);
+  wrap.appendChild(pre);
+  var btn = document.createElement('button');
+  btn.title = 'Copy';
+  btn.style.cssText = 'position:absolute;top:7px;right:7px;background:var(--bg-3);border:1px solid var(--bd-1);border-radius:5px;padding:3px 6px;cursor:pointer;display:flex;align-items:center;gap:4px;font-size:10px;color:var(--tx-2);opacity:0;transition:opacity .15s';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg> Copy';
+  wrap.addEventListener('mouseenter', function() { btn.style.opacity = '1'; });
+  wrap.addEventListener('mouseleave', function() { btn.style.opacity = '0'; });
+  btn.addEventListener('click', function() {
+    navigator.clipboard.writeText(pre.textContent.trim()).then(function() {
+      btn.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg> Copied';
+      setTimeout(function() {
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg> Copy';
+      }, 1500);
+    });
+  });
+  wrap.appendChild(btn);
+});
+</script>
+<style>
+.int-tab { background:transparent;border:0;cursor:pointer;padding:5px 12px;border-radius:6px;font-size:12.5px;color:var(--tx-2);font-weight:500;transition:background .12s,color .12s; }
+.int-tab:hover { color:var(--tx-0); }
+.int-tab.on { background:var(--bg-3);color:var(--tx-0); }
+</style>
+{{end}}

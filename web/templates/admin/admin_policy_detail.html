@@ -1,0 +1,114 @@
+{{template "admin_base" .}}
+{{define "title"}}{{.Policy.Name}} - Policies - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/policies">Policies</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.Policy.Name}}</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>{{.Policy.Name}}</h1>
+    {{if .Policy.Description}}<p class="sub">{{.Policy.Description}}</p>{{end}}
+  </div>
+  <div class="head-actions">
+    <form method="POST" action="/admin/policies/{{.Policy.ID}}/delete">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-quiet btn-sm" style="color:var(--danger)" onclick="return confirm('Delete policy {{.Policy.Name}}? This cannot be undone.')">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+        Delete policy
+      </button>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start">
+  <div>
+    <div class="card" style="margin-bottom:18px">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--bd-0);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-weight:600;font-size:13px">Members</div>
+        <span style="font-size:12px;color:var(--tx-3)">{{len .Members}} {{if eq (len .Members) 1}}user{{else}}users{{end}}</span>
+      </div>
+      {{if .Members}}
+      <table class="table">
+        <tbody>
+        {{range .Members}}
+        <tr>
+          <td style="width:36px">
+            <div style="width:26px;height:26px;border-radius:6px;overflow:hidden;flex-shrink:0">
+              {{if .HasAvatar}}<img src="/avatar/{{.ID}}" width="26" height="26" style="object-fit:cover;display:block">
+              {{else}}<div style="width:26px;height:26px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--tx-1)">{{slice .Email 0 2}}</div>{{end}}
+            </div>
+          </td>
+          <td>
+            <div style="font-weight:500;color:var(--tx-0)">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</div>
+            {{if .DisplayName}}<div style="font-size:11px;color:var(--tx-3)">{{.Email}}</div>{{end}}
+          </td>
+          <td style="width:80px">
+            <form method="POST" action="/admin/policies/{{$.Policy.ID}}/members/{{.ID}}/remove">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <div class="empty" style="padding:32px 0">
+        <p style="color:var(--tx-3)">No members yet. Add users below.</p>
+      </div>
+      {{end}}
+    </div>
+
+    {{if .NonMembers}}
+    <div class="card">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--bd-0)">
+        <div style="font-weight:600;font-size:13px">Add user</div>
+      </div>
+      <form method="POST" action="/admin/policies/{{.Policy.ID}}/members" style="padding:16px 18px;display:flex;gap:8px;align-items:center">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <select class="input" name="user_id" style="flex:1">
+          <option value="">Select a user...</option>
+          {{range .NonMembers}}
+          <option value="{{.ID}}">{{if .DisplayName}}{{.DisplayName}} ({{.Email}}){{else}}{{.Email}}{{end}}</option>
+          {{end}}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+      </form>
+    </div>
+    {{end}}
+  </div>
+
+  <div>
+    {{if .Clients}}
+    <div class="card">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--bd-0)">
+        <div style="font-weight:600;font-size:13px">OIDC clients using this policy</div>
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+        {{range .Clients}}
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx-1)">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
+          {{.}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h7"/></svg>
+        <h3>ForwardAuth usage</h3>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--tx-2);margin:0 0 10px">Use this as the <span style="font-family:var(--font-mono);font-size:11px">address</span> in your reverse proxy middleware config:</p>
+        <div style="display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:6px;padding:10px 12px">
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1);flex:1;word-break:break-all">{{.BaseURL}}/auth/verify?policy={{.Policy.Name}}</span>
+          <button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}/auth/verify?policy={{.Policy.Name}}">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+          </button>
+        </div>
+        <p style="font-size:12px;color:var(--tx-2);margin:12px 0 0">See the <a href="/admin/integrations" style="color:var(--ac)">Integrations</a> page for Traefik, Nginx, and Caddy config examples.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

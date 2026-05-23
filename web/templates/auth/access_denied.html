@@ -1,0 +1,22 @@
+{{template "base" .}}
+{{define "title"}}Access denied - GateKeeper{{end}}
+{{define "content"}}
+<div class="auth-wrap bg-grid">
+  <div class="auth-top">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+  </div>
+  <div class="auth-card" style="text-align:center">
+    <div style="width:56px;height:56px;margin:8px auto 20px;border-radius:14px;background:var(--danger-bg,#fef2f2);border:1px solid var(--danger-bd,#fecaca);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger,#ef4444)" stroke-width="1.5" style="width:28px;height:28px"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1>Access denied</h1>
+    {{if .AppName}}<p class="lede" style="margin-bottom:20px">Your account does not have access to <strong>{{.AppName}}</strong>.</p>
+    {{else}}<p class="lede" style="margin-bottom:20px">Your account does not have permission to access this application.</p>{{end}}
+    <a href="/logout" class="btn btn-ghost" style="width:100%;height:40px;font-size:14px;justify-content:center">Sign in with a different account</a>
+  </div>
+</div>
+<script src="/static/js/theme.js"></script>
+{{end}}

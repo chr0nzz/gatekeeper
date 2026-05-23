@@ -35,10 +35,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var auditRows = document.querySelectorAll('[data-audit-row]');
   var auditDayHeaders = document.querySelectorAll('[data-day-header]');
   var kindBtns = document.querySelectorAll('[data-kind]');
-  var eventTypeBtns = document.querySelectorAll('[data-event-type]');
+  var methodBtns = document.querySelectorAll('[data-method]');
   var auditCount = document.getElementById('audit-count');
   var activeKind = 'all';
-  var activeEvent = 'all';
+  var activeMethod = 'all';
 
   function applyAuditFilters() {
     var q = auditSearch ? auditSearch.value.toLowerCase() : '';
@@ -46,11 +46,11 @@ document.addEventListener('DOMContentLoaded', function () {
     auditRows.forEach(function (row) {
       var text = (row.dataset.auditRow || '').toLowerCase();
       var kind = row.dataset.kind || '';
-      var prefix = row.dataset.eventPrefix || '';
+      var method = row.dataset.method || '';
       var matchesSearch = !q || text.includes(q);
       var matchesKind = activeKind === 'all' || kind === activeKind;
-      var matchesEvent = activeEvent === 'all' || prefix === activeEvent;
-      var show = matchesSearch && matchesKind && matchesEvent;
+      var matchesMethod = activeMethod === 'all' || method === activeMethod;
+      var show = matchesSearch && matchesKind && matchesMethod;
       row.style.display = show ? '' : 'none';
       if (show) visible++;
     });
@@ -64,7 +64,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  if (auditSearch) auditSearch.addEventListener('input', applyAuditFilters);
+  var clearBtn = document.getElementById('audit-search-clear');
+
+  function updateClearBtn() {
+    if (clearBtn) clearBtn.style.display = auditSearch && auditSearch.value ? '' : 'none';
+  }
+
+  if (auditSearch) {
+    auditSearch.addEventListener('input', function () { applyAuditFilters(); updateClearBtn(); });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      if (auditSearch) { auditSearch.value = ''; applyAuditFilters(); updateClearBtn(); }
+    });
+  }
 
   kindBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -74,10 +88,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  eventTypeBtns.forEach(function (btn) {
+  methodBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      activeEvent = btn.dataset.eventType;
-      eventTypeBtns.forEach(function (b) { b.classList.toggle('on', b.dataset.eventType === activeEvent); });
+      activeMethod = btn.dataset.method;
+      methodBtns.forEach(function (b) { b.classList.toggle('on', b.dataset.method === activeMethod); });
       applyAuditFilters();
     });
   });
@@ -85,7 +99,41 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('.audit-filter-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var event = btn.dataset.event;
-      if (auditSearch) { auditSearch.value = event; applyAuditFilters(); }
+      if (!auditSearch) return;
+      if (auditSearch.value === event) {
+        auditSearch.value = '';
+      } else {
+        auditSearch.value = event;
+      }
+      applyAuditFilters();
+      updateClearBtn();
     });
   });
+
+  var exportBtn = document.getElementById('audit-export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function () {
+      var rows = [];
+      auditRows.forEach(function (row) {
+        if (row.style.display === 'none') return;
+        var cells = row.querySelectorAll('span');
+        rows.push({
+          time:   (cells[0] && cells[0].textContent.trim()) || '',
+          event:  row.dataset.auditRow ? row.dataset.auditRow.split(' ')[0] : '',
+          user:   (cells[2] && cells[2].textContent.trim()) || '',
+          email:  (cells[3] && cells[3].textContent.trim()) || '',
+          method: (cells[4] && cells[4].textContent.trim()) || '',
+          detail: (cells[5] && cells[5].textContent.trim()) || '',
+          ip:     (cells[6] && cells[6].textContent.trim()) || '',
+          kind:   row.dataset.kind || ''
+        });
+      });
+      var blob = new Blob([JSON.stringify(rows, null, 2)], {type: 'application/json'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'audit-log-' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  }
 });
