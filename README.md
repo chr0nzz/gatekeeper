@@ -5,9 +5,11 @@ A lightweight, self-hosted authentication server. Single Docker container, SQLit
 ## What it does
 
 - **OIDC identity provider** - any app that supports OpenID Connect can delegate login to GateKeeper. Users authenticate once; apps receive a verified identity token. Works with Grafana, Jellyfin, Portainer, Traefik Manager, or any standard OIDC client.
-- **ForwardAuth middleware** - protect apps at the reverse proxy level without touching their code. Works with Traefik.
+- **ForwardAuth middleware** - protect apps at the reverse proxy level without touching their code. Works with Traefik and any proxy that supports ForwardAuth.
+- **Access policies** - create named policies, assign users to them, and attach policies to OIDC clients or ForwardAuth routes to restrict which users can access each app.
 - **Multiple sign-in methods** - password + email OTP, passwordless email OTP, TOTP (authenticator app), passkeys (WebAuthn).
-- **Admin UI** - manage users, OIDC clients, settings, and audit log from a browser. No config files or CLI.
+- **Webhooks** - push notifications to Discord, Slack, Telegram, ntfy, or any HTTP endpoint when auth and admin events occur.
+- **Admin UI** - manage users, OIDC clients, policies, webhooks, settings, and audit log from a browser. No config files or CLI.
 
 ## Quick start
 

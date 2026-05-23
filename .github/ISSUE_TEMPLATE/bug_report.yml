@@ -1,0 +1,67 @@
+name: Bug report
+description: Something is not working correctly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before reporting, check the [existing issues](https://github.com/chr0nzz/gatekeeper/issues) to avoid duplicates.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: GateKeeper version (`v0.3.0`, `dev`, etc.)
+      placeholder: v0.3.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Docker (official image)
+        - Docker (self-built)
+        - Binary (built from source)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any relevant log output. Set `LOG_LEVEL=debug` for more detail.
+      render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Reverse proxy (Traefik version, config), browser, anything else relevant.
