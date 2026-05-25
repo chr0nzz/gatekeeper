@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="apple-touch-icon" href="/static/icons/icon-admin-180.png">
+<link rel="manifest" href="/manifest-admin.json">
+<meta name="theme-color" content="#09090b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GateKeeper">
 <link rel="stylesheet" href="/static/css/main.css">
 <script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);})();</script>
 </head>
@@ -41,6 +49,11 @@
       <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
         <span>Audit Log</span>
+      </a>
+      <a class="side-link {{if eq .ActivePage "notifications"}}active{{end}}" href="/admin/notifications">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Notifications</span>
+        {{if gt .UnreadNotifications 0}}<span class="count">{{.UnreadNotifications}}</span>{{end}}
       </a>
     </div>
     <div class="side-section">
@@ -87,6 +100,12 @@
 
   <div class="main">
     <header class="topbar">
+      <a href="/admin" class="topbar-logo" style="text-decoration:none">
+        <div class="gk-mark" style="padding:0">
+          <div class="gk-glyph"><i></i></div>
+          <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+        </div>
+      </a>
       <div class="crumbs">
         <span>Admin</span>
         {{block "crumbs" .}}{{end}}
@@ -97,6 +116,10 @@
           <span>Search anything…</span>
           <span class="kbd">⌘K</span>
         </button>
+        <a href="/admin/notifications" class="bell-btn" title="Notifications">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          {{if gt .UnreadNotifications 0}}<span class="bell-dot"></span>{{end}}
+        </a>
         <div class="accent-drop" id="accent-drop">
           <button class="accent-trigger" id="accent-trigger" title="Accent color">
             <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
@@ -120,6 +143,9 @@
             <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
           </button>
         </div>
+        <button class="hamburger" id="hamburger" aria-label="Open navigation">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
       </div>
     </header>
     <div class="page">
@@ -128,27 +154,85 @@
   </div>
 </div>
 
-<nav class="mobile-nav">
-  <a class="mobile-nav-item {{if eq .ActivePage "dashboard"}}active{{end}}" href="/admin">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
-    <span>Dashboard</span>
-  </a>
-  <a class="mobile-nav-item {{if eq .ActivePage "users"}}active{{end}}" href="/admin/users">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
-    <span>Users</span>
-  </a>
-  <a class="mobile-nav-item {{if eq .ActivePage "clients"}}active{{end}}" href="/admin/clients">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
-    <span>Clients</span>
-  </a>
-  <a class="mobile-nav-item {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
-    <span>Audit</span>
-  </a>
-  <a class="mobile-nav-item {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings">
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
-    <span>Settings</span>
-  </a>
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<nav class="mobile-drawer" id="mobile-drawer">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px 18px">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+    <button class="btn btn-quiet btn-sm" id="drawer-close" aria-label="Close navigation" style="padding:0;width:32px;height:32px">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="side-section">
+    <a class="side-link {{if eq .ActivePage "dashboard"}}active{{end}}" href="/admin">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
+      <span>Dashboard</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "users"}}active{{end}}" href="/admin/users">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+      <span>Users</span>
+      {{if .SidebarUserCount}}<span class="count">{{.SidebarUserCount}}</span>{{end}}
+    </a>
+    <a class="side-link {{if eq .ActivePage "clients"}}active{{end}}" href="/admin/clients">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
+      <span>OIDC Clients</span>
+      {{if .SidebarClientCount}}<span class="count">{{.SidebarClientCount}}</span>{{end}}
+    </a>
+    <a class="side-link {{if eq .ActivePage "policies"}}active{{end}}" href="/admin/policies">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+      <span>Policies</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+      <span>Audit Log</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "notifications"}}active{{end}}" href="/admin/notifications">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span>Notifications</span>
+      {{if gt .UnreadNotifications 0}}<span class="count">{{.UnreadNotifications}}</span>{{end}}
+    </a>
+  </div>
+  <div class="side-section">
+    <div class="side-label">System</div>
+    <a class="side-link {{if eq .ActivePage "integrations"}}active{{end}}" href="/admin/integrations">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+      <span>Integrations</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+      <span>Settings</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="/admin/webhooks">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2"/></svg>
+      <span>Webhooks</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="/admin/profile">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/></svg>
+      <span>My account</span>
+    </a>
+  </div>
+  <div class="sidebar-foot">
+    <form method="POST" action="/admin/logout">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-quiet btn-sm" style="width:100%;justify-content:flex-start;gap:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:14px;height:14px;flex-shrink:0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h4M15 17l5-5-5-5M20 12H9"/></svg>
+        Sign out
+      </button>
+    </form>
+    {{if .AdminEmail}}
+    <a href="/admin/profile" style="text-decoration:none;margin-top:6px;display:block">
+      <div class="user-chip">
+        <div class="av">{{slice .AdminEmail 0 2}}</div>
+        <div class="meta">
+          <b>{{.AdminEmail}}</b>
+          <span>admin{{if .AppVersion}} · v{{.AppVersion}}{{end}}</span>
+        </div>
+      </div>
+    </a>
+    {{end}}
+  </div>
 </nav>
 
 <div class="toast-stack" id="toast-stack"></div>
@@ -170,7 +254,36 @@
 <script src="/static/js/admin.js"></script>
 <script src="/static/js/admin_search.js"></script>
 <script>
+(function() {
+  var hamburger = document.getElementById('hamburger');
+  var overlay = document.getElementById('drawer-overlay');
+  var drawer = document.getElementById('mobile-drawer');
+  var closeBtn = document.getElementById('drawer-close');
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  if (hamburger) hamburger.addEventListener('click', openDrawer);
+  if (overlay) overlay.addEventListener('click', closeDrawer);
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+
+  if (drawer) {
+    drawer.querySelectorAll('a.side-link').forEach(function(link) {
+      link.addEventListener('click', closeDrawer);
+    });
+  }
+})();
 </script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}</script>
 </body>
 </html>
 {{end}}

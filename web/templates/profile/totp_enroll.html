@@ -16,6 +16,7 @@
       <code style="font-family:var(--font-mono);font-size:12px;display:block;padding:10px;background:var(--bg-2);border-radius:6px;margin-top:8px;word-break:break-all;letter-spacing:0.05em">{{.Secret}}</code>
     </details>
     <form method="POST" action="/profile/totp/enroll">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="secret" value="{{.Secret}}">
       <label class="field"><span class="field-label">Confirm with your app's code</span><input class="input mono" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:0.2em;font-size:20px;text-align:center"></label>
       <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px">Confirm and enable</button>

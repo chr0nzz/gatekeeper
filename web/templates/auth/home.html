@@ -1,115 +1,256 @@
 {{template "base" .}}
 {{define "title"}}Home - GateKeeper{{end}}
 {{define "content"}}
-<div class="auth-wrap bg-grid">
-  <div class="auth-toggle">
-    <div class="accent-drop" id="accent-drop">
-      <button class="accent-trigger" id="accent-trigger" title="Accent color">
-        <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
-      </button>
-      <div class="accent-menu" id="accent-menu">
-        <button class="ac-swatch" data-accent="indigo" style="--sc:#4338ca" title="Indigo"></button>
-        <button class="ac-swatch" data-accent="blue"   style="--sc:#2563eb" title="Blue"></button>
-        <button class="ac-swatch" data-accent="purple" style="--sc:#7c3aed" title="Purple"></button>
-        <button class="ac-swatch" data-accent="teal"   style="--sc:#0d9488" title="Teal"></button>
-        <button class="ac-swatch" data-accent="rose"   style="--sc:#e11d48" title="Rose"></button>
-      </div>
+<div style="min-height:100vh;background:var(--bg-0)">
+  <header class="user-home-hdr" style="height:56px;padding:0 32px;display:flex;align-items:center;border-bottom:1px solid var(--bd-0);background:var(--bg-1)">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
     </div>
-    <div class="theme-toggle">
-      <button data-theme="light" title="Light">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
-      </button>
-      <button data-theme="auto" title="System">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg>
-      </button>
-      <button data-theme="dark" title="Dark">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-      </button>
-    </div>
-  </div>
-  <div class="auth-card" style="max-width:420px">
-
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px;text-align:center">
-      <div style="position:relative">
-        {{if .User.HasAvatar}}
-        <img src="/avatar/{{.User.ID}}" width="72" height="72" style="border-radius:50%;object-fit:cover;border:2px solid var(--bd-1)">
-        {{else}}
-        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac-hi));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:var(--ac-fg)">{{slice .User.Email 0 1}}</div>
-        {{end}}
-        <form method="POST" action="/profile/avatar" style="position:absolute;bottom:0;right:0">
-          <button type="submit" title="{{if .User.HasAvatar}}Refresh Gravatar{{else}}Load avatar from Gravatar{{end}}" style="width:22px;height:22px;border-radius:50%;background:var(--bg-1);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
-          </button>
-        </form>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+      <span class="user-email" style="font-size:12px;color:var(--tx-2)">{{.User.Email}}</span>
+      <div class="theme-toggle">
+        <button data-theme="light" title="Light">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+        </button>
+        <button data-theme="auto" title="System">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v12H3zM8 21h8M12 17v4"/></svg>
+        </button>
+        <button data-theme="dark" title="Dark">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
       </div>
-      <div>
-        <div style="font-weight:600;font-size:15px;color:var(--tx-0)">{{if .User.DisplayName}}{{.User.DisplayName}}{{else}}{{.User.Email}}{{end}}</div>
-        {{if .User.DisplayName}}<div style="font-size:12px;color:var(--tx-3)">{{.User.Email}}</div>{{end}}
-      </div>
-    </div>
-
-    <button id="manage-btn" onclick="toggleManage()" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;gap:6px;margin-bottom:0">
-      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-3c0 .6-.1 1.2-.2 1.8l2 1.6-2 3.4-2.4-.9c-.9.7-2 1.2-3.1 1.5L13 22h-4l-.3-2.6c-1.1-.3-2.2-.8-3.1-1.5l-2.4.9-2-3.4 2-1.6C3.1 13.2 3 12.6 3 12s.1-1.2.2-1.8l-2-1.6 2-3.4 2.4.9C6.5 5.4 7.6 4.9 8.7 4.6L9 2h4l.3 2.6c1.1.3 2.2.8 3.1 1.5l2.4-.9 2 3.4-2 1.6c.1.6.2 1.2.2 1.8z"/></svg>
-      Manage account
-      <svg id="manage-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
-    </button>
-
-    <div id="manage-panel" style="display:none;margin-top:14px">
-      {{if .AvatarErr}}
-      <div class="alert alert-warn" style="margin-bottom:14px">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
-        <div>No Gravatar found for this email. <a href="https://gravatar.com" target="_blank" style="color:var(--ac)">Set one up</a> then try again.</div>
-      </div>
-      {{end}}
-
-      <form method="POST" action="/profile/name" style="margin-bottom:16px">
-        <label class="field" style="margin-bottom:8px">
-          <span class="field-label">Display name</span>
-          <input class="input" type="text" name="display_name" value="{{.User.DisplayName}}" placeholder="Your name" autocomplete="name">
-        </label>
-        <button type="submit" class="btn btn-ghost btn-sm">Save name</button>
+      <form method="POST" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <button type="submit" class="btn btn-ghost btn-sm">Sign out</button>
       </form>
+    </div>
+  </header>
 
-      <div style="border-top:1px solid var(--bd-0);padding-top:14px;display:flex;flex-direction:column;gap:6px">
-        <a href="/profile/password" class="btn btn-ghost btn-sm" style="justify-content:flex-start">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
-          Change password
-        </a>
-        {{if .TOTPEnabled}}
-          <a href="/profile/totp/disable" class="btn btn-ghost btn-sm" style="justify-content:flex-start">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM8 12v9l4-2 4 2v-9"/></svg>
-            Remove authenticator app
-          </a>
-        {{else}}
-          <a href="/profile/totp/enroll" class="btn btn-ghost btn-sm" style="justify-content:flex-start">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM8 12v9l4-2 4 2v-9"/></svg>
-            Set up authenticator app
-          </a>
-        {{end}}
-        <a href="/register/passkey" class="btn btn-ghost btn-sm" style="justify-content:flex-start">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
-          Add passkey
-          {{if .Passkeys}}<span style="margin-left:auto;color:var(--tx-3);font-size:11px">{{len .Passkeys}} registered</span>{{end}}
+  <div class="user-page" style="max-width:920px;margin:0 auto;padding:36px 24px">
+
+    {{if .AvatarErr}}
+    <div class="alert alert-warn" style="margin-bottom:20px">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
+      <div>No Gravatar found for this email. <a href="https://gravatar.com" target="_blank" style="color:var(--ac)">Set one up</a> then try again.</div>
+    </div>
+    {{end}}
+
+    <div class="user-page-head page-head" style="align-items:center;margin-bottom:28px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="position:relative;flex-shrink:0">
+          {{if .User.HasAvatar}}
+          <img src="/avatar/{{.User.ID}}" width="64" height="64" style="border-radius:50%;object-fit:cover;border:2px solid var(--bd-1)">
+          {{else}}
+          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac-hi));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;color:var(--ac-fg)">{{slice .User.Email 0 1}}</div>
+          {{end}}
+          <form method="POST" action="/profile/avatar" style="position:absolute;bottom:0;right:0;margin:0">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button type="submit" title="{{if .User.HasAvatar}}Refresh Gravatar{{else}}Load avatar from Gravatar{{end}}" style="width:22px;height:22px;border-radius:50%;background:var(--bg-1);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
+            </button>
+          </form>
+        </div>
+        <div>
+          <div style="font-size:26px;font-weight:600;font-family:var(--font-display);letter-spacing:-0.02em;color:var(--tx-0);line-height:1.1">{{if .User.DisplayName}}{{.User.DisplayName}}{{else}}{{.User.Email}}{{end}}</div>
+          {{if .User.DisplayName}}<div style="font-size:13px;color:var(--tx-2);margin-top:2px">{{.User.Email}}</div>{{end}}
+          <button onclick="document.getElementById('name-form').style.display=document.getElementById('name-form').style.display==='none'?'flex':'none'" class="btn btn-quiet btn-sm" style="margin-top:6px;padding-left:0;color:var(--tx-2)">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit name
+          </button>
+          <form id="name-form" method="POST" action="/profile/name" style="display:none;align-items:center;gap:6px;margin-top:4px">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input class="input" type="text" name="display_name" value="{{.User.DisplayName}}" placeholder="Your name" autocomplete="name" style="height:30px;font-size:12.5px;width:200px">
+            <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+          </form>
+        </div>
+      </div>
+      <div class="head-actions">
+        <a href="/" class="btn btn-ghost btn-sm">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
+          Refresh
         </a>
       </div>
+    </div>
 
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd-0)">
-        <form method="POST" action="/logout">
-          <button type="submit" class="btn btn-ghost btn-sm" style="width:100%;color:var(--danger)">Sign out</button>
-        </form>
+    <div class="stats">
+      <div class="stat">
+        <div class="label">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Account status
+        </div>
+        <div class="value" style="font-size:22px;margin-top:8px">Healthy</div>
+        <div class="delta">
+          {{if .TOTPEnabled}}
+          <span class="pill pill-ok"><span class="dot"></span>2-factor on</span>
+          {{else}}
+          <span class="pill pill-warn"><span class="dot"></span>No 2FA</span>
+          {{end}}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="label">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+          Passkeys
+        </div>
+        <div class="value">{{len .Passkeys}}</div>
+        <div class="delta">phishing-resistant</div>
+      </div>
+      <div class="stat">
+        <div class="label">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Active sessions
+        </div>
+        <div class="value">{{len .Sessions}}</div>
+        <div class="delta">across your devices</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        <h3>Sign-in methods</h3>
+        <span class="sub">· How you prove it's you</span>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;color:var(--tx-1);flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">
+              Password
+              <span class="pill pill-ok"><span class="dot"></span>Enabled</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--tx-2)">Used with email code or authenticator app</div>
+          </div>
+          <a href="/profile/password" class="btn btn-ghost btn-sm">Change</a>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;color:var(--tx-1);flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM8 12v9l4-2 4 2v-9"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">
+              Authenticator app (TOTP)
+              {{if .TOTPEnabled}}
+              <span class="pill pill-ok"><span class="dot"></span>Enrolled</span>
+              {{else}}
+              <span class="pill pill-off"><span class="dot"></span>Not set up</span>
+              {{end}}
+            </div>
+            <div style="font-size:11.5px;color:var(--tx-2)">
+              {{if .TOTPEnabled}}Adds a time-based code as second factor{{else}}Recommended over email codes{{end}}
+            </div>
+          </div>
+          {{if .TOTPEnabled}}
+          <a href="/profile/totp/disable" class="btn btn-ghost btn-sm">Remove</a>
+          {{else}}
+          <a href="/profile/totp/enroll" class="btn btn-ghost btn-sm">Set up</a>
+          {{end}}
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;color:var(--tx-1);flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">
+              Passkeys
+              {{if .Passkeys}}
+              <span class="pill pill-ok"><span class="dot"></span>{{len .Passkeys}} active</span>
+              {{else}}
+              <span class="pill pill-off"><span class="dot"></span>None registered</span>
+              {{end}}
+            </div>
+            <div style="font-size:11.5px;color:var(--tx-2)">{{len .Passkeys}} registered · biometric or security key</div>
+          </div>
+          <a href="/register/passkey" class="btn btn-ghost btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add passkey
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {{if .Passkeys}}
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+        <h3>Your passkeys</h3>
+      </div>
+      <div class="card-body tight">
+        {{range .Passkeys}}
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--bd-0)">
+          <div style="width:28px;height:28px;border-radius:6px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;color:var(--tx-1);flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">{{.Name}}</div>
+            <div style="font-size:11.5px;color:var(--tx-2)">Added {{unixdate .CreatedAt}}{{if not .LastUsed.IsZero}} · last used {{timeago .LastUsed}}{{end}}</div>
+          </div>
+          <form method="POST" action="/passkey/{{.ID}}/delete">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-sm" style="color:var(--tx-2)">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+              Remove
+            </button>
+          </form>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    <div class="card">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <h3>Active sessions</h3>
+        <div class="head-actions">
+          <form method="POST" action="/sessions/revoke-others">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button type="submit" class="btn btn-danger btn-sm">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+              Sign out all other sessions
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="card-body tight">
+        {{range .Sessions}}
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--bd-0)">
+          <div style="width:28px;height:28px;border-radius:6px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;color:var(--tx-1);flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">
+              {{.Device}}
+              {{if .Current}}<span class="pill pill-ok"><span class="dot"></span>This device</span>{{end}}
+            </div>
+            <div style="font-size:11.5px;color:var(--tx-2);font-family:var(--font-mono)">
+              {{if .IP}}{{.IP}} · {{end}}{{timeago .LastSeen}}
+            </div>
+          </div>
+          {{if not .Current}}
+          <form method="POST" action="/session/{{.ID}}/revoke">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+              Revoke
+            </button>
+          </form>
+          {{end}}
+        </div>
+        {{end}}
+        {{if not .Sessions}}
+        <div style="padding:24px;text-align:center;color:var(--tx-2);font-size:13px">No active sessions</div>
+        {{end}}
       </div>
     </div>
 
   </div>
 </div>
 <script src="/static/js/theme.js"></script>
-<script>
-function toggleManage(){
-  var p=document.getElementById('manage-panel'),c=document.getElementById('manage-chevron');
-  var open=p.style.display==='none';
-  p.style.display=open?'block':'none';
-  c.style.transform=open?'rotate(180deg)':'';
-}
-{{if .AvatarErr}}toggleManage();{{end}}
-</script>
+{{if .AvatarErr}}<script>document.getElementById('name-form').style.display='flex';</script>{{end}}
 {{end}}

@@ -46,15 +46,15 @@
       </div>
     </div>
     <div class="card-body">
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+      <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
         <label class="field"><span class="field-label">Host</span><input class="input mono" type="text" name="smtp_host" value="{{.SMTPHost}}" placeholder="smtp.example.com"></label>
         <label class="field"><span class="field-label">Port</span><input class="input mono" type="number" name="smtp_port" value="{{.SMTPPort}}" placeholder="587"></label>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label class="field"><span class="field-label">Username</span><input class="input mono" type="text" name="smtp_username" value="{{.SMTPUsername}}" autocomplete="off"></label>
         <label class="field"><span class="field-label">Password</span><input class="input" type="password" name="smtp_password" placeholder="•••••••• (unchanged)" autocomplete="new-password"></label>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label class="field" style="margin-bottom:0"><span class="field-label">From address</span><input class="input" type="email" name="smtp_from" value="{{.SMTPFrom}}" placeholder="noreply@example.com"></label>
         <label class="field" style="margin-bottom:0"><span class="field-label">TLS mode</span>
           <select class="input select" name="smtp_tls">

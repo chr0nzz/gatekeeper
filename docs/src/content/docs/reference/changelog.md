@@ -3,6 +3,23 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.4.0
+
+### Security hardening
+
+- **AES-256-GCM for TOTP secrets** - TOTP secrets are now encrypted with AES-256-GCM before storage. The encryption key is derived from `SECRET_KEY` using SHA-256. Existing secrets encrypted with the older XOR scheme are migrated automatically on next login - no action required.
+- **HMAC-SHA256 for OTP codes** - Email OTP codes are no longer stored as plaintext. They are stored as HMAC-SHA256 digests keyed with `SECRET_KEY`. A database dump without the key cannot reconstruct active codes.
+- **CSRF protection on all user endpoints** - All authenticated state-changing POST requests (password change, 2FA enrollment, session revocation, passkey deletion, name and avatar update) now validate a CSRF token. Previously only the admin panel validated CSRF.
+- **Login rate limiting** - The login endpoint now enforces an IP-based rate limit of 20 failed attempts per 15-minute window. Excess attempts receive an error before any password check.
+- **OTP issuance rate limit** - Each user can request at most 3 OTP codes per 10-minute window, preventing email flooding.
+- **Tightened Content-Security-Policy** - Added `object-src 'none'`, `base-uri 'self'`, `connect-src 'self'`, and `frame-ancestors 'none'`. Added `https://www.gravatar.com` to `img-src`.
+
+
+### User home redesign
+
+- **New user home layout** - The authenticated home page (`/`) is fully redesigned. It shows a header with the GateKeeper logo, email, and theme toggle; a page head with avatar, display name, and inline name edit; three stat cards (sign-in methods, passkeys, sessions); a sign-in methods card; a passkeys card; and an active sessions card.
+- **Session management** - Users can view all active sessions (device, browser, IP, last seen, time ago) and revoke individual sessions or all sessions except the current one directly from the home page.
+
 ## v0.3.0
 
 - **Webhooks** - Send push notifications to Discord, Slack, Telegram, ntfy (public and self-hosted), generic JSON endpoints, or email when auth and admin events occur. Configure per-webhook event subscriptions and test delivery inline from the Webhooks page.

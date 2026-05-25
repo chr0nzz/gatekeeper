@@ -1,10 +1,13 @@
 package templates
 
 import (
+	"fmt"
 	"html/template"
 	"io/fs"
+	"math"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Renderer renders page templates from an fs.FS, creating a fresh template set
@@ -14,6 +17,32 @@ type Renderer struct {
 	index     map[string]string
 	userBase  string
 	adminBase string
+}
+
+var funcMap = template.FuncMap{
+	"timeago": func(t time.Time) string {
+		if t.IsZero() {
+			return "never"
+		}
+		d := time.Since(t)
+		switch {
+		case d < 2*time.Minute:
+			return "just now"
+		case d < time.Hour:
+			return fmt.Sprintf("%dm ago", int(d.Minutes()))
+		case d < 24*time.Hour:
+			return fmt.Sprintf("%dh ago", int(d.Hours()))
+		default:
+			days := int(math.Round(d.Hours() / 24))
+			return fmt.Sprintf("%dd ago", days)
+		}
+	},
+	"unixdate": func(ts int64) string {
+		return time.Unix(ts, 0).Format("2006-01-02")
+	},
+	"formatdate": func(t time.Time) string {
+		return t.Format("2006-01-02")
+	},
 }
 
 // New builds a Renderer from the given FS. templateRoot is the directory
@@ -47,7 +76,7 @@ func (r *Renderer) Render(w http.ResponseWriter, name string, data interface{}) 
 	}
 
 	files := r.filesFor(name, path)
-	tmpl, err := template.New("").ParseFS(r.fsys, files...)
+	tmpl, err := template.New("").Funcs(funcMap).ParseFS(r.fsys, files...)
 	if err != nil {
 		http.Error(w, "template parse error: "+err.Error(), http.StatusInternalServerError)
 		return

@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-webauthn/webauthn/protocol"
@@ -19,10 +22,68 @@ import (
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 	"github.com/chr0nzz/gatekeeper/internal/mailer"
+	gkmiddleware "github.com/chr0nzz/gatekeeper/internal/middleware"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
 	"github.com/chr0nzz/gatekeeper/internal/templates"
 )
 
+
+const (
+	loginMaxFails  = 20
+	loginWindowDur = 15 * time.Minute
+)
+
+type loginLimiter struct {
+	mu      sync.Mutex
+	entries map[string]*limEntry
+}
+
+type limEntry struct {
+	fails   int
+	resetAt time.Time
+}
+
+func newLoginLimiter() *loginLimiter {
+	l := &loginLimiter{entries: make(map[string]*limEntry)}
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		for range t.C {
+			l.mu.Lock()
+			now := time.Now()
+			for ip, e := range l.entries {
+				if now.After(e.resetAt) {
+					delete(l.entries, ip)
+				}
+			}
+			l.mu.Unlock()
+		}
+	}()
+	return l
+}
+
+func (l *loginLimiter) allow(ip string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	e, ok := l.entries[ip]
+	if !ok || now.After(e.resetAt) {
+		l.entries[ip] = &limEntry{fails: 0, resetAt: now.Add(loginWindowDur)}
+		return true
+	}
+	return e.fails < loginMaxFails
+}
+
+func (l *loginLimiter) record(ip string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	e, ok := l.entries[ip]
+	if !ok || now.After(e.resetAt) {
+		l.entries[ip] = &limEntry{fails: 1, resetAt: now.Add(loginWindowDur)}
+		return
+	}
+	e.fails++
+}
 
 // Handlers holds all user-facing handler dependencies.
 type Handlers struct {
@@ -40,6 +101,7 @@ type Handlers struct {
 	renderer       *templates.Renderer
 	oidcStorage    *oidcstore.Storage
 	policies       *queries.PolicyStore
+	limiter        *loginLimiter
 	baseURL        string
 	issuer         string
 	secretKey      string
@@ -69,7 +131,7 @@ func New(
 		passkeys: passkeys, resetStore: resetStore, settings: settings,
 		trustedDevices: trustedDevices, mailer: m,
 		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
-		policies: policies,
+		policies: policies, limiter: newLoginLimiter(),
 		baseURL: baseURL, issuer: issuer,
 		secretKey: secretKey, cookieDomain: cookieDomain,
 	}
@@ -77,6 +139,23 @@ func New(
 
 func (h *Handlers) render(w http.ResponseWriter, name string, data interface{}) {
 	h.renderer.Render(w, name, data)
+}
+
+func (h *Handlers) csrf(r *http.Request) string {
+	return gkmiddleware.CSRFToken(r)
+}
+
+func (h *Handlers) checkCSRF(r *http.Request) bool {
+	token := h.csrf(r)
+	return token != "" && r.FormValue("csrf_token") == token
+}
+
+func remoteIP(r *http.Request) string {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }
 
 func (h *Handlers) requireSession(next http.Handler) http.Handler {
@@ -125,11 +204,14 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Get("/register/passkey", h.GetPasskeyRegister)
 		r.Post("/register/passkey/begin", h.PostPasskeyRegisterBegin)
 		r.Post("/register/passkey/finish", h.PostPasskeyRegisterFinish)
+		r.Post("/passkey/{id}/delete", h.PostPasskeyDelete)
+		r.Post("/session/{id}/revoke", h.PostSessionRevoke)
+		r.Post("/sessions/revoke-others", h.PostRevokeOtherSessions)
 	})
 }
 
 func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
-	data, _, err := h.sessions.Get(r)
+	data, sessID, err := h.sessions.Get(r)
 	if err != nil || data == nil || data.UserID == "" {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
@@ -140,12 +222,15 @@ func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	passkeys, _ := h.passkeys.ListCredentials(r.Context(), user.ID)
+	sessions, _ := h.sessions.ListUserSessions(r.Context(), user.ID, sessID)
 	avatarErr := r.URL.Query().Get("avatar_err")
 	h.render(w, "home.html", map[string]interface{}{
 		"User":        user,
 		"Passkeys":    passkeys,
+		"Sessions":    sessions,
 		"TOTPEnabled": user.TOTPEnabled,
 		"AvatarErr":   avatarErr,
+		"CSRFToken":   h.csrf(r),
 	})
 }
 
@@ -191,6 +276,12 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
+	ip := remoteIP(r)
+	if !h.limiter.allow(ip) {
+		h.render(w, "login.html", map[string]string{"Error": "Too many login attempts. Please try again later."})
+		return
+	}
+
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")
 	loginMode := r.FormValue("login_mode")
@@ -199,11 +290,13 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.users.GetByEmail(r.Context(), email)
 	if err != nil || user == nil || user.Disabled {
+		h.limiter.record(ip)
 		h.auditLog.Log(r.Context(), audit.EventLoginFailure, "", "", r.RemoteAddr, email)
 		h.render(w, "login.html", map[string]string{"Error": "Invalid credentials", "RedirectURI": redirectURI})
 		return
 	}
 	if !h.emailDomainAllowed(r, email) {
+		h.limiter.record(ip)
 		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, "domain not allowed")
 		h.render(w, "login.html", map[string]string{"Error": "Invalid credentials", "RedirectURI": redirectURI})
 		return
@@ -215,6 +308,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if auth.VerifyPassword(password, user.PasswordHash) != nil {
+		h.limiter.record(ip)
 		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, email)
 		h.render(w, "login.html", map[string]string{"Error": "Invalid credentials", "RedirectURI": redirectURI})
 		return
@@ -409,7 +503,9 @@ func (h *Handlers) GetPasskeyLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) PostPasskeyLoginBegin(w http.ResponseWriter, r *http.Request) {
-	options, session, err := h.passkeys.WebAuthn().BeginDiscoverableLogin()
+	options, session, err := h.passkeys.WebAuthn().BeginDiscoverableLogin(
+		webauthnlib.WithUserVerification(protocol.VerificationRequired),
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -580,6 +676,10 @@ func (h *Handlers) PostProfileName(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
+		return
+	}
 	name := strings.TrimSpace(r.FormValue("display_name"))
 	h.users.SetDisplayName(r.Context(), data.UserID, name)
 	http.Redirect(w, r, "/", http.StatusFound)
@@ -589,6 +689,10 @@ func (h *Handlers) PostProfileAvatar(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := h.sessions.Get(r)
 	if err != nil || sess == nil || sess.UserID == "" {
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
 		return
 	}
 	user, _ := h.users.GetByID(r.Context(), sess.UserID)
@@ -623,6 +727,7 @@ func (h *Handlers) GetChangePassword(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "change_password.html", map[string]interface{}{
 		"Forced":      forced,
 		"RedirectURI": redirectURI,
+		"CSRFToken":   h.csrf(r),
 	})
 }
 
@@ -630,6 +735,10 @@ func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
 	data, sessID, err := h.sessions.Get(r)
 	if err != nil || data == nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
 		return
 	}
 
@@ -700,6 +809,7 @@ func (h *Handlers) GetTOTPEnroll(w http.ResponseWriter, r *http.Request) {
 		"Secret":    key.Secret(),
 		"QRCodeB64": base64.StdEncoding.EncodeToString(png),
 		"TOTPKey":   key.URL(),
+		"CSRFToken": h.csrf(r),
 	})
 }
 
@@ -707,6 +817,10 @@ func (h *Handlers) PostTOTPEnroll(w http.ResponseWriter, r *http.Request) {
 	data, _, err := h.sessions.Get(r)
 	if err != nil || data == nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
 		return
 	}
 	secret := r.FormValue("secret")
@@ -726,13 +840,17 @@ func (h *Handlers) GetTOTPRecoveryCodes(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handlers) GetTOTPDisable(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "totp_disable.html", nil)
+	h.render(w, "totp_disable.html", map[string]interface{}{"CSRFToken": h.csrf(r)})
 }
 
 func (h *Handlers) PostTOTPDisable(w http.ResponseWriter, r *http.Request) {
 	data, _, err := h.sessions.Get(r)
 	if err != nil || data == nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
 		return
 	}
 	code := strings.TrimSpace(r.FormValue("code"))
@@ -765,7 +883,12 @@ func (h *Handlers) PostPasskeyRegisterBegin(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	options, session, err := h.passkeys.WebAuthn().BeginRegistration(waUser)
+	options, session, err := h.passkeys.WebAuthn().BeginRegistration(waUser,
+		webauthnlib.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
+			ResidentKey:      protocol.ResidentKeyRequirementRequired,
+			UserVerification: protocol.VerificationRequired,
+		}),
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -825,6 +948,54 @@ func (h *Handlers) PostPasskeyRegisterFinish(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *Handlers) PostPasskeyDelete(w http.ResponseWriter, r *http.Request) {
+	data, _, err := h.sessions.Get(r)
+	if err != nil || data == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	h.passkeys.DeleteCredential(r.Context(), data.UserID, id)
+	h.auditLog.Log(r.Context(), audit.EventPasskeyRevoked, data.UserID, "", r.RemoteAddr, "")
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *Handlers) PostSessionRevoke(w http.ResponseWriter, r *http.Request) {
+	data, currentID, err := h.sessions.Get(r)
+	if err != nil || data == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id != currentID {
+		h.sessions.RevokeSession(r.Context(), data.UserID, id)
+		h.auditLog.Log(r.Context(), audit.EventSessionRevoked, data.UserID, "", r.RemoteAddr, "")
+	}
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *Handlers) PostRevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	data, currentID, err := h.sessions.Get(r)
+	if err != nil || data == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid request", http.StatusForbidden)
+		return
+	}
+	h.sessions.RevokeUser(r.Context(), data.UserID, currentID)
+	h.auditLog.Log(r.Context(), audit.EventSessionRevoked, data.UserID, "", r.RemoteAddr, "")
+	http.Redirect(w, r, "/", http.StatusFound)
+}
 
 func (h *Handlers) emailDomainAllowed(r *http.Request, email string) bool {
 	raw := h.settings.Get(r.Context(), "allowed_email_domains", "")

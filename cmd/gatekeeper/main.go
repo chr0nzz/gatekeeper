@@ -62,7 +62,7 @@ func main() {
 	adminStore := queries.NewAdminStore(database)
 	adminSessStore := queries.NewAdminSessionStore(database)
 	settingsStore := queries.NewSettingsStore(database)
-	otpStore := auth.NewOTPStore(database)
+	otpStore := auth.NewOTPStore(database, []byte(cfg.SecretKey))
 	totpStore := auth.NewTOTPStore(database, []byte(cfg.SecretKey))
 	resetStore := auth.NewPasswordResetStore(database)
 	trustedDeviceStore := auth.NewTrustedDeviceStore(database, cfg.CookieDomain)
@@ -158,6 +158,32 @@ func main() {
 	r.Use(gkmiddleware.CSRF)
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
+
+	r.Get("/sw.js", func(w http.ResponseWriter, r *http.Request) {
+		data, err := gatekeeper.Assets.ReadFile("web/static/sw.js")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Service-Worker-Allowed", "/")
+		w.Write(data)
+	})
+	serveManifest := func(file string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			data, err := gatekeeper.Assets.ReadFile("web/static/" + file)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "application/manifest+json")
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			w.Write(data)
+		}
+	}
+	r.Get("/manifest.json", serveManifest("manifest.json"))
+	r.Get("/manifest-admin.json", serveManifest("manifest-admin.json"))
 
 	r.Get("/auth/verify", fwAuth.Verify)
 	r.Get("/oidc/icon/{id}", func(w http.ResponseWriter, r *http.Request) {

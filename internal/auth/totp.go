@@ -2,12 +2,17 @@ package auth
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/pquerna/otp"
@@ -16,9 +21,9 @@ import (
 )
 
 const (
-	totpMaxFails = 5
-	totpLockTime = 10 * time.Minute
-	recoveryLen  = 10
+	totpMaxFails  = 5
+	totpLockTime  = 10 * time.Minute
+	recoveryLen   = 10
 	recoveryCodes = 8
 )
 
@@ -56,7 +61,7 @@ func (t *TOTPStore) ConfirmEnrollment(ctx context.Context, userID, secret, code 
 		return nil, errors.New("invalid code, try again")
 	}
 
-	encrypted, err := xorEncrypt([]byte(secret), t.secretKey)
+	stored, err := t.encryptSecret([]byte(secret))
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +74,7 @@ func (t *TOTPStore) ConfirmEnrollment(ctx context.Context, userID, secret, code 
 
 	_, err = tx.ExecContext(ctx,
 		`UPDATE users SET totp_secret=?, totp_enabled=1 WHERE id=?`,
-		base64.StdEncoding.EncodeToString(encrypted), userID,
+		stored, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -116,13 +121,16 @@ func (t *TOTPStore) Validate(ctx context.Context, userID, code string) error {
 		return err
 	}
 
-	enc, err := base64.StdEncoding.DecodeString(encSecret)
+	raw, legacy, err := t.decryptSecret(encSecret)
 	if err != nil {
 		return err
 	}
-	raw, err := xorEncrypt(enc, t.secretKey)
-	if err != nil {
-		return err
+
+	// Migrate legacy XOR-encrypted secrets to AES-GCM on first use.
+	if legacy {
+		if newStored, err := t.encryptSecret(raw); err == nil {
+			t.db.ExecContext(ctx, `UPDATE users SET totp_secret=? WHERE id=?`, newStored, userID)
+		}
 	}
 
 	valid := totp.Validate(code, string(raw))
@@ -138,6 +146,35 @@ func (t *TOTPStore) Validate(ctx context.Context, userID, code string) error {
 	}
 	t.db.ExecContext(ctx, `DELETE FROM otp_lockouts WHERE user_id=? AND lockout_type='totp'`, userID)
 	return nil
+}
+
+// encryptSecret encrypts a TOTP secret with AES-256-GCM and returns a versioned string.
+func (t *TOTPStore) encryptSecret(plaintext []byte) (string, error) {
+	ct, err := aesGCMEncrypt(plaintext, t.secretKey)
+	if err != nil {
+		return "", err
+	}
+	return "v2:" + base64.StdEncoding.EncodeToString(ct), nil
+}
+
+// decryptSecret decodes both v2 (AES-GCM) and legacy (XOR) formats.
+// Returns the plaintext, a boolean indicating whether the value was in legacy format, and any error.
+func (t *TOTPStore) decryptSecret(stored string) ([]byte, bool, error) {
+	if strings.HasPrefix(stored, "v2:") {
+		enc, err := base64.StdEncoding.DecodeString(stored[3:])
+		if err != nil {
+			return nil, false, err
+		}
+		pt, err := aesGCMDecrypt(enc, t.secretKey)
+		return pt, false, err
+	}
+	// Legacy XOR format.
+	enc, err := base64.StdEncoding.DecodeString(stored)
+	if err != nil {
+		return nil, false, err
+	}
+	pt, err := xorDecrypt(enc, t.secretKey)
+	return pt, true, err
 }
 
 // UseRecoveryCode consumes a recovery code. Returns nil on success.
@@ -233,7 +270,48 @@ func (t *TOTPStore) recordTOTPFail(ctx context.Context, userID string) error {
 	return errors.New("invalid code")
 }
 
-func xorEncrypt(data, key []byte) ([]byte, error) {
+// aesGCMEncrypt encrypts plaintext with AES-256-GCM using a key derived from the provided secret.
+func aesGCMEncrypt(plaintext, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(deriveKey(key))
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+}
+
+// aesGCMDecrypt decrypts AES-256-GCM ciphertext.
+func aesGCMDecrypt(ciphertext, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(deriveKey(key))
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	if len(ciphertext) < gcm.NonceSize() {
+		return nil, errors.New("ciphertext too short")
+	}
+	nonce, data := ciphertext[:gcm.NonceSize()], ciphertext[gcm.NonceSize():]
+	return gcm.Open(nil, nonce, data, nil)
+}
+
+// deriveKey derives a 32-byte AES key from an arbitrary-length secret using SHA-256.
+func deriveKey(key []byte) []byte {
+	h := sha256.Sum256(key)
+	return h[:]
+}
+
+// xorDecrypt decrypts legacy XOR-encrypted data. Kept for reading old stored secrets only.
+func xorDecrypt(data, key []byte) ([]byte, error) {
 	if len(key) == 0 {
 		return nil, errors.New("empty key")
 	}

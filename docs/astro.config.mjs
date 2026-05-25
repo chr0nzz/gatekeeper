@@ -8,6 +8,7 @@ export default defineConfig({
     sitemap(),
     starlight({
       title: 'GateKeeper',
+      favicon: '/favicon.svg',
       defaultLocale: 'root',
       locales: { root: { label: 'English', lang: 'en' } },
       customCss: ['./src/styles/custom.css'],
@@ -20,6 +21,7 @@ export default defineConfig({
             { label: 'Installation', link: '/getting-started/installation' },
             { label: 'Configuration', link: '/getting-started/configuration' },
             { label: 'First login', link: '/getting-started/first-login' },
+            { label: 'Install as an app (PWA)', link: '/getting-started/pwa' },
           ],
         },
         {
@@ -57,6 +59,7 @@ export default defineConfig({
           label: 'Integrations',
           items: [
             { label: 'Traefik ForwardAuth', link: '/integrations/traefik-forwardauth' },
+            { label: 'Cross-domain ForwardAuth', link: '/integrations/cross-domain' },
             { label: 'Protecting an app (example)', link: '/integrations/example-app' },
             { label: 'OIDC client examples', link: '/integrations/oidc-client-examples' },
           ],
@@ -69,6 +72,7 @@ export default defineConfig({
             { label: 'Session security', link: '/security/session-security' },
             { label: 'OTP security', link: '/security/otp-security' },
             { label: 'TOTP security', link: '/security/totp-security' },
+            { label: 'Rate limiting', link: '/security/rate-limiting' },
             { label: 'OIDC security', link: '/security/oidc-security' },
           ],
         },

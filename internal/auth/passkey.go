@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -124,18 +125,23 @@ func (p *PasskeyStore) RegisterCredential(ctx context.Context, userID, name stri
 // FindCredentialByID finds a user by credential ID for authentication.
 func (p *PasskeyStore) FindCredentialByID(ctx context.Context, credID []byte) (string, string, *webauthn.Credential, error) {
 	credHex := fmt.Sprintf("%x", credID)
-	var userID, email, rawCred string
+	var userID, rawCred string
 	err := p.db.QueryRowContext(ctx,
-		`SELECT p.user_id, u.email, p.credential_data FROM passkeys p
-		 JOIN users u ON u.id=p.user_id
-		 WHERE p.credential_id=?`,
+		`SELECT user_id, credential_data FROM passkeys WHERE credential_id=?`,
 		credHex,
-	).Scan(&userID, &email, &rawCred)
+	).Scan(&userID, &rawCred)
 	if err == sql.ErrNoRows {
 		return "", "", nil, errors.New("credential not found")
 	}
 	if err != nil {
 		return "", "", nil, err
+	}
+	var email string
+	if strings.HasPrefix(userID, "admin:") {
+		p.db.QueryRowContext(ctx, `SELECT email FROM admin_users WHERE id=?`,
+			strings.TrimPrefix(userID, "admin:")).Scan(&email)
+	} else {
+		p.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=?`, userID).Scan(&email)
 	}
 	var cred webauthn.Credential
 	if err := json.Unmarshal([]byte(rawCred), &cred); err != nil {

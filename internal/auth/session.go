@@ -7,7 +7,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -49,9 +51,11 @@ func (s *SessionStore) Create(w http.ResponseWriter, r *http.Request, data Sessi
 	}
 	now := time.Now()
 	expires := now.Add(s.getTTL())
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ua := r.UserAgent()
 	_, err = s.db.ExecContext(r.Context(),
-		`INSERT INTO sessions (id, user_id, data, created_at, expires_at, last_seen) VALUES (?,?,?,?,?,?)`,
-		id, data.UserID, string(raw), now.Unix(), expires.Unix(), now.Unix(),
+		`INSERT INTO sessions (id, user_id, data, created_at, expires_at, last_seen, ip, user_agent) VALUES (?,?,?,?,?,?,?,?)`,
+		id, data.UserID, string(raw), now.Unix(), expires.Unix(), now.Unix(), ip, ua,
 	)
 	if err != nil {
 		return "", fmt.Errorf("create session: %w", err)
@@ -124,6 +128,85 @@ func (s *SessionStore) Destroy(w http.ResponseWriter, r *http.Request, id string
 		HttpOnly: true,
 		Secure:   true,
 	})
+}
+
+// SessionInfo is a summary of a single session for display purposes.
+type SessionInfo struct {
+	ID        string
+	IP        string
+	Device    string
+	LastSeen  time.Time
+	CreatedAt time.Time
+	Current   bool
+}
+
+// parseDevice extracts a human-readable "Browser · OS" string from a UA string.
+func parseDevice(ua string) string {
+	browser := "Unknown"
+	switch {
+	case strings.Contains(ua, "Edg/") || strings.Contains(ua, "Edge/"):
+		browser = "Edge"
+	case strings.Contains(ua, "Firefox/"):
+		browser = "Firefox"
+	case strings.Contains(ua, "OPR/") || strings.Contains(ua, "Opera/"):
+		browser = "Opera"
+	case strings.Contains(ua, "Chrome/"):
+		browser = "Chrome"
+	case strings.Contains(ua, "Safari/"):
+		browser = "Safari"
+	case strings.Contains(ua, "curl/"):
+		browser = "curl"
+	}
+	os := "Unknown"
+	switch {
+	case strings.Contains(ua, "iPhone") || strings.Contains(ua, "iPad"):
+		os = "iOS"
+	case strings.Contains(ua, "Android"):
+		os = "Android"
+	case strings.Contains(ua, "Windows"):
+		os = "Windows"
+	case strings.Contains(ua, "Macintosh") || strings.Contains(ua, "Mac OS X"):
+		os = "macOS"
+	case strings.Contains(ua, "Linux"):
+		os = "Linux"
+	}
+	if ua == "" {
+		return "Unknown device"
+	}
+	return browser + " · " + os
+}
+
+// ListUserSessions returns all active sessions for a user, marking the current one.
+func (s *SessionStore) ListUserSessions(ctx context.Context, userID, currentID string) ([]SessionInfo, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, ip, user_agent, last_seen, created_at FROM sessions WHERE user_id=? AND expires_at>? ORDER BY last_seen DESC`,
+		userID, time.Now().Unix(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SessionInfo
+	for rows.Next() {
+		var si SessionInfo
+		var ua string
+		var lastSeen, createdAt int64
+		if err := rows.Scan(&si.ID, &si.IP, &ua, &lastSeen, &createdAt); err != nil {
+			continue
+		}
+		si.Device = parseDevice(ua)
+		si.LastSeen = time.Unix(lastSeen, 0)
+		si.CreatedAt = time.Unix(createdAt, 0)
+		si.Current = si.ID == currentID
+		out = append(out, si)
+	}
+	return out, nil
+}
+
+// RevokeSession deletes a single session belonging to a user.
+func (s *SessionStore) RevokeSession(ctx context.Context, userID, sessionID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE id=? AND user_id=?`, sessionID, userID)
+	return err
 }
 
 // RevokeUser deletes all sessions for a user except the given one.

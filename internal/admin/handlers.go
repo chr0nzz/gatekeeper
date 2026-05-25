@@ -127,6 +127,8 @@ func (h *Handlers) render(w http.ResponseWriter, r *http.Request, name string, d
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM oidc_clients`).Scan(&clientCount)
 	data["SidebarUserCount"] = userCount
 	data["SidebarClientCount"] = clientCount
+	lastViewed, _ := strconv.ParseInt(h.settings.Get(r.Context(), "notifications_last_viewed", "0"), 10, 64)
+	data["UnreadNotifications"] = h.webhooks.UnreadCount(r.Context(), lastViewed)
 	h.renderer.Render(w, name, data)
 }
 
@@ -162,6 +164,8 @@ func activePageFor(name string) string {
 		return "integrations"
 	case "admin_webhooks.html":
 		return "webhooks"
+	case "admin_notifications.html":
+		return "notifications"
 	}
 	return ""
 }
@@ -224,6 +228,8 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/webhooks/{id}/delete", h.PostDeleteWebhook)
 		r.Post("/webhooks/{id}/toggle", h.PostToggleWebhook)
 		r.Post("/webhooks/{id}/test", h.PostTestWebhook)
+		r.Get("/notifications", h.GetNotifications)
+		r.Get("/api/notifications", h.GetNotificationsAPI)
 		r.Get("/profile", h.GetProfile)
 		r.Post("/profile/password", h.PostProfilePassword)
 		r.Get("/profile/totp/enroll", h.GetProfileTOTPEnroll)
@@ -232,6 +238,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Get("/profile/passkey", h.GetProfilePasskey)
 		r.Post("/profile/passkey/begin", h.PostProfilePasskeyBegin)
 		r.Post("/profile/passkey/finish", h.PostProfilePasskeyFinish)
+		r.Post("/profile/passkey/{id}/delete", h.PostProfilePasskeyDelete)
 	})
 }
 
@@ -305,7 +312,9 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) PostLoginPasskeyBegin(w http.ResponseWriter, r *http.Request) {
-	options, session, err := h.passkeys.WebAuthn().BeginDiscoverableLogin()
+	options, session, err := h.passkeys.WebAuthn().BeginDiscoverableLogin(
+		webauthnlib.WithUserVerification(protocol.VerificationRequired),
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -453,8 +462,10 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		MethodClass string
 	}
 	rows, _ := h.db.QueryContext(ctx,
-		`SELECT a.event, COALESCE(u.email, a.user_id, ''), COALESCE(u.display_name,''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(a.detail,''), a.created_at
-		 FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
+		`SELECT a.event, COALESCE(u.email, au.email, a.user_id, ''), COALESCE(u.display_name, au.email, ''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(a.detail,''), a.created_at
+		 FROM audit_log a
+		 LEFT JOIN users u ON u.id = a.user_id
+		 LEFT JOIN admin_users au ON au.id = a.user_id
 		 ORDER BY a.created_at DESC LIMIT 8`,
 	)
 	var recentEvents []RecentEvent
@@ -1129,14 +1140,15 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	base := `SELECT a.event,
-			COALESCE(u.email, a.user_id, ''),
-			COALESCE(u.display_name, ''),
+			COALESCE(u.email, au.email, a.user_id, ''),
+			COALESCE(u.display_name, au.email, ''),
 			COALESCE(a.user_id, ''),
 			(u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data) > 0),
 			COALESCE(act.email, aa.email, a.actor_id, ''),
 			COALESCE(a.ip,''), COALESCE(a.detail,''), a.created_at
 		FROM audit_log a
 		LEFT JOIN users u ON u.id = a.user_id
+		LEFT JOIN admin_users au ON au.id = a.user_id
 		LEFT JOIN admin_users aa ON aa.id = a.actor_id
 		LEFT JOIN users act ON act.id = a.actor_id`
 	var (
@@ -1389,7 +1401,12 @@ func (h *Handlers) PostProfilePasskeyBegin(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	options, session, err := h.passkeys.WebAuthn().BeginRegistration(waUser)
+	options, session, err := h.passkeys.WebAuthn().BeginRegistration(waUser,
+		webauthnlib.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
+			ResidentKey:      protocol.ResidentKeyRequirementRequired,
+			UserVerification: protocol.VerificationRequired,
+		}),
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1435,6 +1452,18 @@ func (h *Handlers) PostProfilePasskeyFinish(w http.ResponseWriter, r *http.Reque
 	}
 	h.passkeys.RegisterCredential(r.Context(), "admin:"+adminID, name, cred)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handlers) PostProfilePasskeyDelete(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	adminID := h.adminIDFromRequest(r)
+	id := chi.URLParam(r, "id")
+	h.passkeys.DeleteCredential(r.Context(), "admin:"+adminID, id)
+	h.auditLog.Log(r.Context(), audit.EventPasskeyRevoked, adminID, "", r.RemoteAddr, "")
+	http.Redirect(w, r, "/admin/profile", http.StatusFound)
 }
 
 func (h *Handlers) GetPolicies(w http.ResponseWriter, r *http.Request) {

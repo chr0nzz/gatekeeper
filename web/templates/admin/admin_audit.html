@@ -26,7 +26,7 @@
     </div>
     <div id="audit-count" style="white-space:nowrap;font-size:11px;color:var(--tx-3);align-self:center">{{.TotalEvents}} events</div>
   </div>
-  <div style="display:flex;align-items:center;gap:12px;padding:0 16px 10px;border-bottom:1px solid var(--bd-0);background:var(--bg-2);flex-wrap:wrap">
+  <div class="audit-filters" style="display:flex;align-items:center;gap:12px;padding:0 16px 10px;border-bottom:1px solid var(--bd-0);background:var(--bg-2);flex-wrap:wrap">
     <div class="filter-chips" style="margin:0">
       <button class="fchip on" data-kind="all">All</button>
       <button class="fchip" data-kind="ok"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:3px"></span>Success</button>
@@ -34,7 +34,7 @@
       <button class="fchip" data-kind="err"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--danger);display:inline-block;margin-right:3px"></span>Fail</button>
       <button class="fchip" data-kind="info"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:var(--info);display:inline-block;margin-right:3px"></span>Info</button>
     </div>
-    <div style="width:1px;height:16px;background:var(--bd-1);flex-shrink:0"></div>
+    <div class="audit-filter-sep" style="width:1px;height:16px;background:var(--bd-1);flex-shrink:0"></div>
     <div class="filter-chips" style="margin:0">
       <button class="fchip on" data-method="all">All</button>
       <button class="fchip" data-method="method-password"><span class="method-badge method-password">Password</span></button>
@@ -42,7 +42,7 @@
       <button class="fchip" data-method="method-passkey"><span class="method-badge method-passkey">Passkey</span></button>
       <button class="fchip" data-method="method-emailotp"><span class="method-badge method-emailotp">Email OTP</span></button>
     </div>
-    <div style="width:1px;height:16px;background:var(--bd-1);flex-shrink:0"></div>
+    <div class="audit-filter-sep" style="width:1px;height:16px;background:var(--bd-1);flex-shrink:0"></div>
     <div class="filter-chips" style="margin:0">
       <a class="fchip{{if eq .ActiveDays 0}} on{{end}}" href="/admin/audit?days=0">All</a>
       <a class="fchip{{if eq .ActiveDays 1}} on{{end}}" href="/admin/audit?days=1">Today</a>
@@ -52,7 +52,7 @@
     </div>
   </div>
 
-  <div class="audit-row" style="background:var(--bg-2);color:var(--tx-3);text-transform:uppercase;font-size:10px;letter-spacing:0.05em;font-weight:500;border-bottom:1px solid var(--bd-0)">
+  <div class="audit-row audit-row-head" style="background:var(--bg-2);color:var(--tx-3);text-transform:uppercase;font-size:10px;letter-spacing:0.05em;font-weight:500;border-bottom:1px solid var(--bd-0)">
     <span>Time</span><span>Event</span><span>User</span><span>Email</span><span>Method</span><span>Detail</span><span>IP</span><span></span>
   </div>
 
