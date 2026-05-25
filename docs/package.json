@@ -1,17 +1,13 @@
 {
   "name": "gatekeeper-docs",
+  "private": true,
   "type": "module",
-  "version": "0.3.0",
   "scripts": {
-    "dev": "astro dev --host 0.0.0.0",
-    "start": "astro dev --host 0.0.0.0",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "dev": "vitepress dev --host",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
   },
-  "dependencies": {
-    "astro": "^6.3.5",
-    "@astrojs/starlight": "^0.39.2",
-    "@astrojs/sitemap": "^3.3.0"
+  "devDependencies": {
+    "vitepress": "^1.6.3"
   }
 }
