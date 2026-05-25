@@ -127,8 +127,6 @@ func (h *Handlers) render(w http.ResponseWriter, r *http.Request, name string, d
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM oidc_clients`).Scan(&clientCount)
 	data["SidebarUserCount"] = userCount
 	data["SidebarClientCount"] = clientCount
-	lastViewed, _ := strconv.ParseInt(h.settings.Get(r.Context(), "notifications_last_viewed", "0"), 10, 64)
-	data["UnreadNotifications"] = h.webhooks.UnreadCount(r.Context(), lastViewed)
 	h.renderer.Render(w, name, data)
 }
 
@@ -164,8 +162,6 @@ func activePageFor(name string) string {
 		return "integrations"
 	case "admin_webhooks.html":
 		return "webhooks"
-	case "admin_notifications.html":
-		return "notifications"
 	}
 	return ""
 }
@@ -228,8 +224,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/webhooks/{id}/delete", h.PostDeleteWebhook)
 		r.Post("/webhooks/{id}/toggle", h.PostToggleWebhook)
 		r.Post("/webhooks/{id}/test", h.PostTestWebhook)
-		r.Get("/notifications", h.GetNotifications)
-		r.Get("/api/notifications", h.GetNotificationsAPI)
+
 		r.Get("/profile", h.GetProfile)
 		r.Post("/profile/password", h.PostProfilePassword)
 		r.Get("/profile/totp/enroll", h.GetProfileTOTPEnroll)

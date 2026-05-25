@@ -286,18 +286,7 @@ a { color: inherit; text-decoration: none; }
    THEME TOGGLE — 3-state segmented control (sun / monitor / moon)
    ============================================================ */
 .accent-drop { position: relative; }
-.bell-btn {
-  position: relative; width: 32px; height: 32px; border-radius: var(--r);
-  background: var(--bg-1); border: 1px solid var(--bd-0);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--tx-2); text-decoration: none; transition: border-color 0.12s;
-}
-.bell-btn:hover { border-color: var(--bd-1); color: var(--tx-0); }
-.bell-dot {
-  position: absolute; top: 5px; right: 5px;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--ac); border: 1.5px solid var(--bg-1);
-}
+
 .accent-trigger {
   width: 32px; height: 32px; border-radius: var(--r);
   background: var(--bg-1); border: 1px solid var(--bd-0);

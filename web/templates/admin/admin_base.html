@@ -50,11 +50,6 @@
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
         <span>Audit Log</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "notifications"}}active{{end}}" href="/admin/notifications">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span>Notifications</span>
-        {{if gt .UnreadNotifications 0}}<span class="count">{{.UnreadNotifications}}</span>{{end}}
-      </a>
     </div>
     <div class="side-section">
       <div class="side-label">System</div>
@@ -116,10 +111,6 @@
           <span>Search anything…</span>
           <span class="kbd">⌘K</span>
         </button>
-        <a href="/admin/notifications" class="bell-btn" title="Notifications">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          {{if gt .UnreadNotifications 0}}<span class="bell-dot"></span>{{end}}
-        </a>
         <div class="accent-drop" id="accent-drop">
           <button class="accent-trigger" id="accent-trigger" title="Accent color">
             <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
@@ -187,11 +178,6 @@
     <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
       <span>Audit Log</span>
-    </a>
-    <a class="side-link {{if eq .ActivePage "notifications"}}active{{end}}" href="/admin/notifications">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span>Notifications</span>
-      {{if gt .UnreadNotifications 0}}<span class="count">{{.UnreadNotifications}}</span>{{end}}
     </a>
   </div>
   <div class="side-section">
