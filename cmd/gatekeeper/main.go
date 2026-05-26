@@ -195,7 +195,9 @@ func main() {
 	oidc := func(w http.ResponseWriter, r *http.Request) { oidcProvider.ServeHTTP(w, r) }
 	r.Get("/.well-known/openid-configuration", oidc)
 	r.Get("/.well-known/jwks.json", oidc)
-	for _, p := range []string{"/authorize", "/authorize/callback", "/userinfo", "/revoke", "/end_session", "/device_authorization", "/keys"} {
+	r.Get("/end_session", uiHandlers.EndSession)
+	r.Post("/end_session", uiHandlers.EndSession)
+	for _, p := range []string{"/authorize", "/authorize/callback", "/userinfo", "/revoke", "/device_authorization", "/keys"} {
 		r.Get(p, oidc)
 		r.Post(p, oidc)
 	}

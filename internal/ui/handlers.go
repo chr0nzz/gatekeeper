@@ -656,6 +656,29 @@ func (h *Handlers) PostLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
+func (h *Handlers) EndSession(w http.ResponseWriter, r *http.Request) {
+	data, sessID, _ := h.sessions.Get(r)
+	if sessID != "" {
+		h.sessions.Destroy(w, r, sessID)
+		userID := ""
+		if data != nil {
+			userID = data.UserID
+		}
+		h.auditLog.Log(r.Context(), "session.oidc_logout", userID, "", r.RemoteAddr, "")
+	}
+	target := r.FormValue("post_logout_redirect_uri")
+	if target == "" {
+		target = r.URL.Query().Get("post_logout_redirect_uri")
+	}
+	if target != "" {
+		if u, err := url.Parse(target); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+			http.Redirect(w, r, target, http.StatusFound)
+			return
+		}
+	}
+	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
 func (h *Handlers) GetAvatar(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	data, mime := h.users.GetAvatar(r.Context(), id)
