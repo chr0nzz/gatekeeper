@@ -16,6 +16,50 @@
 </div>
 {{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
 
+{{if .PendingUsers}}
+<div class="card" style="margin-bottom:14px;border-color:var(--warn-bd)">
+  <div class="card-head" style="background:var(--warn-bg)">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-9v-6M12 16.5v.5"/></svg>
+    <h3 style="color:var(--warn)">Pending approval ({{len .PendingUsers}})</h3>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Requested</th>
+        <th style="width:160px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .PendingUsers}}
+    <tr>
+      <td style="font-weight:500">{{.Email}}</td>
+      <td style="color:var(--tx-2);font-size:12px">{{unixdate .CreatedAt}}</td>
+      <td>
+        <div class="row-actions">
+          <form method="POST" action="/admin/users/{{.ID}}/approve" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--ok)">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6 9 17l-5-5"/></svg>
+              Approve
+            </button>
+          </form>
+          <form method="POST" action="/admin/users/{{.ID}}/reject" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Reject and delete this account request?')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              Reject
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
 <div class="card">
   <div class="table-toolbar">
     <div style="position:relative">
@@ -28,6 +72,7 @@
       {{if gt .Locked 0}}<button class="fchip" data-filter="locked">Locked <span>{{.Locked}}</span></button>{{end}}
       {{if gt .Disabled 0}}<button class="fchip" data-filter="disabled">Disabled <span>{{.Disabled}}</span></button>{{end}}
       {{if gt .No2FA 0}}<button class="fchip" data-filter="no2fa">No 2FA <span>{{.No2FA}}</span></button>{{end}}
+      {{if gt .Pending 0}}<button class="fchip" data-filter="pending">Pending <span>{{.Pending}}</span></button>{{end}}
     </div>
   </div>
 

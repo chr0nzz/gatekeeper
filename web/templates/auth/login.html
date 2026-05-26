@@ -81,22 +81,29 @@
       </button>
     </form>
 
+    <div id="gk-passkey-error" class="alert alert-err" style="display:none;margin-top:16px"></div>
+
     <div style="display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--tx-3);font-size:12px">
       <div style="flex:1;height:1px;background:var(--bd-0)"></div>
       OR
       <div style="flex:1;height:1px;background:var(--bd-0)"></div>
     </div>
 
-    <a href="/login/passkey" class="btn btn-ghost" style="width:100%;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px">
+    <button id="gk-passkey-login-btn"
+      data-begin="/login/passkey/begin"
+      data-finish="/login/passkey/finish"
+      class="btn btn-ghost" style="width:100%;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:15px;height:15px"><circle cx="8" cy="9" r="4"/><path d="M14 9h6M17 9v6M2 20c0-3 2.7-5 6-5"/></svg>
       Continue with passkey
-    </a>
+    </button>
 
     <div class="auth-foot" style="justify-content:center;margin-top:16px">
       <a href="/forgot-password">Forgot password?</a>
+      {{if .CanRegister}}<span style="color:var(--tx-3)">·</span><a href="/register">Create account</a>{{end}}
     </div>
   </div>
 </div>
 <script src="/static/js/login.js"></script>
+<script src="/static/js/passkey.js"></script>
 <script src="/static/js/theme.js"></script>
 {{end}}

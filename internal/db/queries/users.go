@@ -18,6 +18,7 @@ type User struct {
 	ForcePasswordChange bool
 	TOTPEnabled         bool
 	Disabled            bool
+	PendingApproval     bool
 	CreatedAt           int64
 	DisplayName         string
 	HasAvatar           bool
@@ -50,7 +51,7 @@ func (u *UserStore) Create(ctx context.Context, email, passwordHash string, forc
 // GetByEmail retrieves a user by email.
 func (u *UserStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 	return u.scan(u.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, pending_approval, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
 		 FROM users WHERE email=?`,
 		email,
 	))
@@ -59,7 +60,7 @@ func (u *UserStore) GetByEmail(ctx context.Context, email string) (*User, error)
 // GetByID retrieves a user by ID.
 func (u *UserStore) GetByID(ctx context.Context, id string) (*User, error) {
 	return u.scan(u.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, pending_approval, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
 		 FROM users WHERE id=?`,
 		id,
 	))
@@ -68,7 +69,7 @@ func (u *UserStore) GetByID(ctx context.Context, id string) (*User, error) {
 // List returns all users.
 func (u *UserStore) List(ctx context.Context) ([]User, error) {
 	rows, err := u.db.QueryContext(ctx,
-		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, pending_approval, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
 		 FROM users ORDER BY email`,
 	)
 	if err != nil {
@@ -79,7 +80,7 @@ func (u *UserStore) List(ctx context.Context) ([]User, error) {
 	for rows.Next() {
 		var usr User
 		var ph sql.NullString
-		if err := rows.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar); err != nil {
+		if err := rows.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.PendingApproval, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar); err != nil {
 			return nil, err
 		}
 		usr.PasswordHash = ph.String
@@ -141,6 +142,52 @@ func (u *UserStore) SetPasswordless(ctx context.Context, userID string, enabled 
 	return err
 }
 
+// CreatePending creates a new user in pending-approval state (disabled=1, pending_approval=1).
+func (u *UserStore) CreatePending(ctx context.Context, email, passwordHash string) (string, error) {
+	id := uuid.New().String()
+	now := time.Now().Unix()
+	_, err := u.db.ExecContext(ctx,
+		`INSERT INTO users (id, email, password_hash, disabled, pending_approval, created_at, updated_at) VALUES (?,?,?,1,1,?,?)`,
+		id, email, passwordHash, now, now,
+	)
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// ListPendingApproval returns users waiting for admin approval.
+func (u *UserStore) ListPendingApproval(ctx context.Context) ([]User, error) {
+	rows, err := u.db.QueryContext(ctx,
+		`SELECT id, email, password_hash, passwordless_enabled, force_password_change, totp_enabled, disabled, pending_approval, created_at, COALESCE(display_name,''), (avatar_data IS NOT NULL AND LENGTH(avatar_data)>0)
+		 FROM users WHERE pending_approval=1 ORDER BY created_at ASC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []User
+	for rows.Next() {
+		var usr User
+		var ph sql.NullString
+		if err := rows.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.PendingApproval, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar); err != nil {
+			return nil, err
+		}
+		usr.PasswordHash = ph.String
+		out = append(out, usr)
+	}
+	return out, nil
+}
+
+// Approve marks a pending user as approved and enables their account.
+func (u *UserStore) Approve(ctx context.Context, userID string) error {
+	_, err := u.db.ExecContext(ctx,
+		`UPDATE users SET pending_approval=0, disabled=0, updated_at=? WHERE id=?`,
+		time.Now().Unix(), userID,
+	)
+	return err
+}
+
 // Delete removes a user.
 func (u *UserStore) Delete(ctx context.Context, userID string) error {
 	_, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE id=?`, userID)
@@ -150,7 +197,7 @@ func (u *UserStore) Delete(ctx context.Context, userID string) error {
 func (u *UserStore) scan(row *sql.Row) (*User, error) {
 	var usr User
 	var ph sql.NullString
-	err := row.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar)
+	err := row.Scan(&usr.ID, &usr.Email, &ph, &usr.PasswordlessEnabled, &usr.ForcePasswordChange, &usr.TOTPEnabled, &usr.Disabled, &usr.PendingApproval, &usr.CreatedAt, &usr.DisplayName, &usr.HasAvatar)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

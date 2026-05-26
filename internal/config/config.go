@@ -29,6 +29,10 @@ type Config struct {
 	AllowedEmailDomains string `env:"ALLOWED_EMAIL_DOMAINS"`
 	CookieDomain        string `env:"COOKIE_DOMAIN"`
 
+	// RegistrationMode and RegistrationAllowedDomains are fallback defaults; admin UI values take precedence.
+	RegistrationMode           string `env:"REGISTRATION_MODE" envDefault:"disabled"`
+	RegistrationAllowedDomains string `env:"REGISTRATION_ALLOWED_DOMAINS"`
+
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 }
 

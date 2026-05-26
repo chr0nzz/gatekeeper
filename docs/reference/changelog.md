@@ -9,6 +9,10 @@ description: Version history for GateKeeper.
 
 - **Groups** - Create named groups and assign users to them. Group membership is automatically included as a `groups` claim in all OIDC tokens, enabling role mapping in apps like Grafana and Jellyfin without any scope configuration. Manage group members from the Groups page or directly from a user's profile page. See [Groups](/admin/groups) for Grafana and Jellyfin config examples.
 
+### User self-registration
+
+- **Registration modes** - Choose between disabled, invite-only, open, and approval-required modes from Settings. In open mode anyone can create an account immediately. In approval mode accounts are held in a pending queue until an admin approves or rejects them from the Users page. A "Create account" link appears on the sign-in page when registration is open or approval-mode. Domain restrictions can limit which email domains are allowed to self-register. See [Registration](/admin/registration).
+
 ### Invite links
 
 - **Invite links** - Generate single-use registration links from the Invites page. Each link can be tied to a specific email address (pre-filling and locking the registration form) or left open for any address. Links expire after 1, 3, 7, 14, or 30 days. The raw token is shown once at creation time; only a SHA-256 hash is stored. See [Invites](/admin/invites).

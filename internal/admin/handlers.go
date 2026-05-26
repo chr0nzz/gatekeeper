@@ -71,8 +71,10 @@ type updateResult struct {
 
 // EnvDefaults holds env var fallback values for settings that are managed in the UI.
 type EnvDefaults struct {
-	AllowedDomains  string
-	SessionTTLHours int
+	AllowedDomains             string
+	SessionTTLHours            int
+	RegistrationMode           string
+	RegistrationAllowedDomains string
 }
 
 // New creates an admin Handlers.
@@ -230,6 +232,8 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/users/{id}/revoke-sessions", h.PostRevokeSessions)
 		r.Post("/users/{id}/revoke-totp", h.PostRevokeTOTP)
 		r.Post("/users/{id}/passwordless", h.PostTogglePasswordless)
+		r.Post("/users/{id}/approve", h.PostApproveUser)
+		r.Post("/users/{id}/reject", h.PostRejectUser)
 		r.Post("/users/{id}/groups/{groupID}/add", h.PostAddUserToGroup)
 		r.Post("/users/{id}/groups/{groupID}/remove", h.PostRemoveUserFromGroup)
 		r.Get("/clients", h.GetClients)
@@ -847,7 +851,9 @@ func (h *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
 			initials = strings.ToUpper(u.Email[:2])
 		}
 		status := "active"
-		if u.Disabled {
+		if u.PendingApproval {
+			status = "pending"
+		} else if u.Disabled {
 			status = "disabled"
 		} else if isLocked {
 			status = "locked"
@@ -857,27 +863,39 @@ func (h *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
 	active := 0
 	locked := 0
 	disabled := 0
+	pending := 0
 	no2fa := 0
-	for _, r := range rows {
-		switch r.Status {
+	var pendingRows []UserRow
+	var normalRows []UserRow
+	for _, row := range rows {
+		switch row.Status {
 		case "active":
 			active++
 		case "locked":
 			locked++
 		case "disabled":
 			disabled++
+		case "pending":
+			pending++
 		}
-		if !r.TOTPEnabled {
+		if !row.TOTPEnabled {
 			no2fa++
+		}
+		if row.Status == "pending" {
+			pendingRows = append(pendingRows, row)
+		} else {
+			normalRows = append(normalRows, row)
 		}
 	}
 	h.render(w, r, "admin_users.html", map[string]interface{}{
-		"Users":    rows,
-		"Total":    len(rows),
-		"Active":   active,
-		"Locked":   locked,
-		"Disabled": disabled,
-		"No2FA":    no2fa,
+		"Users":       normalRows,
+		"PendingUsers": pendingRows,
+		"Total":       len(normalRows),
+		"Active":      active,
+		"Locked":      locked,
+		"Disabled":    disabled,
+		"Pending":     pending,
+		"No2FA":       no2fa,
 	})
 }
 
@@ -1056,6 +1074,30 @@ func (h *Handlers) PostDeleteUser(w http.ResponseWriter, r *http.Request) {
 	h.trustedDevices.RevokeAll(r.Context(), id)
 	h.users.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), audit.EventUserDeleted, id, adminID, r.RemoteAddr, "")
+	http.Redirect(w, r, "/admin/users", http.StatusFound)
+}
+
+func (h *Handlers) PostApproveUser(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	adminID := h.adminIDFromRequest(r)
+	h.users.Approve(r.Context(), id)
+	h.auditLog.Log(r.Context(), "user.approved", id, adminID, r.RemoteAddr, "")
+	http.Redirect(w, r, "/admin/users", http.StatusFound)
+}
+
+func (h *Handlers) PostRejectUser(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	adminID := h.adminIDFromRequest(r)
+	h.users.Delete(r.Context(), id)
+	h.auditLog.Log(r.Context(), "user.rejected", id, adminID, r.RemoteAddr, "")
 	http.Redirect(w, r, "/admin/users", http.StatusFound)
 }
 
@@ -1305,15 +1347,17 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		return h.settings.Get(r.Context(), key, fallback)
 	}
 	data := map[string]interface{}{
-		"AllowedDomains":     get("allowed_email_domains", h.envDefaults.AllowedDomains),
-		"SessionTTL":         get("session_ttl_hours", intStr(h.envDefaults.SessionTTLHours)),
-		"SMTPHost":           get("smtp_host", h.envSMTP.Host),
-		"SMTPPort":           get("smtp_port", intStr(h.envSMTP.Port)),
-		"SMTPUsername":       get("smtp_username", h.envSMTP.Username),
-		"SMTPFrom":           get("smtp_from", h.envSMTP.From),
-		"SMTPTLS":            get("smtp_tls", h.envSMTP.TLS),
-		"AuditRetentionDays": get("audit_retention_days", "90"),
-		"BaseURL":            h.baseURL,
+		"AllowedDomains":             get("allowed_email_domains", h.envDefaults.AllowedDomains),
+		"SessionTTL":                 get("session_ttl_hours", intStr(h.envDefaults.SessionTTLHours)),
+		"SMTPHost":                   get("smtp_host", h.envSMTP.Host),
+		"SMTPPort":                   get("smtp_port", intStr(h.envSMTP.Port)),
+		"SMTPUsername":               get("smtp_username", h.envSMTP.Username),
+		"SMTPFrom":                   get("smtp_from", h.envSMTP.From),
+		"SMTPTLS":                    get("smtp_tls", h.envSMTP.TLS),
+		"AuditRetentionDays":         get("audit_retention_days", "90"),
+		"RegistrationMode":           get("registration_mode", h.envDefaults.RegistrationMode),
+		"RegistrationAllowedDomains": get("registration_allowed_domains", h.envDefaults.RegistrationAllowedDomains),
+		"BaseURL":                    h.baseURL,
 	}
 	if r.URL.Query().Get("saved") == "1" {
 		data["Success"] = "Settings saved."
@@ -1331,6 +1375,8 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	set("allowed_email_domains", r.FormValue("allowed_email_domains"))
 	set("session_ttl_hours", r.FormValue("session_ttl_hours"))
+	set("registration_mode", r.FormValue("registration_mode"))
+	set("registration_allowed_domains", r.FormValue("registration_allowed_domains"))
 	set("smtp_host", r.FormValue("smtp_host"))
 	set("smtp_port", r.FormValue("smtp_port"))
 	set("smtp_username", r.FormValue("smtp_username"))

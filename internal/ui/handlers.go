@@ -253,7 +253,7 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tplData := map[string]string{
+	tplData := map[string]interface{}{
 		"RedirectURI": redirectURI,
 		"OIDCRequest": oidcRequest,
 		"AppName":     "",
@@ -275,6 +275,8 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	mode := h.settings.Get(r.Context(), "registration_mode", "disabled")
+	tplData["CanRegister"] = mode == "open" || mode == "approval"
 	h.render(w, "login.html", tplData)
 }
 
@@ -997,21 +999,32 @@ func (h *Handlers) PostRevokeOtherSessions(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *Handlers) GetRegister(w http.ResponseWriter, r *http.Request) {
+	mode := h.settings.Get(r.Context(), "registration_mode", "disabled")
 	token := r.URL.Query().Get("invite")
-	if token == "" {
+
+	if token != "" {
+		inv, err := h.invites.GetByToken(r.Context(), token)
+		if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
+			h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired."})
+			return
+		}
+		h.render(w, "register.html", map[string]interface{}{
+			"Token":     token,
+			"Email":     inv.Email,
+			"CSRFToken": h.csrf(r),
+		})
+		return
+	}
+
+	switch mode {
+	case "open", "approval":
+		h.render(w, "register.html", map[string]interface{}{
+			"CSRFToken": h.csrf(r),
+			"Mode":      mode,
+		})
+	default:
 		http.NotFound(w, r)
-		return
 	}
-	inv, err := h.invites.GetByToken(r.Context(), token)
-	if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
-		h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired."})
-		return
-	}
-	h.render(w, "register.html", map[string]interface{}{
-		"Token":     token,
-		"Email":     inv.Email,
-		"CSRFToken": h.csrf(r),
-	})
 }
 
 func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
@@ -1019,36 +1032,55 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "CSRF check failed", http.StatusForbidden)
 		return
 	}
+
+	mode := h.settings.Get(r.Context(), "registration_mode", "disabled")
 	token := r.FormValue("invite_token")
-	inv, err := h.invites.GetByToken(r.Context(), token)
-	if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
-		h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired.", "CSRFToken": h.csrf(r)})
+
+	var invLockedEmail string
+	var invID string
+
+	if token != "" {
+		inv, err := h.invites.GetByToken(r.Context(), token)
+		if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
+			h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired.", "CSRFToken": h.csrf(r)})
+			return
+		}
+		invLockedEmail = inv.Email
+		invID = inv.ID
+	} else if mode != "open" && mode != "approval" {
+		http.NotFound(w, r)
 		return
 	}
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	if email == "" {
-		email = inv.Email
+		email = invLockedEmail
 	}
 	password := r.FormValue("password")
 	confirm := r.FormValue("confirm_password")
 
+	errData := func(msg string) map[string]interface{} {
+		return map[string]interface{}{"Error": msg, "Token": token, "Email": invLockedEmail, "Mode": mode, "CSRFToken": h.csrf(r)}
+	}
+
 	if email == "" {
-		h.render(w, "register.html", map[string]interface{}{"Error": "Email is required.", "Token": token, "CSRFToken": h.csrf(r)})
+		h.render(w, "register.html", errData("Email is required."))
 		return
 	}
-	if password == "" || len(password) < 12 {
-		h.render(w, "register.html", map[string]interface{}{"Error": "Password must be at least 12 characters.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+	if token == "" && !h.registrationDomainAllowed(r, email) {
+		h.render(w, "register.html", errData("Registration is not allowed for this email domain."))
+		return
+	}
+	if len(password) < 12 {
+		h.render(w, "register.html", errData("Password must be at least 12 characters."))
 		return
 	}
 	if password != confirm {
-		h.render(w, "register.html", map[string]interface{}{"Error": "Passwords do not match.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+		h.render(w, "register.html", errData("Passwords do not match."))
 		return
 	}
-
-	existing, _ := h.users.GetByEmail(r.Context(), email)
-	if existing != nil {
-		h.render(w, "register.html", map[string]interface{}{"Error": "An account with that email already exists.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+	if existing, _ := h.users.GetByEmail(r.Context(), email); existing != nil {
+		h.render(w, "register.html", errData("An account with that email already exists."))
 		return
 	}
 
@@ -1057,15 +1089,47 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	userID, err := h.users.Create(r.Context(), email, hash, false)
-	if err != nil {
-		h.render(w, "register.html", map[string]interface{}{"Error": "Could not create account. Please try again.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+
+	if mode == "approval" && token == "" {
+		userID, err := h.users.CreatePending(r.Context(), email, hash)
+		if err != nil {
+			h.render(w, "register.html", errData("Could not create account. Please try again."))
+			return
+		}
+		h.auditLog.Log(r.Context(), "user.pending", userID, "", r.RemoteAddr, email)
+		h.render(w, "register.html", map[string]interface{}{"Pending": true})
 		return
 	}
-	h.invites.MarkUsed(r.Context(), inv.ID)
+
+	userID, err := h.users.Create(r.Context(), email, hash, false)
+	if err != nil {
+		h.render(w, "register.html", errData("Could not create account. Please try again."))
+		return
+	}
+	if invID != "" {
+		h.invites.MarkUsed(r.Context(), invID)
+	}
 	h.auditLog.Log(r.Context(), "user.registered", userID, "", r.RemoteAddr, email)
 	h.sessions.Create(w, r, auth.SessionData{UserID: userID})
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *Handlers) registrationDomainAllowed(r *http.Request, email string) bool {
+	raw := h.settings.Get(r.Context(), "registration_allowed_domains", "")
+	if raw == "" {
+		return true
+	}
+	atIdx := strings.LastIndex(email, "@")
+	if atIdx < 0 {
+		return false
+	}
+	domain := strings.ToLower(email[atIdx+1:])
+	for _, d := range strings.Split(raw, ",") {
+		if strings.TrimSpace(strings.ToLower(d)) == domain {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Handlers) emailDomainAllowed(r *http.Request, email string) bool {

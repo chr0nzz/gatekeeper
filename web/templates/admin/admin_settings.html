@@ -17,6 +17,30 @@
 
   <div class="card" style="margin-bottom:14px">
     <div class="card-head">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+      <h3>Registration</h3>
+    </div>
+    <div class="card-body">
+      <label class="field">
+        <span class="field-label">Registration mode</span>
+        <select class="input select" name="registration_mode">
+          <option value="disabled" {{if eq .RegistrationMode "disabled"}}selected{{end}}>Disabled - no self-registration</option>
+          <option value="invite_only" {{if eq .RegistrationMode "invite_only"}}selected{{end}}>Invite only - requires an invite link</option>
+          <option value="open" {{if eq .RegistrationMode "open"}}selected{{end}}>Open - anyone can register</option>
+          <option value="approval" {{if eq .RegistrationMode "approval"}}selected{{end}}>Approval required - admin must approve</option>
+        </select>
+        <span class="field-hint">Invite links always work regardless of this setting.</span>
+      </label>
+      <label class="field" style="margin-bottom:0">
+        <span class="field-label">Allowed domains for registration <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="text" name="registration_allowed_domains" value="{{.RegistrationAllowedDomains}}" placeholder="example.com, company.org">
+        <span class="field-hint">Comma-separated. Leave blank to allow any email domain. Only applies to open and approval modes.</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
       <h3>Access control</h3>
     </div>

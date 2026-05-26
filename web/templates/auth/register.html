@@ -9,42 +9,62 @@
     </div>
   </div>
   <div class="auth-card">
-    <h1>Create account</h1>
-    <p class="lede">You have been invited to create a GateKeeper account.</p>
+    {{if .Pending}}
+      <div style="text-align:center">
+        <div style="width:56px;height:56px;margin:0 auto 20px;border-radius:14px;background:var(--ac-bg);border:1px solid var(--ac-bd);display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="1.5" style="width:26px;height:26px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm-1-7l-3-3 1.5-1.5L11 12l5-5L17.5 8.5z"/></svg>
+        </div>
+        <h1>Request received</h1>
+        <p class="lede">Your account is pending approval. An admin will review your request and you will receive an email once approved.</p>
+        <a href="/login" class="btn btn-primary" style="margin-top:20px;display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px"><path d="M10 12L6 8l4-4"/></svg>
+          Back to sign in
+        </a>
+      </div>
+    {{else}}
+      <h1>Create account</h1>
+      {{if .Token}}
+      <p class="lede">You have been invited to create a GateKeeper account.</p>
+      {{else if eq .Mode "approval"}}
+      <p class="lede">Create an account. An admin will review and approve your request.</p>
+      {{else}}
+      <p class="lede">Create a GateKeeper account to get started.</p>
+      {{end}}
 
-    {{if .Error}}<div class="alert alert-err" style="margin-bottom:16px"><b>{{.Error}}</b></div>{{end}}
+      {{if .Error}}<div class="alert alert-err" style="margin-bottom:16px"><b>{{.Error}}</b></div>{{end}}
 
-    <form method="POST" action="/register" style="margin-top:20px">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="invite_token" value="{{.Token}}">
+      <form method="POST" action="/register" style="margin-top:20px">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="hidden" name="invite_token" value="{{.Token}}">
 
-      <label class="field">
-        <span class="field-label">Email address</span>
-        {{if .Email}}
-        <input class="input" type="email" name="email" value="{{.Email}}" readonly style="background:var(--bg-2);color:var(--tx-2);cursor:not-allowed">
-        {{else}}
-        <input class="input" type="email" name="email" required autofocus autocomplete="email" placeholder="you@example.com">
-        {{end}}
-      </label>
+        <label class="field">
+          <span class="field-label">Email address</span>
+          {{if .Email}}
+          <input class="input" type="email" name="email" value="{{.Email}}" readonly style="background:var(--bg-2);color:var(--tx-2);cursor:not-allowed">
+          {{else}}
+          <input class="input" type="email" name="email" required autofocus autocomplete="email" placeholder="you@example.com">
+          {{end}}
+        </label>
 
-      <label class="field">
-        <span class="field-label">Password</span>
-        <input class="input" type="password" name="password" required {{if .Email}}autofocus{{end}} autocomplete="new-password" placeholder="At least 12 characters" minlength="12">
-      </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" name="password" required {{if .Email}}autofocus{{end}} autocomplete="new-password" placeholder="At least 12 characters" minlength="12">
+        </label>
 
-      <label class="field">
-        <span class="field-label">Confirm password</span>
-        <input class="input" type="password" name="confirm_password" required autocomplete="new-password" placeholder="Repeat your password">
-      </label>
+        <label class="field">
+          <span class="field-label">Confirm password</span>
+          <input class="input" type="password" name="confirm_password" required autocomplete="new-password" placeholder="Repeat your password">
+        </label>
 
-      <button type="submit" class="btn btn-primary" style="width:100%;height:42px;font-size:14px;margin-top:4px">
-        Create account
-      </button>
-    </form>
+        <button type="submit" class="btn btn-primary" style="width:100%;height:42px;font-size:14px;margin-top:4px">
+          {{if eq .Mode "approval"}}Request account{{else}}Create account{{end}}
+        </button>
+      </form>
 
-    <div class="auth-foot" style="justify-content:center;margin-top:16px">
-      <a href="/login">Already have an account? Sign in</a>
-    </div>
+      <div class="auth-foot" style="justify-content:center;margin-top:16px">
+        <a href="/login">Already have an account? Sign in</a>
+      </div>
+    {{end}}
   </div>
 </div>
 <script src="/static/js/theme.js"></script>
