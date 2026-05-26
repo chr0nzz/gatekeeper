@@ -45,6 +45,7 @@ type Handlers struct {
 	renderer       *templates.Renderer
 	policies       *queries.PolicyStore
 	groups         *queries.GroupStore
+	invites        *queries.InviteStore
 	webhooks       *queries.WebhookStore
 	notifier       *notify.Service
 	baseURL        string
@@ -95,6 +96,7 @@ func New(
 	envDefaults EnvDefaults,
 	policies *queries.PolicyStore,
 	groups *queries.GroupStore,
+	invites *queries.InviteStore,
 	webhooks *queries.WebhookStore,
 	notifier *notify.Service,
 ) *Handlers {
@@ -104,7 +106,7 @@ func New(
 		trustedDevices: trustedDevices,
 		oidcStorage: oidcStorage, mailer: m, resetStore: resetStore,
 		settings: settings, auditLog: auditLog, renderer: renderer,
-		policies: policies, groups: groups, webhooks: webhooks, notifier: notifier,
+		policies: policies, groups: groups, invites: invites, webhooks: webhooks, notifier: notifier,
 		baseURL: baseURL, version: version, envSMTP: envSMTP, envDefaults: envDefaults,
 	}
 }
@@ -173,6 +175,8 @@ func activePageFor(name string) string {
 		return "policies"
 	case "admin_groups.html", "admin_group_detail.html":
 		return "groups"
+	case "admin_invites.html":
+		return "invites"
 	case "admin_audit.html":
 		return "audit"
 	case "admin_settings.html":
@@ -239,6 +243,9 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/policies/{id}/delete", h.PostDeletePolicy)
 		r.Post("/policies/{id}/members", h.PostAddPolicyMember)
 		r.Post("/policies/{id}/members/{userID}/remove", h.PostRemovePolicyMember)
+		r.Get("/invites", h.GetInvites)
+		r.Post("/invites", h.PostCreateInvite)
+		r.Post("/invites/{id}/revoke", h.PostRevokeInvite)
 		r.Get("/groups", h.GetGroups)
 		r.Post("/groups", h.PostCreateGroup)
 		r.Get("/groups/{id}", h.GetGroup)
@@ -1652,6 +1659,53 @@ func (h *Handlers) PostRemovePolicyMember(w http.ResponseWriter, r *http.Request
 	userID := chi.URLParam(r, "userID")
 	h.policies.RemoveMember(r.Context(), id, userID)
 	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
+}
+
+func (h *Handlers) GetInvites(w http.ResponseWriter, r *http.Request) {
+	invites, _ := h.invites.List(r.Context())
+	h.render(w, r, "admin_invites.html", map[string]interface{}{
+		"Invites": invites,
+		"BaseURL": h.baseURL,
+	})
+}
+
+func (h *Handlers) PostCreateInvite(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
+	note := strings.TrimSpace(r.FormValue("note"))
+	expiryDays := 7
+	if d := r.FormValue("expiry_days"); d != "" {
+		if n, err := fmt.Sscanf(d, "%d", &expiryDays); n == 0 || err != nil || expiryDays < 1 {
+			expiryDays = 7
+		}
+	}
+	adminID := h.adminIDFromRequest(r)
+	token, err := h.invites.Create(r.Context(), email, note, adminID, expiryDays)
+	if err != nil {
+		http.Error(w, "Could not create invite", http.StatusInternalServerError)
+		return
+	}
+	h.auditLog.Log(r.Context(), "invite.created", "", adminID, r.RemoteAddr, email)
+	inviteURL := h.baseURL + "/register?invite=" + token
+	h.render(w, r, "admin_invites.html", map[string]interface{}{
+		"Invites":   func() []queries.Invite { inv, _ := h.invites.List(r.Context()); return inv }(),
+		"NewLink":   inviteURL,
+		"BaseURL":   h.baseURL,
+	})
+}
+
+func (h *Handlers) PostRevokeInvite(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	h.invites.Revoke(r.Context(), id)
+	h.auditLog.Log(r.Context(), "invite.revoked", "", "", r.RemoteAddr, id)
+	http.Redirect(w, r, "/admin/invites", http.StatusFound)
 }
 
 func (h *Handlers) GetGroups(w http.ResponseWriter, r *http.Request) {

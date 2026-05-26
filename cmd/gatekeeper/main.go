@@ -62,6 +62,7 @@ func main() {
 	adminStore := queries.NewAdminStore(database)
 	adminSessStore := queries.NewAdminSessionStore(database)
 	groupStore := queries.NewGroupStore(database)
+	inviteStore := queries.NewInviteStore(database)
 	settingsStore := queries.NewSettingsStore(database)
 	otpStore := auth.NewOTPStore(database, []byte(cfg.SecretKey))
 	totpStore := auth.NewTOTPStore(database, []byte(cfg.SecretKey))
@@ -133,9 +134,9 @@ func main() {
 
 	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore)
 
-	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore)
+	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, envSMTP,
-		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours}, policyStore, groupStore, webhookStore, notifyService)
+		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours}, policyStore, groupStore, inviteStore, webhookStore, notifyService)
 
 	secretKey := [32]byte{}
 	copy(secretKey[:], []byte(cfg.SecretKey))

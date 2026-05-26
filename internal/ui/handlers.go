@@ -101,6 +101,7 @@ type Handlers struct {
 	renderer       *templates.Renderer
 	oidcStorage    *oidcstore.Storage
 	policies       *queries.PolicyStore
+	invites        *queries.InviteStore
 	limiter        *loginLimiter
 	baseURL        string
 	issuer         string
@@ -125,13 +126,14 @@ func New(
 	oidcStorage *oidcstore.Storage,
 	baseURL, issuer, secretKey, cookieDomain string,
 	policies *queries.PolicyStore,
+	invites *queries.InviteStore,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, sessions: sessions, otps: otps, totp: totp,
 		passkeys: passkeys, resetStore: resetStore, settings: settings,
 		trustedDevices: trustedDevices, mailer: m,
 		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
-		policies: policies, limiter: newLoginLimiter(),
+		policies: policies, invites: invites, limiter: newLoginLimiter(),
 		baseURL: baseURL, issuer: issuer,
 		secretKey: secretKey, cookieDomain: cookieDomain,
 	}
@@ -181,7 +183,6 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Post("/login/totp", h.PostTOTP)
 	r.Get("/login/totp/recovery", h.GetTOTPRecovery)
 	r.Post("/login/totp/recovery", h.PostTOTPRecovery)
-	r.Get("/login/passkey", h.GetPasskeyLogin)
 	r.Post("/login/passkey/begin", h.PostPasskeyLoginBegin)
 	r.Post("/login/passkey/finish", h.PostPasskeyLoginFinish)
 	r.Get("/forgot-password", h.GetForgotPassword)
@@ -189,6 +190,8 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Get("/reset-password", h.GetResetPassword)
 	r.Post("/reset-password", h.PostResetPassword)
 	r.Post("/logout", h.PostLogout)
+	r.Get("/register", h.GetRegister)
+	r.Post("/register", h.PostRegister)
 
 	r.Group(func(r chi.Router) {
 		r.Use(h.requireSession)
@@ -496,10 +499,6 @@ func (h *Handlers) needsCrossDomain(target string) bool {
 	suffix := strings.TrimPrefix(h.cookieDomain, ".")
 	host := u.Hostname()
 	return host != suffix && !strings.HasSuffix(host, "."+suffix)
-}
-
-func (h *Handlers) GetPasskeyLogin(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "passkey_login.html", nil)
 }
 
 func (h *Handlers) PostPasskeyLoginBegin(w http.ResponseWriter, r *http.Request) {
@@ -994,6 +993,78 @@ func (h *Handlers) PostRevokeOtherSessions(w http.ResponseWriter, r *http.Reques
 	}
 	h.sessions.RevokeUser(r.Context(), data.UserID, currentID)
 	h.auditLog.Log(r.Context(), audit.EventSessionRevoked, data.UserID, "", r.RemoteAddr, "")
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *Handlers) GetRegister(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("invite")
+	if token == "" {
+		http.NotFound(w, r)
+		return
+	}
+	inv, err := h.invites.GetByToken(r.Context(), token)
+	if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
+		h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired."})
+		return
+	}
+	h.render(w, "register.html", map[string]interface{}{
+		"Token":     token,
+		"Email":     inv.Email,
+		"CSRFToken": h.csrf(r),
+	})
+}
+
+func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	token := r.FormValue("invite_token")
+	inv, err := h.invites.GetByToken(r.Context(), token)
+	if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
+		h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired.", "CSRFToken": h.csrf(r)})
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
+	if email == "" {
+		email = inv.Email
+	}
+	password := r.FormValue("password")
+	confirm := r.FormValue("confirm_password")
+
+	if email == "" {
+		h.render(w, "register.html", map[string]interface{}{"Error": "Email is required.", "Token": token, "CSRFToken": h.csrf(r)})
+		return
+	}
+	if password == "" || len(password) < 12 {
+		h.render(w, "register.html", map[string]interface{}{"Error": "Password must be at least 12 characters.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+		return
+	}
+	if password != confirm {
+		h.render(w, "register.html", map[string]interface{}{"Error": "Passwords do not match.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+		return
+	}
+
+	existing, _ := h.users.GetByEmail(r.Context(), email)
+	if existing != nil {
+		h.render(w, "register.html", map[string]interface{}{"Error": "An account with that email already exists.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+		return
+	}
+
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	userID, err := h.users.Create(r.Context(), email, hash, false)
+	if err != nil {
+		h.render(w, "register.html", map[string]interface{}{"Error": "Could not create account. Please try again.", "Token": token, "Email": inv.Email, "CSRFToken": h.csrf(r)})
+		return
+	}
+	h.invites.MarkUsed(r.Context(), inv.ID)
+	h.auditLog.Log(r.Context(), "user.registered", userID, "", r.RemoteAddr, email)
+	h.sessions.Create(w, r, auth.SessionData{UserID: userID})
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 

@@ -1,0 +1,153 @@
+{{template "admin_base" .}}
+{{define "title"}}Invites - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Invites</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Invites</h1>
+    <p class="sub">Generate single-use registration links. Each link can be tied to an email address and expires automatically.</p>
+  </div>
+  <div class="head-actions">
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-invite-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New invite
+    </button>
+  </div>
+</div>
+
+{{if .NewLink}}
+<div class="alert alert-ok" style="margin-bottom:16px;gap:12px;align-items:flex-start;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:8px;width:100%">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M20 6 9 17l-5-5"/></svg>
+    <b>Invite link created - share it once, it expires when used</b>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;width:100%;background:var(--bg-0);border:1px solid var(--bd-1);border-radius:var(--r);padding:8px 10px">
+    <code id="new-invite-link" style="font-size:12px;font-family:var(--font-mono);flex:1;word-break:break-all;color:var(--tx-1)">{{.NewLink}}</code>
+    <button class="btn btn-ghost btn-xs" style="flex-shrink:0" data-copy="{{.NewLink}}" onclick="copyInviteLink(this)">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
+      Copy
+    </button>
+  </div>
+</div>
+{{end}}
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Email / Note</th>
+        <th>Status</th>
+        <th>Expires</th>
+        <th>Created</th>
+        <th style="width:80px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Invites}}
+    <tr>
+      <td>
+        <div>
+          {{if .Email}}<span style="font-weight:500">{{.Email}}</span>{{else}}<span style="color:var(--tx-3)">Any email</span>{{end}}
+          {{if .Note}}<div style="font-size:11px;color:var(--tx-3)">{{.Note}}</div>{{end}}
+        </div>
+      </td>
+      <td>
+        {{if .IsUsed}}<span class="pill pill-off"><span class="dot"></span>Used</span>
+        {{else if .IsExpired}}<span class="pill pill-warn"><span class="dot"></span>Expired</span>
+        {{else}}<span class="pill pill-ok"><span class="dot"></span>Active</span>{{end}}
+      </td>
+      <td style="color:var(--tx-2);font-size:12px">
+        <span data-ts="{{.ExpiresAt}}"></span>
+      </td>
+      <td style="color:var(--tx-2);font-size:12px">
+        <span data-ts="{{.CreatedAt}}"></span>
+      </td>
+      <td>
+        {{if not .IsUsed}}
+        <div class="row-actions">
+          <form method="POST" action="/admin/invites/{{.ID}}/revoke">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Revoke this invite?')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+            </button>
+          </form>
+        </div>
+        {{end}}
+      </td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="5">
+        <div class="empty">
+          <div class="ic-bg">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <h4>No invites yet</h4>
+          <p>Create an invite link and share it with someone to let them register an account.</p>
+          <button class="btn btn-primary btn-sm" data-open-dialog="new-invite-dialog">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+            New invite
+          </button>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+
+<dialog id="new-invite-dialog">
+  <div class="modal-head">
+    <h2>New invite</h2>
+    <p>The link is single-use and expires after the chosen period. Email is optional - leave blank to allow any address.</p>
+  </div>
+  <form method="POST" action="/admin/invites">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Email address <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="email" name="email" autocomplete="off" placeholder="person@company.com">
+        <span class="field-hint">If set, the registration form will pre-fill and lock the email field.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Note <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="text" name="note" placeholder="e.g. New team member - design">
+      </label>
+      <label class="field">
+        <span class="field-label">Expires after</span>
+        <select class="input" name="expiry_days">
+          <option value="1">1 day</option>
+          <option value="3">3 days</option>
+          <option value="7" selected>7 days</option>
+          <option value="14">14 days</option>
+          <option value="30">30 days</option>
+        </select>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create invite</button>
+    </div>
+  </form>
+</dialog>
+<script>
+function copyInviteLink(btn) {
+  var link = btn.getAttribute('data-copy');
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(function() {
+    var orig = btn.innerHTML;
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.innerHTML = orig; }, 2000);
+  });
+}
+(function() {
+  document.querySelectorAll('[data-ts]').forEach(function(el) {
+    var ts = parseInt(el.getAttribute('data-ts'), 10);
+    if (!ts) return;
+    var d = new Date(ts * 1000);
+    el.textContent = d.toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'});
+    el.title = d.toLocaleString();
+  });
+})();
+</script>
+{{end}}
