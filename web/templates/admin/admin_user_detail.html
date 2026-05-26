@@ -140,6 +140,45 @@
 
 </div>
 
+{{if .GroupMemberships}}
+<div class="card" style="margin-top:14px">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <h3>Groups</h3>
+  </div>
+  <div class="card-body tight">
+    <table class="table">
+      <tbody>
+      {{range .GroupMemberships}}
+      <tr>
+        <td style="width:26px">
+          <div style="width:20px;height:20px;border-radius:4px;background:{{if .IsMember}}var(--ac-bg){{else}}var(--bg-2){{end}};border:1px solid {{if .IsMember}}var(--ac-bd){{else}}var(--bd-0){{end}};display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="{{if .IsMember}}var(--ac){{else}}var(--tx-3){{end}}" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
+          </div>
+        </td>
+        <td style="font-weight:500">{{.Group.Name}}</td>
+        <td style="color:var(--tx-3);font-size:12px">{{if .Group.Description}}{{.Group.Description}}{{end}}</td>
+        <td style="width:100px;text-align:right">
+          {{if .IsMember}}
+          <form method="POST" action="/admin/users/{{$.User.ID}}/groups/{{.Group.ID}}/remove" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">Remove</button>
+          </form>
+          {{else}}
+          <form method="POST" action="/admin/users/{{$.User.ID}}/groups/{{.Group.ID}}/add" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-xs">Add</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
 {{if .Passkeys}}
 <div class="card" style="margin-top:14px">
   <div class="card-head">

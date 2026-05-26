@@ -3,6 +3,18 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.5.0
+
+### Groups
+
+- **Groups** - Create named groups and assign users to them. Group membership is automatically included as a `groups` claim in all OIDC tokens, enabling role mapping in apps like Grafana and Jellyfin without any scope configuration. Manage group members from the Groups page or directly from a user's profile page. See [Groups](/admin/groups) for Grafana and Jellyfin config examples.
+
+### Dashboard
+
+- **Live stats** - The sign-ins, failed attempts, and OIDC token counts on the dashboard now refresh every 30 seconds without a full page reload.
+
+---
+
 ## v0.4.0
 
 ### Security hardening

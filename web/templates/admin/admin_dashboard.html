@@ -42,8 +42,8 @@
       <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a5 5 0 1 1-5 5h-3v3H4v3H1v-3l9-9c.6-1.7 2.4-3 4.5-3z"/></svg>
       Sign-ins (24h)
     </div>
-    <div class="value">{{.SignIns24h}}</div>
-    <div class="delta">{{if gt .SuccessRate 0}}<b>{{.SuccessRate}}%</b> success rate{{else}}no attempts{{end}}</div>
+    <div class="value" id="stat-signins">{{.SignIns24h}}</div>
+    <div class="delta" id="stat-signins-delta">{{if gt .SuccessRate 0}}<b>{{.SuccessRate}}%</b> success rate{{else}}no attempts{{end}}</div>
     {{if .SparkSignIns}}
     <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
       <polyline points="{{.SparkSignIns}}" fill="none" stroke="var(--ac)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
@@ -55,8 +55,8 @@
       <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
       OIDC tokens (24h)
     </div>
-    <div class="value">{{.OIDCTokens24h}}</div>
-    <div class="delta">across {{.OIDCClientCount}} clients</div>
+    <div class="value" id="stat-oidc">{{.OIDCTokens24h}}</div>
+    <div class="delta" id="stat-oidc-delta">across {{.OIDCClientCount}} clients</div>
     {{if .SparkOIDC}}
     <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
       <polyline points="{{.SparkOIDC}}" fill="none" stroke="var(--ac)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
@@ -68,8 +68,8 @@
       <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
       Failed attempts (24h)
     </div>
-    <div class="value">{{.Failed24h}}</div>
-    <div class="delta" style="{{if gt .LockedUsers 0}}color:var(--warn){{end}}">{{if gt .LockedUsers 0}}{{.LockedUsers}} lockout{{if gt .LockedUsers 1}}s{{end}} active{{else}}no lockouts{{end}}</div>
+    <div class="value" id="stat-failed">{{.Failed24h}}</div>
+    <div class="delta" id="stat-failed-delta" style="{{if gt .LockedUsers 0}}color:var(--warn){{end}}">{{if gt .LockedUsers 0}}{{.LockedUsers}} lockout{{if gt .LockedUsers 1}}s{{end}} active{{else}}no lockouts{{end}}</div>
     {{if .SparkFailed}}
     <svg class="spark" viewBox="0 0 64 28" preserveAspectRatio="none">
       <polyline points="{{.SparkFailed}}" fill="none" stroke="var(--warn)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
@@ -401,6 +401,29 @@
   });
 
   fetchAuthMethods('24h');
+
+  function refreshStats() {
+    fetch('/admin/api/dashboard-stats')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var s = document.getElementById('stat-signins');
+        var sd = document.getElementById('stat-signins-delta');
+        var o = document.getElementById('stat-oidc');
+        var f = document.getElementById('stat-failed');
+        var fd = document.getElementById('stat-failed-delta');
+        if (s) s.textContent = d.sign_ins_24h;
+        if (sd) sd.innerHTML = d.success_rate > 0 ? '<b>' + d.success_rate + '%</b> success rate' : 'no attempts';
+        if (o) o.textContent = d.oidc_tokens_24h;
+        if (f) f.textContent = d.failed_24h;
+        if (fd) {
+          fd.textContent = d.locked_users > 0 ? d.locked_users + (d.locked_users === 1 ? ' lockout active' : ' lockouts active') : 'no lockouts';
+          fd.style.color = d.locked_users > 0 ? 'var(--warn)' : '';
+        }
+        fetchAndDraw(currentRange);
+      })
+      .catch(function() {});
+  }
+  setInterval(refreshStats, 30000);
 
   document.getElementById('db-icon-url-input')?.addEventListener('input', function() {
     var url = this.value.trim();

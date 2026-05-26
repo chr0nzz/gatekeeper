@@ -46,6 +46,10 @@
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
         <span>Policies</span>
       </a>
+      <a class="side-link {{if eq .ActivePage "groups"}}active{{end}}" href="/admin/groups">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Groups</span>
+      </a>
       <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
         <span>Audit Log</span>
@@ -84,7 +88,7 @@
           <div class="av">{{slice .AdminEmail 0 2}}</div>
           <div class="meta">
             <b>{{.AdminEmail}}</b>
-            <span>admin{{if .AppVersion}} · v{{.AppVersion}}{{end}}</span>
+            <span>admin</span>
           </div>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:11px;height:11px;color:var(--tx-3);flex-shrink:0" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 14L20 4M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/></svg>
         </div>
@@ -111,6 +115,7 @@
           <span>Search anything…</span>
           <span class="kbd">⌘K</span>
         </button>
+        {{if .AppVersion}}<button class="version-btn{{if .HasUpdate}} has-update{{end}}" onclick="openUpdateModal()">v{{.AppVersion}}</button>{{end}}
         <div class="accent-drop" id="accent-drop">
           <button class="accent-trigger" id="accent-trigger" title="Accent color">
             <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
@@ -175,6 +180,10 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
       <span>Policies</span>
     </a>
+    <a class="side-link {{if eq .ActivePage "groups"}}active{{end}}" href="/admin/groups">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Groups</span>
+    </a>
     <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
       <span>Audit Log</span>
@@ -213,7 +222,7 @@
         <div class="av">{{slice .AdminEmail 0 2}}</div>
         <div class="meta">
           <b>{{.AdminEmail}}</b>
-          <span>admin{{if .AppVersion}} · v{{.AppVersion}}{{end}}</span>
+          <span>admin</span>
         </div>
       </div>
     </a>
@@ -235,6 +244,35 @@
     </div>
   </div>
 </div>
+
+<dialog id="update-modal" style="max-width:540px;width:100%">
+  <div class="modal-head">
+    <h3 id="update-modal-title">GateKeeper</h3>
+    <button type="button" class="btn btn-ghost btn-xs" data-close-dialog>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="modal-body" style="padding:20px 24px 24px">
+    <div class="update-versions">
+      <div class="update-ver-box">
+        <div class="update-ver-label">Current</div>
+        <div class="update-ver-val" id="upd-current">-</div>
+      </div>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3);flex-shrink:0"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="update-ver-box">
+        <div class="update-ver-label">Latest</div>
+        <div class="update-ver-val" id="upd-latest">-</div>
+      </div>
+      <div id="upd-badge" style="display:none;margin-left:auto"></div>
+    </div>
+    <div id="upd-notes" style="margin-top:20px;font-size:13px;line-height:1.7;color:var(--tx-1);max-height:380px;overflow-y:auto;border-top:1px solid var(--bd-0);padding-top:16px"></div>
+    <div id="upd-loading" style="padding:24px 0;text-align:center;color:var(--tx-3);font-size:13px">Checking for updates...</div>
+  </div>
+  <div class="modal-foot">
+    <a id="upd-release-link" href="#" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:none">View on GitHub</a>
+    <button type="button" class="btn btn-primary btn-sm" data-close-dialog>Close</button>
+  </div>
+</dialog>
 
 <script src="/static/js/theme.js"></script>
 <script src="/static/js/admin.js"></script>
@@ -270,6 +308,63 @@
 })();
 </script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}</script>
+<script>
+(function(){
+  function renderMd(s) {
+    if (!s) return '';
+    return s
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/^### (.+)$/gm,'<h4 style="margin:14px 0 4px;font-size:13px;font-weight:600">$1</h4>')
+      .replace(/^## (.+)$/gm,'<h3 style="margin:16px 0 6px;font-size:14px;font-weight:600">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/`([^`]+)`/g,'<code style="background:var(--bg-2);padding:1px 5px;border-radius:4px;font-family:var(--font-mono);font-size:11px">$1</code>')
+      .replace(/^- (.+)$/gm,'<li style="margin:2px 0;padding-left:4px">$1</li>')
+      .replace(/(<li[^>]*>.*<\/li>\n?)+/g,'<ul style="margin:6px 0 10px;padding-left:18px;list-style:disc">$&</ul>')
+      .replace(/\n\n/g,'<br>');
+  }
+
+  window.openUpdateModal = function() {
+    var modal = document.getElementById('update-modal');
+    if (!modal) return;
+    modal.showModal();
+    var loading = document.getElementById('upd-loading');
+    var notes   = document.getElementById('upd-notes');
+    var curEl   = document.getElementById('upd-current');
+    var latEl   = document.getElementById('upd-latest');
+    var badge   = document.getElementById('upd-badge');
+    var link    = document.getElementById('upd-release-link');
+    var title   = document.getElementById('update-modal-title');
+    if (loading) loading.style.display = 'block';
+    if (notes)   notes.innerHTML = '';
+    fetch('/admin/api/version-check')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (loading) loading.style.display = 'none';
+        if (curEl) curEl.textContent = d.current ? 'v' + d.current : '-';
+        if (latEl) latEl.textContent = d.latest  ? 'v' + d.latest  : '-';
+        if (link && d.url) { link.href = d.url; link.style.display = ''; }
+        if (d.has_update) {
+          if (title) title.textContent = 'Update available';
+          if (badge) { badge.innerHTML = '<span class="pill pill-warn" style="font-size:11px">v' + d.latest + ' available</span>'; badge.style.display = ''; }
+          document.querySelectorAll('.version-btn').forEach(function(b){ b.classList.add('has-update'); });
+        } else {
+          if (title) title.textContent = 'GateKeeper';
+          if (badge) { badge.innerHTML = '<span class="pill pill-ok" style="font-size:11px">Up to date</span>'; badge.style.display = ''; }
+        }
+        if (notes && d.body) notes.innerHTML = renderMd(d.body);
+      })
+      .catch(function(){ if (loading) loading.textContent = 'Could not reach GitHub.'; });
+  };
+
+  fetch('/admin/api/version-check')
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.has_update) {
+        document.querySelectorAll('.version-btn').forEach(function(b){ b.classList.add('has-update'); });
+      }
+    }).catch(function(){});
+})();
+</script>
 </body>
 </html>
 {{end}}

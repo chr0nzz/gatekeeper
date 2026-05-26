@@ -1,0 +1,98 @@
+{{template "admin_base" .}}
+{{define "title"}}Groups - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>Groups</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Groups</h1>
+    <p class="sub">Assign users to groups. Group membership is included as a <code>groups</code> claim in OIDC tokens for role mapping in apps like Grafana and Jellyfin.</p>
+  </div>
+  <div class="head-actions">
+    <button class="btn btn-primary btn-sm" data-open-dialog="new-group-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New group
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th style="width:90px">Members</th>
+        <th style="width:80px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Groups}}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:6px;background:var(--ac-bg);border:1px solid var(--ac-bd);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--ac)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <span style="font-weight:500">{{.Name}}</span>
+        </div>
+      </td>
+      <td style="color:var(--tx-2)">{{if .Description}}{{.Description}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</td>
+      <td>{{.MemberCount}}</td>
+      <td>
+        <div class="row-actions">
+          <a href="/admin/groups/{{.ID}}" class="btn btn-ghost btn-xs">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <form method="POST" action="/admin/groups/{{.ID}}/delete" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete group {{.Name}}?')">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="4">
+        <div class="empty">
+          <div class="ic-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <h4>No groups yet</h4>
+          <p>Create a group and add users. The <code>groups</code> claim will appear in OIDC tokens automatically.</p>
+          <button class="btn btn-primary btn-sm" data-open-dialog="new-group-dialog">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+            New group
+          </button>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+
+<dialog id="new-group-dialog">
+  <div class="modal-head">
+    <h2>New group</h2>
+    <p>Groups are included as a <code>groups</code> claim in OIDC tokens. Use them for role mapping in Grafana, Jellyfin, and other apps.</p>
+  </div>
+  <form method="POST" action="/admin/groups">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input class="input" type="text" name="name" required autofocus placeholder="e.g. admins">
+        <span class="field-hint">This exact name will appear in the <code>groups</code> claim. Case-sensitive.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="text" name="description" placeholder="What this group represents">
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create group</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

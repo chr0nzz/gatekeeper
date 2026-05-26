@@ -29,7 +29,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
-var version = "dev"
+var version = "0.5.0-dev"
 
 func main() {
 	cfg, err := config.Load()
@@ -61,6 +61,7 @@ func main() {
 	userStore := queries.NewUserStore(database)
 	adminStore := queries.NewAdminStore(database)
 	adminSessStore := queries.NewAdminSessionStore(database)
+	groupStore := queries.NewGroupStore(database)
 	settingsStore := queries.NewSettingsStore(database)
 	otpStore := auth.NewOTPStore(database, []byte(cfg.SecretKey))
 	totpStore := auth.NewTOTPStore(database, []byte(cfg.SecretKey))
@@ -134,7 +135,7 @@ func main() {
 
 	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, envSMTP,
-		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours}, policyStore, webhookStore, notifyService)
+		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours}, policyStore, groupStore, webhookStore, notifyService)
 
 	secretKey := [32]byte{}
 	copy(secretKey[:], []byte(cfg.SecretKey))

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -43,12 +44,28 @@ type Handlers struct {
 	auditLog       *audit.Logger
 	renderer       *templates.Renderer
 	policies       *queries.PolicyStore
+	groups         *queries.GroupStore
 	webhooks       *queries.WebhookStore
 	notifier       *notify.Service
 	baseURL        string
 	version        string
 	envSMTP        mailer.Settings
 	envDefaults    EnvDefaults
+	updateCache    updateCache
+}
+
+type updateCache struct {
+	mu        sync.Mutex
+	result    *updateResult
+	fetchedAt time.Time
+}
+
+type updateResult struct {
+	Current   string `json:"current"`
+	Latest    string `json:"latest"`
+	URL       string `json:"url"`
+	Body      string `json:"body"`
+	HasUpdate bool   `json:"has_update"`
 }
 
 // EnvDefaults holds env var fallback values for settings that are managed in the UI.
@@ -77,6 +94,7 @@ func New(
 	envSMTP mailer.Settings,
 	envDefaults EnvDefaults,
 	policies *queries.PolicyStore,
+	groups *queries.GroupStore,
 	webhooks *queries.WebhookStore,
 	notifier *notify.Service,
 ) *Handlers {
@@ -86,7 +104,7 @@ func New(
 		trustedDevices: trustedDevices,
 		oidcStorage: oidcStorage, mailer: m, resetStore: resetStore,
 		settings: settings, auditLog: auditLog, renderer: renderer,
-		policies: policies, webhooks: webhooks, notifier: notifier,
+		policies: policies, groups: groups, webhooks: webhooks, notifier: notifier,
 		baseURL: baseURL, version: version, envSMTP: envSMTP, envDefaults: envDefaults,
 	}
 }
@@ -127,6 +145,7 @@ func (h *Handlers) render(w http.ResponseWriter, r *http.Request, name string, d
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM oidc_clients`).Scan(&clientCount)
 	data["SidebarUserCount"] = userCount
 	data["SidebarClientCount"] = clientCount
+	data["HasUpdate"] = h.cachedHasUpdate(r.Context())
 	h.renderer.Render(w, name, data)
 }
 
@@ -152,6 +171,8 @@ func activePageFor(name string) string {
 		return "clients"
 	case "admin_policies.html", "admin_policy_detail.html":
 		return "policies"
+	case "admin_groups.html", "admin_group_detail.html":
+		return "groups"
 	case "admin_audit.html":
 		return "audit"
 	case "admin_settings.html":
@@ -190,7 +211,9 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Get("/", h.GetDashboard)
 		r.Get("/api/activity", h.GetActivityData)
 		r.Get("/api/auth-methods", h.GetAuthMethodsData)
+		r.Get("/api/dashboard-stats", h.GetDashboardStats)
 		r.Get("/api/search", h.GetSearch)
+		r.Get("/api/version-check", h.GetVersionCheck)
 		r.Get("/users", h.GetUsers)
 		r.Get("/users/new", h.GetNewUser)
 		r.Post("/users", h.PostCreateUser)
@@ -203,6 +226,8 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/users/{id}/revoke-sessions", h.PostRevokeSessions)
 		r.Post("/users/{id}/revoke-totp", h.PostRevokeTOTP)
 		r.Post("/users/{id}/passwordless", h.PostTogglePasswordless)
+		r.Post("/users/{id}/groups/{groupID}/add", h.PostAddUserToGroup)
+		r.Post("/users/{id}/groups/{groupID}/remove", h.PostRemoveUserFromGroup)
 		r.Get("/clients", h.GetClients)
 		r.Post("/clients", h.PostCreateClient)
 		r.Post("/clients/{id}/delete", h.PostDeleteClient)
@@ -214,6 +239,12 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/policies/{id}/delete", h.PostDeletePolicy)
 		r.Post("/policies/{id}/members", h.PostAddPolicyMember)
 		r.Post("/policies/{id}/members/{userID}/remove", h.PostRemovePolicyMember)
+		r.Get("/groups", h.GetGroups)
+		r.Post("/groups", h.PostCreateGroup)
+		r.Get("/groups/{id}", h.GetGroup)
+		r.Post("/groups/{id}/delete", h.PostDeleteGroup)
+		r.Post("/groups/{id}/members", h.PostAddGroupMember)
+		r.Post("/groups/{id}/members/{userID}/remove", h.PostRemoveGroupMember)
 		r.Get("/integrations", h.GetIntegrations)
 		r.Get("/audit", h.GetAudit)
 		r.Get("/settings", h.GetSettings)
@@ -546,6 +577,30 @@ func hourlySparkline(ctx context.Context, db *sql.DB, hours int, query string) s
 		pts += fmt.Sprintf("%d,%d", x, y)
 	}
 	return pts
+}
+
+func (h *Handlers) GetDashboardStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	now := time.Now().Unix()
+	since24h := now - 86400
+	var signIns24h, failed24h, oidcTokens24h, totalAttempts, lockedUsers int
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey') AND created_at > ?`, since24h).Scan(&signIns24h)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event LIKE '%fail%' AND created_at > ?`, since24h).Scan(&failed24h)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_tokens WHERE created_at > ?`, since24h).Scan(&oidcTokens24h)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.failure') AND created_at > ?`, since24h).Scan(&totalAttempts)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM otp_lockouts WHERE locked_until > ?`, now).Scan(&lockedUsers)
+	successRate := 0
+	if totalAttempts > 0 {
+		successRate = (signIns24h * 100) / totalAttempts
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{
+		"sign_ins_24h":   signIns24h,
+		"failed_24h":     failed24h,
+		"oidc_tokens_24h": oidcTokens24h,
+		"success_rate":   successRate,
+		"locked_users":   lockedUsers,
+	})
 }
 
 func (h *Handlers) GetActivityData(w http.ResponseWriter, r *http.Request) {
@@ -890,10 +945,26 @@ func (h *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
 		LastSeen string
 	}
 
+	userGroups, _ := h.groups.GetUserGroups(r.Context(), id)
+	allGroups, _ := h.groups.List(r.Context())
+	userGroupSet := map[string]bool{}
+	for _, g := range userGroups {
+		userGroupSet[g] = true
+	}
+	type GroupMembership struct {
+		queries.Group
+		IsMember bool
+	}
+	var groupMemberships []GroupMembership
+	for _, g := range allGroups {
+		groupMemberships = append(groupMemberships, GroupMembership{Group: g, IsMember: userGroupSet[g.Name]})
+	}
+
 	h.render(w, r, "admin_user_detail.html", map[string]interface{}{
-		"User":          UserDetail{User: user, Initials: initials, Sessions: sessions, Locked: isLocked, LastSeen: ""},
-		"Passkeys":      passkeys,
-		"RecoveryCodes": recoveryCodes,
+		"User":             UserDetail{User: user, Initials: initials, Sessions: sessions, Locked: isLocked, LastSeen: ""},
+		"Passkeys":         passkeys,
+		"RecoveryCodes":    recoveryCodes,
+		"GroupMemberships": groupMemberships,
 	})
 }
 
@@ -1583,6 +1654,114 @@ func (h *Handlers) PostRemovePolicyMember(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
 }
 
+func (h *Handlers) GetGroups(w http.ResponseWriter, r *http.Request) {
+	groups, err := h.groups.List(r.Context())
+	if err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+	h.render(w, r, "admin_groups.html", map[string]interface{}{"Groups": groups})
+}
+
+func (h *Handlers) PostCreateGroup(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("name"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	if name == "" {
+		http.Redirect(w, r, "/admin/groups", http.StatusFound)
+		return
+	}
+	if err := h.groups.Create(r.Context(), name, description); err != nil {
+		http.Error(w, "Could not create group: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	h.auditLog.Log(r.Context(), "group.created", "", "", r.RemoteAddr, name)
+	http.Redirect(w, r, "/admin/groups", http.StatusFound)
+}
+
+func (h *Handlers) GetGroup(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	group, err := h.groups.GetByID(r.Context(), id)
+	if err != nil || group == nil {
+		http.NotFound(w, r)
+		return
+	}
+	members, _ := h.groups.GetMembers(r.Context(), id)
+	nonMembers, _ := h.groups.ListNotMember(r.Context(), id)
+	h.render(w, r, "admin_group_detail.html", map[string]interface{}{
+		"Group":      group,
+		"Members":    members,
+		"NonMembers": nonMembers,
+	})
+}
+
+func (h *Handlers) PostDeleteGroup(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	gr, _ := h.groups.GetByID(r.Context(), id)
+	h.groups.Delete(r.Context(), id)
+	if gr != nil {
+		h.auditLog.Log(r.Context(), "group.deleted", "", "", r.RemoteAddr, gr.Name)
+	}
+	http.Redirect(w, r, "/admin/groups", http.StatusFound)
+}
+
+func (h *Handlers) PostAddGroupMember(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	userID := strings.TrimSpace(r.FormValue("user_id"))
+	if userID != "" {
+		h.groups.AddMember(r.Context(), id, userID)
+		h.auditLog.Log(r.Context(), "group.member_added", userID, "", r.RemoteAddr, id)
+	}
+	http.Redirect(w, r, "/admin/groups/"+id, http.StatusFound)
+}
+
+func (h *Handlers) PostRemoveGroupMember(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	userID := chi.URLParam(r, "userID")
+	h.groups.RemoveMember(r.Context(), id, userID)
+	h.auditLog.Log(r.Context(), "group.member_removed", userID, "", r.RemoteAddr, id)
+	http.Redirect(w, r, "/admin/groups/"+id, http.StatusFound)
+}
+
+func (h *Handlers) PostAddUserToGroup(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	userID := chi.URLParam(r, "id")
+	groupID := chi.URLParam(r, "groupID")
+	h.groups.AddMember(r.Context(), groupID, userID)
+	h.auditLog.Log(r.Context(), "group.member_added", userID, "", r.RemoteAddr, groupID)
+	http.Redirect(w, r, "/admin/users/"+userID, http.StatusFound)
+}
+
+func (h *Handlers) PostRemoveUserFromGroup(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	userID := chi.URLParam(r, "id")
+	groupID := chi.URLParam(r, "groupID")
+	h.groups.RemoveMember(r.Context(), groupID, userID)
+	h.auditLog.Log(r.Context(), "group.member_removed", userID, "", r.RemoteAddr, groupID)
+	http.Redirect(w, r, "/admin/users/"+userID, http.StatusFound)
+}
+
 // GetWebhooks renders the webhooks management page.
 func (h *Handlers) GetWebhooks(w http.ResponseWriter, r *http.Request) {
 	whs, _ := h.webhooks.ListWebhooks(r.Context())
@@ -1732,6 +1911,83 @@ func (h *Handlers) GetNotificationsAPI(w http.ResponseWriter, r *http.Request) {
 	notifs, _ := h.webhooks.ListNotifications(r.Context(), 8)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(notifs)
+}
+
+func (h *Handlers) cachedHasUpdate(ctx context.Context) bool {
+	h.updateCache.mu.Lock()
+	defer h.updateCache.mu.Unlock()
+	if h.updateCache.result != nil && time.Since(h.updateCache.fetchedAt) < time.Hour {
+		return h.updateCache.result.HasUpdate
+	}
+	return false
+}
+
+// GetVersionCheck returns the current and latest release versions, cached for 1 hour.
+func (h *Handlers) GetVersionCheck(w http.ResponseWriter, r *http.Request) {
+	h.updateCache.mu.Lock()
+	defer h.updateCache.mu.Unlock()
+
+	if h.updateCache.result != nil && time.Since(h.updateCache.fetchedAt) < time.Hour {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(h.updateCache.result)
+		return
+	}
+
+	result := &updateResult{Current: h.version}
+
+	if strings.Contains(h.version, "dev") {
+		h.updateCache.result = result
+		h.updateCache.fetchedAt = time.Now()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	req, _ := http.NewRequestWithContext(r.Context(), "GET",
+		"https://api.github.com/repos/chr0nzz/gatekeeper/releases/latest", nil)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	resp, err := client.Do(req)
+	if err == nil && resp.StatusCode == 200 {
+		defer resp.Body.Close()
+		var gh struct {
+			TagName string `json:"tag_name"`
+			HTMLURL string `json:"html_url"`
+			Body    string `json:"body"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&gh) == nil {
+			result.Latest = strings.TrimPrefix(gh.TagName, "v")
+			result.URL = gh.HTMLURL
+			result.Body = gh.Body
+			result.HasUpdate = compareVersions(result.Latest, result.Current) > 0
+		}
+	}
+
+	h.updateCache.result = result
+	h.updateCache.fetchedAt = time.Now()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func compareVersions(a, b string) int {
+	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
+	for i := 0; i < 3; i++ {
+		var va, vb int
+		if i < len(pa) {
+			fmt.Sscanf(pa[i], "%d", &va)
+		}
+		if i < len(pb) {
+			fmt.Sscanf(pb[i], "%d", &vb)
+		}
+		if va != vb {
+			if va > vb {
+				return 1
+			}
+			return -1
+		}
+	}
+	return 0
 }
 
 func intStr(n int) string {

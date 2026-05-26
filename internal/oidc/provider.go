@@ -350,9 +350,29 @@ func (s *Storage) SetIntrospectionFromToken(ctx context.Context, userinfo *oidc.
 	return nil
 }
 
-// GetPrivateClaimsFromScopes adds custom claims (none currently).
+// GetPrivateClaimsFromScopes adds group membership as a claim.
 func (s *Storage) GetPrivateClaimsFromScopes(ctx context.Context, userID, clientID string, scopes []string) (map[string]any, error) {
-	return nil, nil
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT gr.name FROM groups gr
+		 INNER JOIN group_members gm ON gm.group_id = gr.id
+		 WHERE gm.user_id=?
+		 ORDER BY gr.name`,
+		userID,
+	)
+	if err != nil {
+		return nil, nil
+	}
+	defer rows.Close()
+	var groups []string
+	for rows.Next() {
+		var name string
+		rows.Scan(&name)
+		groups = append(groups, name)
+	}
+	if len(groups) == 0 {
+		groups = []string{}
+	}
+	return map[string]any{"groups": groups}, nil
 }
 
 // GetKeyByIDAndClientID retrieves a signing key by ID.
