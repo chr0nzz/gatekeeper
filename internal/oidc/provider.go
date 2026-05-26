@@ -165,15 +165,26 @@ func (s *Storage) CreateAccessToken(ctx context.Context, req op.TokenRequest) (s
 	expires := now.Add(accessTokenTTL)
 	id := uuid.New().String()
 
-	ar, ok := req.(*authRequest)
-	if !ok {
+	var clientID, userID, authReqID string
+	var scopes []byte
+	switch r := req.(type) {
+	case *authRequest:
+		clientID = r.clientID
+		userID = r.userID
+		authReqID = r.id
+		scopes, _ = json.Marshal(r.scopes)
+	case *credentialsRequest:
+		clientID = r.clientID
+		authReqID = uuid.New().String()
+		scopes, _ = json.Marshal(r.scopes)
+	default:
 		return "", time.Time{}, errors.New("invalid request type")
 	}
-	scopes, _ := json.Marshal(ar.scopes)
+
 	_, err = s.db.ExecContext(ctx,
 		`INSERT INTO oidc_tokens (id, auth_request_id, client_id, user_id, access_token, scopes, created_at, access_expires)
 		 VALUES (?,?,?,?,?,?,?,?)`,
-		id, ar.id, ar.clientID, ar.userID, token, string(scopes), now.Unix(), expires.Unix(),
+		id, authReqID, clientID, nullableStr(userID), token, string(scopes), now.Unix(), expires.Unix(),
 	)
 	return token, expires, err
 }
@@ -290,9 +301,9 @@ func (s *Storage) KeySet(ctx context.Context) ([]op.Key, error) {
 func (s *Storage) GetClientByClientID(ctx context.Context, clientID string) (op.Client, error) {
 	var c OIDCClient
 	err := s.db.QueryRowContext(ctx,
-		`SELECT client_id, client_secret, redirect_uris, name FROM oidc_clients WHERE client_id=?`,
+		`SELECT client_id, client_secret, redirect_uris, name, credentials_scopes FROM oidc_clients WHERE client_id=?`,
 		clientID,
-	).Scan(&c.clientID, &c.secret, &c.redirectURIsRaw, &c.name)
+	).Scan(&c.clientID, &c.secret, &c.redirectURIsRaw, &c.name, &c.credentialsScopes)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("client not found")
 	}
@@ -300,6 +311,49 @@ func (s *Storage) GetClientByClientID(ctx context.Context, clientID string) (op.
 		return nil, err
 	}
 	return &c, nil
+}
+
+// ClientCredentials validates client credentials for the client_credentials grant.
+func (s *Storage) ClientCredentials(ctx context.Context, clientID, clientSecret string) (op.Client, error) {
+	var c OIDCClient
+	err := s.db.QueryRowContext(ctx,
+		`SELECT client_id, client_secret, redirect_uris, name, credentials_scopes FROM oidc_clients WHERE client_id=?`,
+		clientID,
+	).Scan(&c.clientID, &c.secret, &c.redirectURIsRaw, &c.name, &c.credentialsScopes)
+	if err == sql.ErrNoRows {
+		return nil, errors.New("client not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if c.secret != clientSecret {
+		return nil, errors.New("invalid client secret")
+	}
+	if c.credentialsScopes == "" {
+		return nil, errors.New("client credentials not enabled for this client")
+	}
+	return &c, nil
+}
+
+// ClientCredentialsTokenRequest builds a token request for the client_credentials grant.
+func (s *Storage) ClientCredentialsTokenRequest(ctx context.Context, clientID string, scopes []string) (op.TokenRequest, error) {
+	var credScopes string
+	s.db.QueryRowContext(ctx, `SELECT credentials_scopes FROM oidc_clients WHERE client_id=?`, clientID).Scan(&credScopes)
+	allowed := strings.Fields(credScopes)
+	allowedSet := make(map[string]bool, len(allowed))
+	for _, sc := range allowed {
+		allowedSet[sc] = true
+	}
+	var granted []string
+	for _, sc := range scopes {
+		if allowedSet[sc] {
+			granted = append(granted, sc)
+		}
+	}
+	if len(scopes) == 0 {
+		granted = allowed
+	}
+	return &credentialsRequest{clientID: clientID, scopes: granted}, nil
 }
 
 // AuthorizeClientIDSecret validates client credentials.
@@ -408,7 +462,7 @@ func (s *Storage) Health(ctx context.Context) error {
 // ListClients lists all OIDC clients.
 func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT client_id, name, icon_url, (icon_data IS NOT NULL AND LENGTH(icon_data)>0), redirect_uris, created_at FROM oidc_clients ORDER BY name`,
+		`SELECT client_id, name, icon_url, (icon_data IS NOT NULL AND LENGTH(icon_data)>0), redirect_uris, credentials_scopes, created_at FROM oidc_clients ORDER BY name`,
 	)
 	if err != nil {
 		return nil, err
@@ -417,7 +471,7 @@ func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 	var out []ClientRecord
 	for rows.Next() {
 		var c ClientRecord
-		if err := rows.Scan(&c.ClientID, &c.Name, &c.IconURL, &c.HasIcon, &c.RedirectURIsRaw, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ClientID, &c.Name, &c.IconURL, &c.HasIcon, &c.RedirectURIsRaw, &c.CredentialsScopes, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(c.RedirectURIsRaw), &c.RedirectURIs)
@@ -427,12 +481,12 @@ func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 }
 
 // CreateClient registers a new OIDC client.
-func (s *Storage) CreateClient(ctx context.Context, clientID, secret, name, iconURL string, redirectURIs []string) error {
+func (s *Storage) CreateClient(ctx context.Context, clientID, secret, name, iconURL, credentialsScopes string, redirectURIs []string) error {
 	raw, _ := json.Marshal(redirectURIs)
 	iconData, iconMime := fetchIcon(iconURL)
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO oidc_clients (id, client_id, client_secret, redirect_uris, name, icon_url, icon_data, icon_mime, created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
-		uuid.New().String(), clientID, secret, string(raw), name, iconURL, iconData, iconMime, time.Now().Unix(),
+		`INSERT INTO oidc_clients (id, client_id, client_secret, redirect_uris, name, icon_url, icon_data, icon_mime, credentials_scopes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		uuid.New().String(), clientID, secret, string(raw), name, iconURL, iconData, iconMime, credentialsScopes, time.Now().Unix(),
 	)
 	return err
 }
@@ -490,20 +544,20 @@ func (s *Storage) DeleteClient(ctx context.Context, clientID string) error {
 	return err
 }
 
-// UpdateClient updates a client's name, icon, redirect URIs, and optionally its secret.
-func (s *Storage) UpdateClient(ctx context.Context, clientID, name, iconURL, newSecret string, redirectURIs []string) error {
+// UpdateClient updates a client's name, icon, redirect URIs, credentials scopes, and optionally its secret.
+func (s *Storage) UpdateClient(ctx context.Context, clientID, name, iconURL, newSecret, credentialsScopes string, redirectURIs []string) error {
 	raw, _ := json.Marshal(redirectURIs)
 	iconData, iconMime := fetchIcon(iconURL)
 	if newSecret != "" {
 		_, err := s.db.ExecContext(ctx,
-			`UPDATE oidc_clients SET name=?, icon_url=?, icon_data=?, icon_mime=?, redirect_uris=?, client_secret=? WHERE client_id=?`,
-			name, iconURL, iconData, iconMime, string(raw), newSecret, clientID,
+			`UPDATE oidc_clients SET name=?, icon_url=?, icon_data=?, icon_mime=?, redirect_uris=?, credentials_scopes=?, client_secret=? WHERE client_id=?`,
+			name, iconURL, iconData, iconMime, string(raw), credentialsScopes, newSecret, clientID,
 		)
 		return err
 	}
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE oidc_clients SET name=?, icon_url=?, icon_data=?, icon_mime=?, redirect_uris=? WHERE client_id=?`,
-		name, iconURL, iconData, iconMime, string(raw), clientID,
+		`UPDATE oidc_clients SET name=?, icon_url=?, icon_data=?, icon_mime=?, redirect_uris=?, credentials_scopes=? WHERE client_id=?`,
+		name, iconURL, iconData, iconMime, string(raw), credentialsScopes, clientID,
 	)
 	return err
 }
@@ -512,10 +566,11 @@ func (s *Storage) UpdateClient(ctx context.Context, clientID, name, iconURL, new
 
 // OIDCClient is a registered OIDC application.
 type OIDCClient struct {
-	clientID        string
-	secret          string
-	redirectURIsRaw string
-	name            string
+	clientID          string
+	secret            string
+	redirectURIsRaw   string
+	name              string
+	credentialsScopes string
 }
 
 func (c *OIDCClient) GetID() string { return c.clientID }
@@ -524,19 +579,23 @@ func (c *OIDCClient) RedirectURIs() []string {
 	json.Unmarshal([]byte(c.redirectURIsRaw), &uris)
 	return uris
 }
-func (c *OIDCClient) PostLogoutRedirectURIs() []string     { return nil }
-func (c *OIDCClient) ApplicationType() op.ApplicationType  { return op.ApplicationTypeWeb }
-func (c *OIDCClient) AuthMethod() oidc.AuthMethod          { return oidc.AuthMethodBasic }
-func (c *OIDCClient) ResponseTypes() []oidc.ResponseType   { return []oidc.ResponseType{oidc.ResponseTypeCode} }
+func (c *OIDCClient) PostLogoutRedirectURIs() []string    { return nil }
+func (c *OIDCClient) ApplicationType() op.ApplicationType { return op.ApplicationTypeWeb }
+func (c *OIDCClient) AuthMethod() oidc.AuthMethod         { return oidc.AuthMethodBasic }
+func (c *OIDCClient) ResponseTypes() []oidc.ResponseType  { return []oidc.ResponseType{oidc.ResponseTypeCode} }
 func (c *OIDCClient) GrantTypes() []oidc.GrantType {
-	return []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken}
+	grants := []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken}
+	if c.credentialsScopes != "" {
+		grants = append(grants, oidc.GrantTypeClientCredentials)
+	}
+	return grants
 }
-func (c *OIDCClient) LoginURL(id string) string                { return "/login?oidc_request=" + id }
-func (c *OIDCClient) AccessTokenType() op.AccessTokenType      { return op.AccessTokenTypeBearer }
-func (c *OIDCClient) IDTokenLifetime() time.Duration           { return accessTokenTTL }
-func (c *OIDCClient) DevMode() bool                            { return false }
-func (c *OIDCClient) ClockSkew() time.Duration                 { return 0 }
-func (c *OIDCClient) IDTokenUserinfoClaimsAssertion() bool     { return false }
+func (c *OIDCClient) LoginURL(id string) string            { return "/login?oidc_request=" + id }
+func (c *OIDCClient) AccessTokenType() op.AccessTokenType  { return op.AccessTokenTypeBearer }
+func (c *OIDCClient) IDTokenLifetime() time.Duration       { return accessTokenTTL }
+func (c *OIDCClient) DevMode() bool                        { return false }
+func (c *OIDCClient) ClockSkew() time.Duration             { return 0 }
+func (c *OIDCClient) IDTokenUserinfoClaimsAssertion() bool { return false }
 func (c *OIDCClient) RestrictAdditionalIdTokenScopes() func([]string) []string {
 	return func(s []string) []string { return s }
 }
@@ -546,6 +605,16 @@ func (c *OIDCClient) RestrictAdditionalAccessTokenScopes() func([]string) []stri
 func (c *OIDCClient) IsScopeAllowed(scope string) bool {
 	return scope == "openid" || scope == "profile" || scope == "email" || scope == "offline_access"
 }
+
+// credentialsRequest implements op.TokenRequest for client_credentials grant.
+type credentialsRequest struct {
+	clientID string
+	scopes   []string
+}
+
+func (r *credentialsRequest) GetSubject() string    { return r.clientID }
+func (r *credentialsRequest) GetAudience() []string { return []string{r.clientID} }
+func (r *credentialsRequest) GetScopes() []string   { return r.scopes }
 
 // -- authRequest implements op.AuthRequest and op.RefreshTokenRequest --
 
@@ -604,13 +673,14 @@ func (k *signingKey) Key() any                                 { return k.key }
 
 // ClientRecord holds OIDC client data for display.
 type ClientRecord struct {
-	ClientID        string
-	Name            string
-	IconURL         string
-	HasIcon         bool
-	RedirectURIsRaw string
-	RedirectURIs    []string
-	CreatedAt       int64
+	ClientID          string
+	Name              string
+	IconURL           string
+	HasIcon           bool
+	RedirectURIsRaw   string
+	RedirectURIs      []string
+	CredentialsScopes string
+	CreatedAt         int64
 }
 
 // -- helpers --

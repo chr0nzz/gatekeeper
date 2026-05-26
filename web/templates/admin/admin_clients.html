@@ -188,6 +188,11 @@ document.addEventListener('DOMContentLoaded', function() {
         </select>
         <span class="field-hint">Only users in this policy can complete authorization.</span>
       </label>
+      <label class="field">
+        <span class="field-label">Client credentials scopes <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input mono" type="text" name="credentials_scopes" placeholder="e.g. openid email">
+        <span class="field-hint">Space-separated list of allowed scopes for the client_credentials grant. Leave blank to disable machine-to-machine auth for this client.</span>
+      </label>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
@@ -235,6 +240,11 @@ document.addEventListener('DOMContentLoaded', function() {
           <option value="">No restriction</option>
           {{$curPolicy := .PolicyID}}{{range $.Policies}}<option value="{{.ID}}" {{if eq .ID $curPolicy}}selected{{end}}>{{.Name}}</option>{{end}}
         </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Client credentials scopes <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input mono" type="text" name="credentials_scopes" value="{{.CredentialsScopes}}" placeholder="e.g. openid email">
+        <span class="field-hint">Space-separated list of allowed scopes for the client_credentials grant. Leave blank to disable.</span>
       </label>
     </div>
     <div class="modal-foot">

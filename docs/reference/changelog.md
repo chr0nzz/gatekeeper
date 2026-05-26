@@ -17,6 +17,12 @@ description: Version history for GateKeeper.
 
 - **Invite links** - Generate single-use registration links from the Invites page. Each link can be tied to a specific email address (pre-filling and locking the registration form) or left open for any address. Links expire after 1, 3, 7, 14, or 30 days. The raw token is shown once at creation time; only a SHA-256 hash is stored. See [Invites](/admin/invites).
 
+### OIDC improvements
+
+- **RP-initiated logout** - Signing out of an OIDC client (e.g., Grafana) now also clears the GateKeeper session cookie. The `post_logout_redirect_uri` parameter is honoured so users land back on the correct page.
+- **Token introspection** - The `/oauth/introspect` endpoint (RFC 7662) is supported. APIs and services can verify bearer tokens server-side by calling the endpoint with their client credentials. See [Managing clients](/admin/managing-clients).
+- **Client credentials flow** - Enable machine-to-machine auth per client by setting a list of allowed scopes on the client. Services call `POST /oauth/token` with `grant_type=client_credentials` and receive an access token with `sub` set to the client ID. See [Managing clients](/admin/managing-clients).
+
 ### Dashboard
 
 - **Live stats** - The sign-ins, failed attempts, and OIDC token counts on the dashboard now refresh every 30 seconds without a full page reload.

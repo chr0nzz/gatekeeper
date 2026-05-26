@@ -51,6 +51,67 @@ Use HTTPS for all production redirect URIs. `http://localhost` is acceptable for
 
 Click the trash icon on any client row. This immediately revokes the client's ability to authenticate. Existing tokens expire naturally according to their TTL (15 minutes for access tokens, 30 days for refresh tokens).
 
+## Client credentials flow
+
+The client credentials grant (RFC 6749 Section 4.4) lets a service authenticate as itself - no user involved. This is for machine-to-machine calls: a backend service that needs to call another API protected by GateKeeper.
+
+To enable it for a client, set **Client credentials scopes** in the new or edit dialog. Enter a space-separated list of scopes the client is allowed to request (e.g. `openid email`). Leave blank to disable the grant for that client.
+
+**Token endpoint:** `POST /oauth/token`
+
+```bash
+curl -X POST https://auth.example.com/oauth/token \
+  -u "my-client:my-secret" \
+  -d "grant_type=client_credentials" \
+  -d "scope=openid email"
+```
+
+Response:
+
+```json
+{
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+The access token has `sub` set to the client ID. It can be verified by any service using the introspection endpoint or JWKS.
+
+## Token introspection
+
+GateKeeper supports [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662) token introspection. Any service that has a client ID and secret can call the introspection endpoint to verify an access token and retrieve the token owner's identity.
+
+**Endpoint:** `POST /oauth/introspect`
+
+Authenticate with HTTP Basic auth using your client ID and secret:
+
+```bash
+curl -X POST https://auth.example.com/oauth/introspect \
+  -u "my-client:my-secret" \
+  -d "token=<access_token>"
+```
+
+A valid, active token returns:
+
+```json
+{
+  "active": true,
+  "sub": "user-uuid",
+  "email": "user@example.com"
+}
+```
+
+An invalid or expired token returns:
+
+```json
+{
+  "active": false
+}
+```
+
+This is useful for APIs and services that receive bearer tokens and need to validate them server-side without implementing a full OIDC client.
+
 ## Login page branding
 
 When a user is sent to GateKeeper from an OIDC client, the login page automatically shows:

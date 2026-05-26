@@ -1186,6 +1186,7 @@ func (h *Handlers) PostCreateClient(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	iconURL := strings.TrimSpace(r.FormValue("icon_url"))
 	policyID := strings.TrimSpace(r.FormValue("policy_id"))
+	credentialsScopes := strings.TrimSpace(r.FormValue("credentials_scopes"))
 	urisRaw := strings.TrimSpace(r.FormValue("redirect_uris"))
 	var uris []string
 	for _, u := range strings.Split(urisRaw, "\n") {
@@ -1194,7 +1195,7 @@ func (h *Handlers) PostCreateClient(w http.ResponseWriter, r *http.Request) {
 			uris = append(uris, u)
 		}
 	}
-	if err := h.oidcStorage.CreateClient(r.Context(), clientID, clientSecret, name, iconURL, uris); err != nil {
+	if err := h.oidcStorage.CreateClient(r.Context(), clientID, clientSecret, name, iconURL, credentialsScopes, uris); err != nil {
 		clients, _ := h.oidcStorage.ListClients(r.Context())
 		h.render(w, r, "admin_clients.html", map[string]interface{}{"Clients": clients, "Error": err.Error()})
 		return
@@ -1230,13 +1231,14 @@ func (h *Handlers) PostEditClient(w http.ResponseWriter, r *http.Request) {
 	urisRaw := strings.TrimSpace(r.FormValue("redirect_uris"))
 	newSecret := strings.TrimSpace(r.FormValue("client_secret"))
 	policyID := strings.TrimSpace(r.FormValue("policy_id"))
+	credentialsScopes := strings.TrimSpace(r.FormValue("credentials_scopes"))
 	var uris []string
 	for _, u := range strings.Split(urisRaw, "\n") {
 		if u = strings.TrimSpace(u); u != "" {
 			uris = append(uris, u)
 		}
 	}
-	h.oidcStorage.UpdateClient(r.Context(), id, name, iconURL, newSecret, uris)
+	h.oidcStorage.UpdateClient(r.Context(), id, name, iconURL, newSecret, credentialsScopes, uris)
 	h.db.ExecContext(r.Context(), `UPDATE oidc_clients SET policy_id=? WHERE client_id=?`, policyID, id)
 	http.Redirect(w, r, "/admin/clients", http.StatusFound)
 }
