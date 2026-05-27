@@ -347,3 +347,15 @@ func (a *AdminSessionStore) Get(ctx context.Context, id string) (string, error) 
 func (a *AdminSessionStore) Destroy(ctx context.Context, id string) {
 	a.db.ExecContext(ctx, `DELETE FROM admin_sessions WHERE id=?`, id)
 }
+
+// CountByAdmin returns the number of active sessions for an admin.
+func (a *AdminSessionStore) CountByAdmin(ctx context.Context, adminID string) int {
+	var count int
+	a.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM admin_sessions WHERE admin_id=? AND expires_at>?`, adminID, time.Now().Unix()).Scan(&count)
+	return count
+}
+
+// DestroyAllExcept removes all sessions for an admin except the given session ID.
+func (a *AdminSessionStore) DestroyAllExcept(ctx context.Context, adminID, exceptID string) {
+	a.db.ExecContext(ctx, `DELETE FROM admin_sessions WHERE admin_id=? AND id!=?`, adminID, exceptID)
+}

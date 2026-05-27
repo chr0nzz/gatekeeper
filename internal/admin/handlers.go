@@ -289,7 +289,9 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/admins/{id}/delete", h.PostDeleteAdmin)
 
 		r.Get("/profile", h.GetProfile)
+		r.Post("/profile/display-name", h.PostProfileDisplayName)
 		r.Post("/profile/password", h.PostProfilePassword)
+		r.Post("/profile/revoke-sessions", h.PostProfileRevokeSessions)
 		r.Get("/profile/totp/enroll", h.GetProfileTOTPEnroll)
 		r.Post("/profile/totp/enroll", h.PostProfileTOTPEnroll)
 		r.Post("/profile/totp/disable", h.PostProfileTOTPDisable)
@@ -1566,21 +1568,62 @@ func (h *Handlers) PostDeleteAdmin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/admins", http.StatusSeeOther)
 }
 
-func (h *Handlers) GetProfile(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) profilePageData(r *http.Request) map[string]interface{} {
 	adminID := h.adminIDFromRequest(r)
 	admin, _ := h.admins.GetByID(r.Context(), adminID)
 	passkeys, _ := h.passkeys.ListCredentials(r.Context(), "admin:"+adminID)
-	totpEnabled := false
-	if admin != nil {
-		var enc string
-		h.db.QueryRowContext(r.Context(), `SELECT totp_enabled FROM admin_users WHERE id=?`, adminID).Scan(&totpEnabled)
-		_ = enc
+	var totpEnabled bool
+	h.db.QueryRowContext(r.Context(), `SELECT totp_enabled FROM admin_users WHERE id=?`, adminID).Scan(&totpEnabled)
+	return map[string]interface{}{
+		"Admin":        admin,
+		"AdminID":      adminID,
+		"TOTPEnabled":  totpEnabled,
+		"Passkeys":     passkeys,
+		"SessionCount": h.adminSess.CountByAdmin(r.Context(), adminID),
 	}
-	h.render(w, r, "admin_profile.html", map[string]interface{}{
-		"Admin":       admin,
-		"TOTPEnabled": totpEnabled,
-		"Passkeys":    passkeys,
-	})
+}
+
+func (h *Handlers) GetProfile(w http.ResponseWriter, r *http.Request) {
+	data := h.profilePageData(r)
+	if msg := r.URL.Query().Get("success"); msg != "" {
+		successMsgs := map[string]string{
+			"password":         "Password updated.",
+			"display_name":     "Display name updated.",
+			"sessions_revoked": "All other sessions have been revoked.",
+			"totp_enrolled":    "Authenticator app enrolled.",
+			"totp_removed":     "Authenticator app removed.",
+		}
+		if s, ok := successMsgs[msg]; ok {
+			data["Success"] = s
+		}
+	}
+	h.render(w, r, "admin_profile.html", data)
+}
+
+func (h *Handlers) PostProfileDisplayName(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	adminID := h.adminIDFromRequest(r)
+	name := strings.TrimSpace(r.FormValue("display_name"))
+	h.db.ExecContext(r.Context(), `UPDATE admin_users SET display_name=? WHERE id=?`, name, adminID)
+	http.Redirect(w, r, "/admin/profile?success=display_name", http.StatusSeeOther)
+}
+
+func (h *Handlers) PostProfileRevokeSessions(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	adminID := h.adminIDFromRequest(r)
+	cookie, _ := r.Cookie(adminCookieName)
+	currentSessID := ""
+	if cookie != nil {
+		currentSessID = cookie.Value
+	}
+	h.adminSess.DestroyAllExcept(r.Context(), adminID, currentSessID)
+	http.Redirect(w, r, "/admin/profile?success=sessions_revoked", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfilePassword(w http.ResponseWriter, r *http.Request) {
@@ -1598,20 +1641,26 @@ func (h *Handlers) PostProfilePassword(w http.ResponseWriter, r *http.Request) {
 	newPass := r.FormValue("new_password")
 	confirm := r.FormValue("confirm_password")
 	if auth.VerifyPassword(current, admin.PasswordHash) != nil {
-		h.render(w, r, "admin_profile.html", map[string]interface{}{"Error": "Current password is incorrect"})
+		data := h.profilePageData(r)
+		data["Error"] = "Current password is incorrect"
+		h.render(w, r, "admin_profile.html", data)
 		return
 	}
 	if newPass != confirm {
-		h.render(w, r, "admin_profile.html", map[string]interface{}{"Error": "Passwords do not match"})
+		data := h.profilePageData(r)
+		data["Error"] = "Passwords do not match"
+		h.render(w, r, "admin_profile.html", data)
 		return
 	}
 	hash, err := auth.HashPassword(newPass)
 	if err != nil {
-		h.render(w, r, "admin_profile.html", map[string]interface{}{"Error": err.Error()})
+		data := h.profilePageData(r)
+		data["Error"] = err.Error()
+		h.render(w, r, "admin_profile.html", data)
 		return
 	}
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET password_hash=? WHERE id=?`, hash, adminID)
-	h.render(w, r, "admin_profile.html", map[string]interface{}{"Success": "Password updated."})
+	http.Redirect(w, r, "/admin/profile?success=password", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetProfileTOTPEnroll(w http.ResponseWriter, r *http.Request) {
@@ -1631,11 +1680,11 @@ func (h *Handlers) GetProfileTOTPEnroll(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "QR code generation failed", http.StatusInternalServerError)
 		return
 	}
-	h.render(w, r, "admin_profile.html", map[string]interface{}{
-		"EnrollTOTP": true,
-		"Secret":     key.Secret(),
-		"QRCodeB64":  base64.StdEncoding.EncodeToString(png),
-	})
+	data := h.profilePageData(r)
+	data["EnrollTOTP"] = true
+	data["Secret"] = key.Secret()
+	data["QRCodeB64"] = base64.StdEncoding.EncodeToString(png)
+	h.render(w, r, "admin_profile.html", data)
 }
 
 func (h *Handlers) PostProfileTOTPEnroll(w http.ResponseWriter, r *http.Request) {
@@ -1648,13 +1697,15 @@ func (h *Handlers) PostProfileTOTPEnroll(w http.ResponseWriter, r *http.Request)
 	code := strings.TrimSpace(r.FormValue("code"))
 	_, err := h.totp.ConfirmEnrollment(r.Context(), "admin:"+adminID, secret, code)
 	if err != nil {
-		h.render(w, r, "admin_profile.html", map[string]interface{}{
-			"EnrollTOTP": true, "Secret": secret, "Error": err.Error(),
-		})
+		data := h.profilePageData(r)
+		data["EnrollTOTP"] = true
+		data["Secret"] = secret
+		data["Error"] = err.Error()
+		h.render(w, r, "admin_profile.html", data)
 		return
 	}
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET totp_enabled=1 WHERE id=?`, adminID)
-	h.render(w, r, "admin_profile.html", map[string]interface{}{"Success": "Authenticator app enrolled.", "TOTPEnabled": true})
+	http.Redirect(w, r, "/admin/profile?success=totp_enrolled", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfileTOTPDisable(w http.ResponseWriter, r *http.Request) {
@@ -1665,12 +1716,14 @@ func (h *Handlers) PostProfileTOTPDisable(w http.ResponseWriter, r *http.Request
 	adminID := h.adminIDFromRequest(r)
 	code := strings.TrimSpace(r.FormValue("code"))
 	if err := h.totp.Validate(r.Context(), "admin:"+adminID, code); err != nil {
-		h.render(w, r, "admin_profile.html", map[string]interface{}{"Error": "Invalid code"})
+		data := h.profilePageData(r)
+		data["Error"] = "Invalid code"
+		h.render(w, r, "admin_profile.html", data)
 		return
 	}
 	h.totp.Revoke(r.Context(), "admin:"+adminID)
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET totp_enabled=0 WHERE id=?`, adminID)
-	h.render(w, r, "admin_profile.html", map[string]interface{}{"Success": "Authenticator app removed."})
+	http.Redirect(w, r, "/admin/profile?success=totp_removed", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetProfilePasskey(w http.ResponseWriter, r *http.Request) {
