@@ -33,6 +33,14 @@ type Config struct {
 	RegistrationMode           string `env:"REGISTRATION_MODE" envDefault:"disabled"`
 	RegistrationAllowedDomains string `env:"REGISTRATION_ALLOWED_DOMAINS"`
 
+	// Social provider env vars are fallback defaults; admin UI values take precedence.
+	GitHubClientID      string `env:"GITHUB_CLIENT_ID"`
+	GitHubClientSecret  string `env:"GITHUB_CLIENT_SECRET"`
+	GoogleClientID      string `env:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret  string `env:"GOOGLE_CLIENT_SECRET"`
+	DiscordClientID     string `env:"DISCORD_CLIENT_ID"`
+	DiscordClientSecret string `env:"DISCORD_CLIENT_SECRET"`
+
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 }
 

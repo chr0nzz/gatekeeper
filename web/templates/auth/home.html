@@ -41,6 +41,13 @@
 
   <div class="user-page" style="max-width:920px;margin:0 auto;padding:36px 24px">
 
+    {{if .ShowSocialError}}
+    <div class="alert alert-err" style="margin-bottom:20px">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg>
+      <div>{{.SocialError}}</div>
+    </div>
+    {{end}}
+
     {{if .AvatarErr}}
     <div class="alert alert-warn" style="margin-bottom:20px">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
@@ -185,6 +192,61 @@
         </div>
       </div>
     </div>
+
+    {{if .SocialProviders}}
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <h3>Connected accounts</h3>
+        <span class="sub">· Social login providers</span>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+        {{range .SocialProviders}}
+        {{$pname := .Name}}
+        {{$plabel := .Label}}
+        {{$picon := .Icon}}
+        {{$linked := false}}
+        {{$acctID := ""}}
+        {{$acctEmail := ""}}
+        {{range $.SocialAccounts}}
+          {{if eq .Provider $pname}}
+            {{$linked = true}}
+            {{$acctID = .ID}}
+            {{$acctEmail = .ProviderEmail}}
+          {{end}}
+        {{end}}
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:32px;height:32px;border-radius:8px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center;color:var(--tx-1);flex-shrink:0">
+            {{$picon}}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">
+              {{$plabel}}
+              {{if $linked}}
+              <span class="pill pill-ok"><span class="dot"></span>Connected</span>
+              {{else}}
+              <span class="pill pill-off"><span class="dot"></span>Not connected</span>
+              {{end}}
+            </div>
+            {{if $acctEmail}}<div style="font-size:11.5px;color:var(--tx-2)">{{$acctEmail}}</div>{{end}}
+          </div>
+          {{if $linked}}
+          {{if or $.UserHasPassword (gt (len $.SocialAccounts) 1)}}
+          <form method="POST" action="/social/{{$acctID}}/disconnect">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--tx-2)">Disconnect</button>
+          </form>
+          {{else}}
+          <span style="font-size:11.5px;color:var(--tx-3)">Last method</span>
+          {{end}}
+          {{else}}
+          <a href="/auth/social/{{$pname}}/begin?link=1" class="btn btn-ghost btn-sm">Connect</a>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
 
     {{if .Passkeys}}
     <div class="card" style="margin-bottom:16px">

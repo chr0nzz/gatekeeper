@@ -5,6 +5,10 @@ description: Version history for GateKeeper.
 
 ## v0.5.0
 
+### Social login
+
+- **Social login** - Sign in with GitHub, Google, or Discord. Enable each provider from Settings with an OAuth2 client ID and secret. A "Continue with..." button appears on the login page for each enabled provider. On first sign-in, GateKeeper auto-links the provider to an existing account if the email matches. Users can connect and disconnect providers from their profile page. See [Social login](/admin/social-login).
+
 ### Groups
 
 - **Groups** - Create named groups and assign users to them. Group membership is automatically included as a `groups` claim in all OIDC tokens, enabling role mapping in apps like Grafana and Jellyfin without any scope configuration. Manage group members from the Groups page or directly from a user's profile page. See [Groups](/admin/groups) for Grafana and Jellyfin config examples.

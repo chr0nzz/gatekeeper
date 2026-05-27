@@ -76,6 +76,12 @@ type EnvDefaults struct {
 	SessionTTLHours            int
 	RegistrationMode           string
 	RegistrationAllowedDomains string
+	GitHubClientID             string
+	GitHubClientSecret         string
+	GoogleClientID             string
+	GoogleClientSecret         string
+	DiscordClientID            string
+	DiscordClientSecret        string
 }
 
 // New creates an admin Handlers.
@@ -191,6 +197,8 @@ func activePageFor(name string) string {
 		return "integrations"
 	case "admin_webhooks.html":
 		return "webhooks"
+	case "admin_social.html":
+		return "social"
 	}
 	return ""
 }
@@ -265,6 +273,8 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Get("/audit", h.GetAudit)
 		r.Get("/settings", h.GetSettings)
 		r.Post("/settings", h.PostSettings)
+		r.Get("/social", h.GetSocialSettings)
+		r.Post("/social", h.PostSocialSettings)
 		r.Get("/webhooks", h.GetWebhooks)
 		r.Post("/webhooks", h.PostCreateWebhook)
 		r.Post("/webhooks/{id}/edit", h.PostEditWebhook)
@@ -2068,6 +2078,57 @@ func (h *Handlers) GetNotifications(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	h.render(w, r, "admin_notifications.html", map[string]interface{}{"Notifications": rows})
+}
+
+func (h *Handlers) GetSocialSettings(w http.ResponseWriter, r *http.Request) {
+	get := func(key, fallback string) string {
+		return h.settings.Get(r.Context(), key, fallback)
+	}
+	data := map[string]interface{}{
+		"BaseURL":        h.baseURL,
+		"GitHubEnabled":  get("social_github_enabled", "0"),
+		"GitHubClientID": get("social_github_client_id", h.envDefaults.GitHubClientID),
+		"GoogleEnabled":  get("social_google_enabled", "0"),
+		"GoogleClientID": get("social_google_client_id", h.envDefaults.GoogleClientID),
+		"DiscordEnabled": get("social_discord_enabled", "0"),
+		"DiscordClientID": get("social_discord_client_id", h.envDefaults.DiscordClientID),
+	}
+	if r.URL.Query().Get("saved") == "1" {
+		data["Success"] = "Settings saved."
+	}
+	h.render(w, r, "admin_social.html", data)
+}
+
+func (h *Handlers) PostSocialSettings(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	set := func(key, val string) {
+		h.settings.Set(r.Context(), key, strings.TrimSpace(val))
+	}
+	boolField := func(key string) string {
+		if r.FormValue(key) == "1" {
+			return "1"
+		}
+		return "0"
+	}
+	set("social_github_enabled", boolField("social_github_enabled"))
+	set("social_github_client_id", r.FormValue("social_github_client_id"))
+	if v := r.FormValue("social_github_client_secret"); v != "" {
+		set("social_github_client_secret", v)
+	}
+	set("social_google_enabled", boolField("social_google_enabled"))
+	set("social_google_client_id", r.FormValue("social_google_client_id"))
+	if v := r.FormValue("social_google_client_secret"); v != "" {
+		set("social_google_client_secret", v)
+	}
+	set("social_discord_enabled", boolField("social_discord_enabled"))
+	set("social_discord_client_id", r.FormValue("social_discord_client_id"))
+	if v := r.FormValue("social_discord_client_secret"); v != "" {
+		set("social_discord_client_secret", v)
+	}
+	http.Redirect(w, r, "/admin/social?saved=1", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetNotificationsAPI(w http.ResponseWriter, r *http.Request) {

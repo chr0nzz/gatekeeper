@@ -97,6 +97,13 @@
       Continue with passkey
     </button>
 
+    {{range .SocialProviders}}
+    <a href="/auth/social/{{.Name}}/begin{{if $.OIDCRequest}}?oidc_request={{$.OIDCRequest}}{{end}}" class="btn btn-ghost" style="width:100%;height:40px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;margin-top:8px;text-decoration:none">
+      {{.Icon}}
+      Continue with {{.Label}}
+    </a>
+    {{end}}
+
     <div class="auth-foot" style="justify-content:center;margin-top:16px">
       <a href="/forgot-password">Forgot password?</a>
       {{if .CanRegister}}<span style="color:var(--tx-3)">·</span><a href="/register">Create account</a>{{end}}

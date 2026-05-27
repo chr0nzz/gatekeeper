@@ -46,6 +46,12 @@ These pre-seed the SMTP settings form. If you save values in `/admin/settings`, 
 | `ALLOWED_EMAIL_DOMAINS` | _(empty)_ | Comma-separated allowed domains. Empty = all. |
 | `REGISTRATION_MODE` | `disabled` | Initial registration mode: `disabled`, `invite_only`, `open`, or `approval`. Overridable in Settings. |
 | `REGISTRATION_ALLOWED_DOMAINS` | _(empty)_ | Comma-separated domains allowed to self-register. Empty = any. Overridable in Settings. |
+| `GITHUB_CLIENT_ID` | _(empty)_ | GitHub OAuth App client ID. Seeded into Settings on first startup. |
+| `GITHUB_CLIENT_SECRET` | _(empty)_ | GitHub OAuth App client secret. Seeded into Settings on first startup. |
+| `GOOGLE_CLIENT_ID` | _(empty)_ | Google OAuth2 client ID. Seeded into Settings on first startup. |
+| `GOOGLE_CLIENT_SECRET` | _(empty)_ | Google OAuth2 client secret. Seeded into Settings on first startup. |
+| `DISCORD_CLIENT_ID` | _(empty)_ | Discord application client ID. Seeded into Settings on first startup. |
+| `DISCORD_CLIENT_SECRET` | _(empty)_ | Discord application client secret. Seeded into Settings on first startup. |
 
 ## Minimal compose file
 

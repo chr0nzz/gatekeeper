@@ -74,6 +74,7 @@ export default defineConfig({
           { text: 'Groups', link: '/admin/groups' },
           { text: 'Invite links', link: '/admin/invites' },
           { text: 'User registration', link: '/admin/registration' },
+          { text: 'Social login', link: '/admin/social-login' },
           { text: 'Webhooks', link: '/admin/webhooks' },
           { text: 'Notification log', link: '/admin/notifications' },
         ],

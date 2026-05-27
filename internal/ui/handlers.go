@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net"
@@ -20,11 +22,12 @@ import (
 	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
+	"github.com/chr0nzz/gatekeeper/internal/auth/social"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 	"github.com/chr0nzz/gatekeeper/internal/mailer"
 	gkmiddleware "github.com/chr0nzz/gatekeeper/internal/middleware"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
-	"github.com/chr0nzz/gatekeeper/internal/templates"
+	gktemplates "github.com/chr0nzz/gatekeeper/internal/templates"
 )
 
 
@@ -98,10 +101,11 @@ type Handlers struct {
 	trustedDevices *auth.TrustedDeviceStore
 	mailer         *mailer.Mailer
 	auditLog       *audit.Logger
-	renderer       *templates.Renderer
+	renderer       *gktemplates.Renderer
 	oidcStorage    *oidcstore.Storage
 	policies       *queries.PolicyStore
 	invites        *queries.InviteStore
+	socialAccounts *queries.SocialStore
 	limiter        *loginLimiter
 	baseURL        string
 	issuer         string
@@ -122,18 +126,20 @@ func New(
 	trustedDevices *auth.TrustedDeviceStore,
 	m *mailer.Mailer,
 	auditLog *audit.Logger,
-	renderer *templates.Renderer,
+	renderer *gktemplates.Renderer,
 	oidcStorage *oidcstore.Storage,
 	baseURL, issuer, secretKey, cookieDomain string,
 	policies *queries.PolicyStore,
 	invites *queries.InviteStore,
+	socialAccounts *queries.SocialStore,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, sessions: sessions, otps: otps, totp: totp,
 		passkeys: passkeys, resetStore: resetStore, settings: settings,
 		trustedDevices: trustedDevices, mailer: m,
 		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
-		policies: policies, invites: invites, limiter: newLoginLimiter(),
+		policies: policies, invites: invites, socialAccounts: socialAccounts,
+		limiter: newLoginLimiter(),
 		baseURL: baseURL, issuer: issuer,
 		secretKey: secretKey, cookieDomain: cookieDomain,
 	}
@@ -192,6 +198,8 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Post("/logout", h.PostLogout)
 	r.Get("/register", h.GetRegister)
 	r.Post("/register", h.PostRegister)
+	r.Get("/auth/social/{provider}/begin", h.GetSocialBegin)
+	r.Get("/auth/social/{provider}/callback", h.GetSocialCallback)
 
 	r.Group(func(r chi.Router) {
 		r.Use(h.requireSession)
@@ -210,6 +218,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/passkey/{id}/delete", h.PostPasskeyDelete)
 		r.Post("/session/{id}/revoke", h.PostSessionRevoke)
 		r.Post("/sessions/revoke-others", h.PostRevokeOtherSessions)
+		r.Post("/social/{id}/disconnect", h.PostSocialDisconnect)
 	})
 }
 
@@ -226,14 +235,21 @@ func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
 	}
 	passkeys, _ := h.passkeys.ListCredentials(r.Context(), user.ID)
 	sessions, _ := h.sessions.ListUserSessions(r.Context(), user.ID, sessID)
+	linkedSocial, _ := h.socialAccounts.ListByUser(r.Context(), user.ID)
 	avatarErr := r.URL.Query().Get("avatar_err")
+	socialErr := r.URL.Query().Get("social_err")
 	h.render(w, "home.html", map[string]interface{}{
-		"User":        user,
-		"Passkeys":    passkeys,
-		"Sessions":    sessions,
-		"TOTPEnabled": user.TOTPEnabled,
-		"AvatarErr":   avatarErr,
-		"CSRFToken":   h.csrf(r),
+		"User":            user,
+		"Passkeys":        passkeys,
+		"Sessions":        sessions,
+		"TOTPEnabled":     user.TOTPEnabled,
+		"AvatarErr":       avatarErr,
+		"SocialError":     socialErrMsg(socialErr),
+		"ShowSocialError": socialErr != "",
+		"CSRFToken":       h.csrf(r),
+		"SocialAccounts":  linkedSocial,
+		"SocialProviders": h.enabledSocialProviders(r.Context()),
+		"UserHasPassword": user.PasswordHash != "",
 	})
 }
 
@@ -281,6 +297,10 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	mode := h.settings.Get(r.Context(), "registration_mode", "disabled")
 	tplData["CanRegister"] = mode == "open" || mode == "approval"
+	tplData["SocialProviders"] = h.enabledSocialProviders(r.Context())
+	if errCode := r.URL.Query().Get("social_err"); errCode != "" {
+		tplData["Error"] = socialErrMsg(errCode)
+	}
 	h.render(w, "login.html", tplData)
 }
 
@@ -1175,4 +1195,219 @@ func (h *Handlers) emailDomainAllowed(r *http.Request, email string) bool {
 		}
 	}
 	return false
+}
+
+type socialProviderMeta struct {
+	Name  string
+	Label string
+	Icon  template.HTML
+}
+
+var knownProviders = []socialProviderMeta{
+	{Name: "github", Label: "GitHub", Icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49l-.01-1.71c-2.78.62-3.37-1.37-3.37-1.37-.45-1.17-1.11-1.48-1.11-1.48-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.4 9.4 0 0 1 12 7.07c.85 0 1.7.12 2.5.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9l-.01 2.82c0 .27.18.59.69.49A10.27 10.27 0 0 0 22 12.26C22 6.58 17.52 2 12 2z"/></svg>`},
+	{Name: "google", Label: "Google", Icon: `<svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`},
+	{Name: "discord", Label: "Discord", Icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="#5865F2"><path d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`},
+}
+
+func (h *Handlers) enabledSocialProviders(ctx context.Context) []socialProviderMeta {
+	var out []socialProviderMeta
+	for _, p := range knownProviders {
+		if h.settings.Get(ctx, "social_"+p.Name+"_enabled", "0") == "1" &&
+			h.settings.Get(ctx, "social_"+p.Name+"_client_id", "") != "" &&
+			h.settings.Get(ctx, "social_"+p.Name+"_client_secret", "") != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func socialErrMsg(code string) string {
+	switch code {
+	case "no_account":
+		return "No account is linked to this social login. Contact an administrator."
+	case "account_disabled":
+		return "Your account is disabled."
+	case "already_linked":
+		return "This social account is already linked to a different user."
+	case "email_required":
+		return "Your social profile does not have a verified email address."
+	default:
+		return "Social login failed. Please try again."
+	}
+}
+
+func (h *Handlers) GetSocialBegin(w http.ResponseWriter, r *http.Request) {
+	provider := chi.URLParam(r, "provider")
+	isLink := r.URL.Query().Get("link") == "1"
+
+	clientID := h.settings.Get(r.Context(), "social_"+provider+"_client_id", "")
+	clientSecret := h.settings.Get(r.Context(), "social_"+provider+"_client_secret", "")
+	if h.settings.Get(r.Context(), "social_"+provider+"_enabled", "0") != "1" || clientID == "" || clientSecret == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	state, err := auth.RandomTokenExport(16)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: "gk_oauth_state", Value: state, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	if isLink {
+		http.SetCookie(w, &http.Cookie{Name: "gk_oauth_link", Value: "1", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	} else {
+		http.SetCookie(w, &http.Cookie{Name: "gk_oauth_link", Value: "", Path: "/", HttpOnly: true, MaxAge: -1})
+	}
+	if oidcReq := r.URL.Query().Get("oidc_request"); oidcReq != "" {
+		http.SetCookie(w, &http.Cookie{Name: "gk_oauth_oidc", Value: oidcReq, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	} else {
+		http.SetCookie(w, &http.Cookie{Name: "gk_oauth_oidc", Value: "", Path: "/", HttpOnly: true, MaxAge: -1})
+	}
+
+	redirectURI := h.baseURL + "/auth/social/" + provider + "/callback"
+	authURL, err := social.AuthURL(provider, clientID, redirectURI, state)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+func (h *Handlers) GetSocialCallback(w http.ResponseWriter, r *http.Request) {
+	provider := chi.URLParam(r, "provider")
+
+	stateCookie, _ := r.Cookie("gk_oauth_state")
+	if stateCookie == nil || stateCookie.Value == "" || stateCookie.Value != r.URL.Query().Get("state") {
+		http.Redirect(w, r, "/login?social_err=failed", http.StatusFound)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: "gk_oauth_state", Value: "", Path: "/", HttpOnly: true, MaxAge: -1})
+
+	isLink := false
+	if c, _ := r.Cookie("gk_oauth_link"); c != nil && c.Value == "1" {
+		isLink = true
+	}
+	http.SetCookie(w, &http.Cookie{Name: "gk_oauth_link", Value: "", Path: "/", HttpOnly: true, MaxAge: -1})
+
+	oidcReq := ""
+	if c, _ := r.Cookie("gk_oauth_oidc"); c != nil {
+		oidcReq = c.Value
+	}
+	http.SetCookie(w, &http.Cookie{Name: "gk_oauth_oidc", Value: "", Path: "/", HttpOnly: true, MaxAge: -1})
+
+	clientID := h.settings.Get(r.Context(), "social_"+provider+"_client_id", "")
+	clientSecret := h.settings.Get(r.Context(), "social_"+provider+"_client_secret", "")
+	redirectURI := h.baseURL + "/auth/social/" + provider + "/callback"
+
+	code := r.URL.Query().Get("code")
+	accessToken, err := social.ExchangeToken(r.Context(), provider, clientID, clientSecret, code, redirectURI)
+	if err != nil {
+		http.Redirect(w, r, "/login?social_err=failed", http.StatusFound)
+		return
+	}
+
+	profile, err := social.FetchProfile(r.Context(), provider, accessToken)
+	if err != nil || profile == nil {
+		http.Redirect(w, r, "/login?social_err=failed", http.StatusFound)
+		return
+	}
+	if profile.Email == "" {
+		http.Redirect(w, r, "/login?social_err=email_required", http.StatusFound)
+		return
+	}
+
+	if isLink {
+		sessData, _, _ := h.sessions.Get(r)
+		if sessData == nil || sessData.UserID == "" {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		existing, _ := h.socialAccounts.FindByProvider(r.Context(), provider, profile.ProviderID)
+		if existing != nil && existing.UserID != sessData.UserID {
+			http.Redirect(w, r, "/?social_err=already_linked", http.StatusFound)
+			return
+		}
+		if existing == nil {
+			h.socialAccounts.Create(r.Context(), sessData.UserID, provider, profile.ProviderID, profile.Email)
+			h.auditLog.Log(r.Context(), "social.linked", sessData.UserID, provider, r.RemoteAddr, "")
+		}
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	account, _ := h.socialAccounts.FindByProvider(r.Context(), provider, profile.ProviderID)
+	var userID string
+	if account != nil {
+		userID = account.UserID
+	} else {
+		existing, _ := h.users.GetByEmail(r.Context(), strings.ToLower(profile.Email))
+		if existing != nil && !existing.Disabled {
+			h.socialAccounts.Create(r.Context(), existing.ID, provider, profile.ProviderID, profile.Email)
+			h.auditLog.Log(r.Context(), "social.linked", existing.ID, provider, r.RemoteAddr, "auto")
+			userID = existing.ID
+		} else {
+			mode := h.settings.Get(r.Context(), "registration_mode", "disabled")
+			if mode == "disabled" || mode == "invite_only" {
+				http.Redirect(w, r, "/login?social_err=no_account", http.StatusFound)
+				return
+			}
+			if mode == "approval" {
+				newID, err := h.users.CreatePending(r.Context(), strings.ToLower(profile.Email), "")
+				if err != nil {
+					http.Redirect(w, r, "/login?social_err=failed", http.StatusFound)
+					return
+				}
+				h.socialAccounts.Create(r.Context(), newID, provider, profile.ProviderID, profile.Email)
+				h.auditLog.Log(r.Context(), "user.pending", newID, "", r.RemoteAddr, "social:"+provider)
+				http.Redirect(w, r, "/register?pending=1", http.StatusFound)
+				return
+			}
+			newID, err := h.users.Create(r.Context(), strings.ToLower(profile.Email), "", false)
+			if err != nil {
+				http.Redirect(w, r, "/login?social_err=failed", http.StatusFound)
+				return
+			}
+			h.socialAccounts.Create(r.Context(), newID, provider, profile.ProviderID, profile.Email)
+			h.auditLog.Log(r.Context(), "user.registered", newID, "", r.RemoteAddr, "social:"+provider)
+			userID = newID
+		}
+	}
+
+	user, _ := h.users.GetByID(r.Context(), userID)
+	if user == nil || user.Disabled {
+		http.Redirect(w, r, "/login?social_err=account_disabled", http.StatusFound)
+		return
+	}
+
+	sd := auth.SessionData{UserID: userID, OIDCRequestID: oidcReq}
+	sessID, _ := h.sessions.Create(w, r, sd)
+	h.auditLog.Log(r.Context(), "login.social", userID, provider, r.RemoteAddr, "")
+	if oidcReq != "" {
+		h.completeLogin(w, r, sessID, &sd)
+	} else {
+		h.redirect(w, r, sessID, "")
+	}
+}
+
+func (h *Handlers) PostSocialDisconnect(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	sessData, _, _ := h.sessions.Get(r)
+	if sessData == nil || sessData.UserID == "" {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	user, _ := h.users.GetByID(r.Context(), sessData.UserID)
+	socialCount := h.socialAccounts.CountByUser(r.Context(), sessData.UserID)
+	hasPassword := user != nil && user.PasswordHash != ""
+	if !hasPassword && socialCount <= 1 {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	h.socialAccounts.Delete(r.Context(), id)
+	h.auditLog.Log(r.Context(), "social.unlinked", sessData.UserID, "", r.RemoteAddr, id)
+	http.Redirect(w, r, "/", http.StatusFound)
 }

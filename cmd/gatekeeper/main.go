@@ -64,7 +64,22 @@ func main() {
 	groupStore := queries.NewGroupStore(database)
 	inviteStore := queries.NewInviteStore(database)
 	claimStore := queries.NewClaimStore(database)
+	socialStore := queries.NewSocialStore(database)
 	settingsStore := queries.NewSettingsStore(database)
+	{
+		ctx := context.Background()
+		seed := func(key, val string) {
+			if val != "" && settingsStore.Get(ctx, key, "") == "" {
+				settingsStore.Set(ctx, key, val)
+			}
+		}
+		seed("social_github_client_id", cfg.GitHubClientID)
+		seed("social_github_client_secret", cfg.GitHubClientSecret)
+		seed("social_google_client_id", cfg.GoogleClientID)
+		seed("social_google_client_secret", cfg.GoogleClientSecret)
+		seed("social_discord_client_id", cfg.DiscordClientID)
+		seed("social_discord_client_secret", cfg.DiscordClientSecret)
+	}
 	otpStore := auth.NewOTPStore(database, []byte(cfg.SecretKey))
 	totpStore := auth.NewTOTPStore(database, []byte(cfg.SecretKey))
 	resetStore := auth.NewPasswordResetStore(database)
@@ -135,9 +150,9 @@ func main() {
 
 	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore)
 
-	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore)
+	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, envSMTP,
-		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService)
+		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains, GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret, DiscordClientID: cfg.DiscordClientID, DiscordClientSecret: cfg.DiscordClientSecret}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService)
 
 	secretKey := [32]byte{}
 	copy(secretKey[:], []byte(cfg.SecretKey))
