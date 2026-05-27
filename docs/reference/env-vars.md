@@ -44,6 +44,8 @@ These pre-seed the SMTP settings form. If you save values in `/admin/settings`, 
 |---|---|---|
 | `SESSION_TTL_HOURS` | `8` | Session lifetime in hours |
 | `ALLOWED_EMAIL_DOMAINS` | _(empty)_ | Comma-separated allowed domains. Empty = all. |
+| `REGISTRATION_MODE` | `disabled` | Initial registration mode: `disabled`, `invite_only`, `open`, or `approval`. Overridable in Settings. |
+| `REGISTRATION_ALLOWED_DOMAINS` | _(empty)_ | Comma-separated domains allowed to self-register. Empty = any. Overridable in Settings. |
 
 ## Minimal compose file
 

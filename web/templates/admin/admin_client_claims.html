@@ -1,0 +1,85 @@
+{{template "admin_base" .}}
+{{define "title"}}Custom Claims - {{.ClientName}} - GateKeeper Admin{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/clients">OIDC Clients</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.ClientName}} - Claims</b>{{end}}
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>Custom claims</h1>
+    <p class="sub">Extra claims injected into tokens issued for <b>{{.ClientName}}</b>.</p>
+  </div>
+  <a href="/admin/clients" class="btn btn-ghost btn-sm">Back to clients</a>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+  <div class="card-head"><h3>Add claim</h3></div>
+  <div style="padding:16px 20px">
+    <form method="POST" action="/admin/clients/{{.ClientID}}/claims" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <label class="field" style="flex:1;min-width:140px;margin:0">
+        <span class="field-label">Claim key</span>
+        <input class="input mono" type="text" name="claim_key" required placeholder="e.g. role" pattern="[a-zA-Z0-9_]+" title="Letters, digits, underscores">
+      </label>
+      <label class="field" style="flex:1;min-width:160px;margin:0">
+        <span class="field-label">Value source</span>
+        <select class="input" name="value_source" id="value-source-select" onchange="document.getElementById('literal-field').style.display=this.value==='literal'?'flex':'none'">
+          <option value="user.id">User ID</option>
+          <option value="user.email">Email</option>
+          <option value="user.display_name">Display name</option>
+          <option value="groups">Groups array</option>
+          <option value="literal">Literal value...</option>
+        </select>
+      </label>
+      <label class="field" id="literal-field" style="flex:1;min-width:160px;margin:0;display:none">
+        <span class="field-label">Literal value</span>
+        <input class="input" type="text" name="literal_value" placeholder="static string">
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm" style="flex-shrink:0;margin-bottom:1px">Add</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Claim key</th>
+        <th>Value source</th>
+        <th style="width:48px"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .Claims}}
+    <tr>
+      <td><span class="tag" style="font-family:var(--font-mono);font-size:12px">{{.ClaimKey}}</span></td>
+      <td>
+        {{if eq .ValueSource "user.id"}}User ID
+        {{else if eq .ValueSource "user.email"}}Email
+        {{else if eq .ValueSource "user.display_name"}}Display name
+        {{else if eq .ValueSource "groups"}}Groups array
+        {{else}}<span style="font-family:var(--font-mono);font-size:12px">{{.ValueSource}}</span>
+        {{end}}
+      </td>
+      <td>
+        <form method="POST" action="/admin/clients/{{$.ClientID}}/claims/{{.ID}}/delete">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
+          </button>
+        </form>
+      </td>
+    </tr>
+    {{else}}
+    <tr>
+      <td colspan="3">
+        <div class="empty">
+          <div class="ic-bg"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M7 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 4h6v4H9z"/></svg></div>
+          <h4>No custom claims</h4>
+          <p>Add a claim above to inject extra fields into tokens for this client.</p>
+        </div>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

@@ -47,6 +47,7 @@ type Handlers struct {
 	groups         *queries.GroupStore
 	invites        *queries.InviteStore
 	webhooks       *queries.WebhookStore
+	claims         *queries.ClaimStore
 	notifier       *notify.Service
 	baseURL        string
 	version        string
@@ -100,6 +101,7 @@ func New(
 	groups *queries.GroupStore,
 	invites *queries.InviteStore,
 	webhooks *queries.WebhookStore,
+	claims *queries.ClaimStore,
 	notifier *notify.Service,
 ) *Handlers {
 	return &Handlers{
@@ -108,7 +110,7 @@ func New(
 		trustedDevices: trustedDevices,
 		oidcStorage: oidcStorage, mailer: m, resetStore: resetStore,
 		settings: settings, auditLog: auditLog, renderer: renderer,
-		policies: policies, groups: groups, invites: invites, webhooks: webhooks, notifier: notifier,
+		policies: policies, groups: groups, invites: invites, webhooks: webhooks, claims: claims, notifier: notifier,
 		baseURL: baseURL, version: version, envSMTP: envSMTP, envDefaults: envDefaults,
 	}
 }
@@ -171,7 +173,7 @@ func activePageFor(name string) string {
 		return "dashboard"
 	case "admin_users.html", "admin_user_new.html", "admin_user_detail.html":
 		return "users"
-	case "admin_clients.html":
+	case "admin_clients.html", "admin_client_claims.html":
 		return "clients"
 	case "admin_policies.html", "admin_policy_detail.html":
 		return "policies"
@@ -241,6 +243,9 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/clients/{id}/delete", h.PostDeleteClient)
 		r.Post("/clients/{id}/edit", h.PostEditClient)
 		r.Get("/clients/{id}/icon", h.GetClientIcon)
+		r.Get("/clients/{id}/claims", h.GetClientClaims)
+		r.Post("/clients/{id}/claims", h.PostCreateClaim)
+		r.Post("/clients/{id}/claims/{claimID}/delete", h.PostDeleteClaim)
 		r.Get("/policies", h.GetPolicies)
 		r.Post("/policies", h.PostCreatePolicy)
 		r.Get("/policies/{id}", h.GetPolicy)
@@ -1241,6 +1246,62 @@ func (h *Handlers) PostEditClient(w http.ResponseWriter, r *http.Request) {
 	h.oidcStorage.UpdateClient(r.Context(), id, name, iconURL, newSecret, credentialsScopes, uris)
 	h.db.ExecContext(r.Context(), `UPDATE oidc_clients SET policy_id=? WHERE client_id=?`, policyID, id)
 	http.Redirect(w, r, "/admin/clients", http.StatusFound)
+}
+
+var reservedClaims = map[string]bool{
+	"sub": true, "iss": true, "aud": true, "exp": true, "iat": true,
+	"auth_time": true, "nonce": true, "acr": true, "amr": true, "azp": true,
+	"at_hash": true, "c_hash": true, "jti": true,
+}
+
+func (h *Handlers) GetClientClaims(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var clientName string
+	h.db.QueryRowContext(r.Context(), `SELECT name FROM oidc_clients WHERE client_id=?`, id).Scan(&clientName)
+	if clientName == "" {
+		http.NotFound(w, r)
+		return
+	}
+	claimList, _ := h.claims.List(r.Context(), id)
+	h.render(w, r, "admin_client_claims.html", map[string]interface{}{
+		"ClientID":   id,
+		"ClientName": clientName,
+		"Claims":     claimList,
+	})
+}
+
+func (h *Handlers) PostCreateClaim(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	key := strings.TrimSpace(r.FormValue("claim_key"))
+	sourceType := r.FormValue("value_source")
+	literal := strings.TrimSpace(r.FormValue("literal_value"))
+	if key == "" || reservedClaims[key] {
+		http.Redirect(w, r, "/admin/clients/"+id+"/claims", http.StatusFound)
+		return
+	}
+	valueSource := sourceType
+	if sourceType == "literal" {
+		valueSource = "literal:" + literal
+	}
+	h.claims.Create(r.Context(), id, key, valueSource)
+	h.auditLog.Log(r.Context(), "client.claim_added", "", "", r.RemoteAddr, id+"/"+key)
+	http.Redirect(w, r, "/admin/clients/"+id+"/claims", http.StatusFound)
+}
+
+func (h *Handlers) PostDeleteClaim(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	claimID := chi.URLParam(r, "claimID")
+	h.claims.Delete(r.Context(), claimID)
+	h.auditLog.Log(r.Context(), "client.claim_removed", "", "", r.RemoteAddr, id+"/"+claimID)
+	http.Redirect(w, r, "/admin/clients/"+id+"/claims", http.StatusFound)
 }
 
 func (h *Handlers) GetIntegrations(w http.ResponseWriter, r *http.Request) {

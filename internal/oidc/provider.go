@@ -404,7 +404,7 @@ func (s *Storage) SetIntrospectionFromToken(ctx context.Context, userinfo *oidc.
 	return nil
 }
 
-// GetPrivateClaimsFromScopes adds group membership as a claim.
+// GetPrivateClaimsFromScopes adds group membership and per-client custom claims.
 func (s *Storage) GetPrivateClaimsFromScopes(ctx context.Context, userID, clientID string, scopes []string) (map[string]any, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT gr.name FROM groups gr
@@ -426,7 +426,54 @@ func (s *Storage) GetPrivateClaimsFromScopes(ctx context.Context, userID, client
 	if len(groups) == 0 {
 		groups = []string{}
 	}
-	return map[string]any{"groups": groups}, nil
+
+	claims := map[string]any{"groups": groups}
+
+	crows, err := s.db.QueryContext(ctx,
+		`SELECT claim_key, value_source FROM client_claims WHERE client_id=?`,
+		clientID,
+	)
+	if err != nil {
+		return claims, nil
+	}
+	defer crows.Close()
+
+	var needUser bool
+	type pending struct{ key, source string }
+	var pendings []pending
+	for crows.Next() {
+		var key, source string
+		crows.Scan(&key, &source)
+		pendings = append(pendings, pending{key, source})
+		if source == "user.email" || source == "user.display_name" {
+			needUser = true
+		}
+	}
+
+	var userEmail, userDisplayName string
+	if needUser && userID != "" {
+		s.db.QueryRowContext(ctx, `SELECT COALESCE(email,''), COALESCE(display_name,'') FROM users WHERE id=?`, userID).
+			Scan(&userEmail, &userDisplayName)
+	}
+
+	for _, p := range pendings {
+		switch p.source {
+		case "user.id":
+			claims[p.key] = userID
+		case "user.email":
+			claims[p.key] = userEmail
+		case "user.display_name":
+			claims[p.key] = userDisplayName
+		case "groups":
+			claims[p.key] = groups
+		default:
+			if strings.HasPrefix(p.source, "literal:") {
+				claims[p.key] = p.source[len("literal:"):]
+			}
+		}
+	}
+
+	return claims, nil
 }
 
 // GetKeyByIDAndClientID retrieves a signing key by ID.

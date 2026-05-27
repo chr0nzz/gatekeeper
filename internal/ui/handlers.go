@@ -243,14 +243,18 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	// If already authenticated, complete the OIDC flow or forward directly.
 	data, sessID, _ := h.sessions.Get(r)
 	if data != nil && data.UserID != "" && !data.PendingOTP && !data.PendingTOTP {
-		if oidcRequest != "" {
+		user, _ := h.users.GetByID(r.Context(), data.UserID)
+		if user == nil || user.Disabled {
+			h.sessions.Destroy(w, r, sessID)
+		} else if oidcRequest != "" {
 			data.OIDCRequestID = oidcRequest
 			h.sessions.Update(r.Context(), sessID, *data)
 			h.completeLogin(w, r, sessID, data)
+			return
 		} else {
 			h.redirect(w, r, sessID, redirectURI)
+			return
 		}
-		return
 	}
 
 	tplData := map[string]interface{}{

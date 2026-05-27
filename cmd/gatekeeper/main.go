@@ -63,6 +63,7 @@ func main() {
 	adminSessStore := queries.NewAdminSessionStore(database)
 	groupStore := queries.NewGroupStore(database)
 	inviteStore := queries.NewInviteStore(database)
+	claimStore := queries.NewClaimStore(database)
 	settingsStore := queries.NewSettingsStore(database)
 	otpStore := auth.NewOTPStore(database, []byte(cfg.SecretKey))
 	totpStore := auth.NewTOTPStore(database, []byte(cfg.SecretKey))
@@ -136,7 +137,7 @@ func main() {
 
 	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, envSMTP,
-		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains}, policyStore, groupStore, inviteStore, webhookStore, notifyService)
+		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService)
 
 	secretKey := [32]byte{}
 	copy(secretKey[:], []byte(cfg.SecretKey))

@@ -9,6 +9,18 @@
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
       <span class="user-email" style="font-size:12px;color:var(--tx-2)">{{.User.Email}}</span>
+      <div class="accent-drop" id="accent-drop">
+        <button class="accent-trigger" id="accent-trigger" title="Accent color">
+          <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
+        </button>
+        <div class="accent-menu" id="accent-menu">
+          <button class="ac-swatch" data-accent="indigo" style="--sc:#4338ca" title="Indigo"></button>
+          <button class="ac-swatch" data-accent="blue"   style="--sc:#2563eb" title="Blue"></button>
+          <button class="ac-swatch" data-accent="purple" style="--sc:#7c3aed" title="Purple"></button>
+          <button class="ac-swatch" data-accent="teal"   style="--sc:#0d9488" title="Teal"></button>
+          <button class="ac-swatch" data-accent="rose"   style="--sc:#e11d48" title="Rose"></button>
+        </div>
+      </div>
       <div class="theme-toggle">
         <button data-theme="light" title="Light">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4V2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>

@@ -21,7 +21,8 @@ description: Version history for GateKeeper.
 
 - **RP-initiated logout** - Signing out of an OIDC client (e.g., Grafana) now also clears the GateKeeper session cookie. The `post_logout_redirect_uri` parameter is honoured so users land back on the correct page.
 - **Token introspection** - The `/oauth/introspect` endpoint (RFC 7662) is supported. APIs and services can verify bearer tokens server-side by calling the endpoint with their client credentials. See [Managing clients](/admin/managing-clients).
-- **Client credentials flow** - Enable machine-to-machine auth per client by setting a list of allowed scopes on the client. Services call `POST /oauth/token` with `grant_type=client_credentials` and receive an access token with `sub` set to the client ID. See [Managing clients](/admin/managing-clients).
+- **Client credentials flow** - Enable machine-to-machine auth per client by setting a list of allowed scopes on the client.
+- **Custom claims** - Inject extra fields into tokens on a per-client basis. Map user ID, email, display name, group membership, or a literal string to any claim key. Manage from the claims icon on the OIDC Clients page. See [Custom claims](/admin/custom-claims). Services call `POST /oauth/token` with `grant_type=client_credentials` and receive an access token with `sub` set to the client ID. See [Managing clients](/admin/managing-clients).
 
 ### Dashboard
 
