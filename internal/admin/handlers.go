@@ -246,6 +246,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/users/{id}/passwordless", h.PostTogglePasswordless)
 		r.Post("/users/{id}/approve", h.PostApproveUser)
 		r.Post("/users/{id}/reject", h.PostRejectUser)
+		r.Post("/users/{id}/make-admin", h.PostMakeUserAdmin)
 		r.Post("/users/{id}/groups/{groupID}/add", h.PostAddUserToGroup)
 		r.Post("/users/{id}/groups/{groupID}/remove", h.PostRemoveUserFromGroup)
 		r.Get("/clients", h.GetClients)
@@ -1012,11 +1013,28 @@ func (h *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
 		groupMemberships = append(groupMemberships, GroupMembership{Group: g, IsMember: userGroupSet[g.Name]})
 	}
 
+	existingAdmin, _ := h.admins.GetByEmail(r.Context(), user.Email)
+
+	errMessages := map[string]string{
+		"admin_missing":  "Password is required.",
+		"admin_mismatch": "Passwords do not match.",
+		"admin_exists":   "An admin account with this email already exists.",
+		"admin_server":   "Server error. Please try again.",
+	}
+	successMessages := map[string]string{
+		"admin_promoted": "Admin account created. The user can now sign in to the admin panel.",
+	}
+	errMsg := errMessages[r.URL.Query().Get("err")]
+	successMsg := successMessages[r.URL.Query().Get("success")]
+
 	h.render(w, r, "admin_user_detail.html", map[string]interface{}{
 		"User":             UserDetail{User: user, Initials: initials, Sessions: sessions, Locked: isLocked, LastSeen: ""},
 		"Passkeys":         passkeys,
 		"RecoveryCodes":    recoveryCodes,
 		"GroupMemberships": groupMemberships,
+		"IsAdmin":          existingAdmin != nil,
+		"Error":            errMsg,
+		"Success":          successMsg,
 	})
 }
 
@@ -1566,6 +1584,49 @@ func (h *Handlers) PostDeleteAdmin(w http.ResponseWriter, r *http.Request) {
 	h.admins.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), "admin.admin_deleted", "", currentID, r.RemoteAddr, target.Email)
 	http.Redirect(w, r, "/admin/admins", http.StatusSeeOther)
+}
+
+func (h *Handlers) PostMakeUserAdmin(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
+		return
+	}
+	userID := chi.URLParam(r, "id")
+	user, err := h.users.GetByID(r.Context(), userID)
+	if err != nil || user == nil {
+		http.NotFound(w, r)
+		return
+	}
+	password := r.FormValue("password")
+	confirm := r.FormValue("confirm")
+	if password == "" {
+		http.Redirect(w, r, "/admin/users/"+userID+"?err=admin_missing", http.StatusSeeOther)
+		return
+	}
+	if password != confirm {
+		http.Redirect(w, r, "/admin/users/"+userID+"?err=admin_mismatch", http.StatusSeeOther)
+		return
+	}
+	existing, _ := h.admins.GetByEmail(r.Context(), user.Email)
+	if existing != nil {
+		http.Redirect(w, r, "/admin/users/"+userID+"?err=admin_exists", http.StatusSeeOther)
+		return
+	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		http.Redirect(w, r, "/admin/users/"+userID+"?err=admin_server", http.StatusSeeOther)
+		return
+	}
+	displayName := user.DisplayName
+	if displayName == "" {
+		displayName = user.Email
+	}
+	if err := h.admins.Create(r.Context(), user.Email, hash, displayName); err != nil {
+		http.Redirect(w, r, "/admin/users/"+userID+"?err=admin_server", http.StatusSeeOther)
+		return
+	}
+	h.auditLog.Log(r.Context(), "admin.admin_created", userID, h.adminIDFromRequest(r), r.RemoteAddr, user.Email)
+	http.Redirect(w, r, "/admin/users/"+userID+"?success=admin_promoted", http.StatusSeeOther)
 }
 
 func (h *Handlers) profilePageData(r *http.Request) map[string]interface{} {

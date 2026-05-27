@@ -198,6 +198,53 @@
 </div>
 {{end}}
 
+<div class="card" style="margin-top:14px">
+  <div class="card-head">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4zM19 8v6M22 11h-6"/></svg>
+    <h3>Admin access</h3>
+    {{if .IsAdmin}}<span class="pill pill-ok" style="margin-left:auto"><span class="dot"></span>Has admin account</span>{{end}}
+  </div>
+  <div class="card-body">
+    {{if .IsAdmin}}
+    <p style="font-size:12.5px;color:var(--tx-2);margin:0">This user already has an admin account and can sign in to the admin panel using <b>{{.User.Email}}</b>.</p>
+    {{else}}
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600">Promote to admin</div>
+        <div style="font-size:11.5px;color:var(--tx-2)">Creates an admin account for <b>{{.User.Email}}</b>. They can sign in to the admin panel separately.</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-open-dialog="make-admin-dialog">Promote</button>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<dialog id="make-admin-dialog">
+  <div class="modal-head">
+    <h2>Promote to admin</h2>
+    <p>Set a password for the new admin account. The email will be <b>{{.User.Email}}</b>.</p>
+  </div>
+  <form method="POST" action="/admin/users/{{.User.ID}}/make-admin">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="12+ characters">
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Confirm password</span>
+          <input class="input" type="password" name="confirm" required autocomplete="new-password">
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create admin account</button>
+    </div>
+  </form>
+</dialog>
+
 <div class="card" style="margin-top:14px;border-color:rgba(193,53,42,0.2)">
   <div class="card-head">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
