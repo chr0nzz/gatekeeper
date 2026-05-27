@@ -24,7 +24,7 @@ export default defineConfig({
       { text: 'Security', link: '/security/overview' },
       { text: 'Reference', link: '/reference/env-vars' },
       {
-        text: 'v0.5.0',
+        text: 'v0.6.0',
         items: [
           { text: 'Changelog', link: '/reference/changelog' },
           { text: 'GitHub', link: 'https://github.com/chr0nzz/gatekeeper' },
@@ -83,6 +83,8 @@ export default defineConfig({
         text: 'Integrations',
         items: [
           { text: 'Traefik ForwardAuth', link: '/integrations/traefik-forwardauth' },
+          { text: 'Nginx auth_request', link: '/integrations/nginx' },
+          { text: 'Caddy forward_auth', link: '/integrations/caddy' },
           { text: 'Cross-domain ForwardAuth', link: '/integrations/cross-domain' },
           { text: 'Protecting an app (example)', link: '/integrations/example-app' },
           { text: 'OIDC client examples', link: '/integrations/oidc-client-examples' },

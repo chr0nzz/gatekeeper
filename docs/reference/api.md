@@ -39,11 +39,19 @@ description: All HTTP endpoints, methods, and their behavior.
 | `POST` | `/register/passkey/begin` | Begin WebAuthn registration |
 | `POST` | `/register/passkey/finish` | Finish WebAuthn registration |
 
-## Traefik integration
+## Reverse proxy integration
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/auth/verify` | ForwardAuth verification endpoint. Returns `200` with identity headers, or `401`. |
+| `GET` | `/auth/verify` | Forward auth verification endpoint. Returns `200` with identity headers on success, or `401` when the session is missing or invalid. Append `?policy=<name>` to enforce an access policy (returns `403` on denial). |
+
+**Response headers on 200:**
+
+| Header | Value |
+|---|---|
+| `X-Auth-User` | The authenticated user's internal UUID |
+| `X-Auth-Email` | The authenticated user's email address |
+| `X-Auth-Groups` | Comma-separated group names (omitted when the user has no groups) |
 
 ## OIDC provider
 

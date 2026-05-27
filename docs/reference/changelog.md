@@ -3,6 +3,16 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.6.0
+
+### Reverse proxy integrations
+
+- **Nginx auth_request** - Full configuration guide for protecting sites with nginx's `auth_request` module. See [Nginx auth_request](/integrations/nginx).
+- **Caddy forward_auth** - Full Caddyfile guide for protecting sites with Caddy's `forward_auth` directive. See [Caddy forward_auth](/integrations/caddy).
+- **X-Auth-Groups header** - The `/auth/verify` endpoint now returns an `X-Auth-Groups` header containing a comma-separated list of the authenticated user's group names. All three reverse proxy integrations (Traefik, Nginx, Caddy) forward this header to the upstream application.
+
+---
+
 ## v0.5.0
 
 ### Social login

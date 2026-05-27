@@ -701,12 +701,13 @@ func (h *Handlers) GetAuthMethodsData(w http.ResponseWriter, r *http.Request) {
 	default:
 		since = now - 86400
 	}
-	var passkey, totp, otp, oidc int
+	var passkey, totp, otp, oidc, social int
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='login.passkey' AND created_at > ?`, since).Scan(&passkey)
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='totp.verified' AND created_at > ?`, since).Scan(&totp)
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='otp.verified' AND created_at > ?`, since).Scan(&otp)
 	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM oidc_tokens WHERE created_at > ?`, since).Scan(&oidc)
-	total := passkey + totp + otp + oidc
+	h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM audit_log WHERE event='login.social' AND created_at > ?`, since).Scan(&social)
+	total := passkey + totp + otp + oidc + social
 	pct := func(n int) int {
 		if total == 0 {
 			return 0
@@ -724,6 +725,7 @@ func (h *Handlers) GetAuthMethodsData(w http.ResponseWriter, r *http.Request) {
 		{"Passkey", "passkey", pct(passkey), passkey},
 		{"TOTP", "totp", pct(totp), totp},
 		{"Email OTP", "mail", pct(otp), otp},
+		{"Social", "social", pct(social), social},
 		{"OIDC", "clients", pct(oidc), oidc},
 	})
 }
@@ -799,6 +801,8 @@ func loginMethod(event string) (string, string) {
 		return "Password", "method-password"
 	case "admin.login":
 		return "Password", "method-password"
+	case "login.social":
+		return "Social", "method-social"
 	}
 	return "", ""
 }

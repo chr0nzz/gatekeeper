@@ -18,10 +18,11 @@ type ForwardAuth struct {
 	secretKey    string
 	cookieDomain string
 	policies     *queries.PolicyStore
+	groups       *queries.GroupStore
 }
 
 // NewForwardAuth creates a ForwardAuth handler.
-func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore) *ForwardAuth {
+func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore, groups *queries.GroupStore) *ForwardAuth {
 	return &ForwardAuth{
 		sessions:     sessions,
 		db:           db,
@@ -29,6 +30,7 @@ func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey,
 		secretKey:    secretKey,
 		cookieDomain: cookieDomain,
 		policies:     policies,
+		groups:       groups,
 	}
 }
 
@@ -66,6 +68,9 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Auth-User", data.UserID)
 	w.Header().Set("X-Auth-Email", email)
+	if names, err := f.groups.GetUserGroups(r.Context(), data.UserID); err == nil && len(names) > 0 {
+		w.Header().Set("X-Auth-Groups", strings.Join(names, ","))
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

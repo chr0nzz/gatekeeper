@@ -27,6 +27,7 @@ http:
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
+          - X-Auth-Groups
 ```
 
 Replace `auth.example.com` with the `BASE_URL` you configured for GateKeeper.
@@ -61,12 +62,13 @@ The `@file` suffix tells Traefik the middleware comes from the file provider. If
 
 ## Identity headers
 
-When authentication succeeds, GateKeeper sets two headers that Traefik forwards to your app:
+When authentication succeeds, GateKeeper sets headers that Traefik forwards to your app:
 
 - `X-Auth-User` - the user's internal UUID
 - `X-Auth-Email` - the user's email address
+- `X-Auth-Groups` - comma-separated list of group names the user belongs to (omitted if the user has no groups)
 
-Your app can read these to identify who is logged in without any SDK or API call.
+Your app can read these to identify who is logged in and what roles they have, without any SDK or API call.
 
 ```python
 # Flask example
