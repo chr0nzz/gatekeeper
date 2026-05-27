@@ -220,6 +220,8 @@ type AdminUser struct {
 	ID           string
 	Email        string
 	PasswordHash string
+	DisplayName  string
+	CreatedAt    int64
 }
 
 // AdminStore handles admin user operations.
@@ -239,11 +241,18 @@ func (a *AdminStore) Exists(ctx context.Context) bool {
 	return count > 0
 }
 
+// Count returns the number of admin accounts.
+func (a *AdminStore) Count(ctx context.Context) int {
+	var count int
+	a.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM admin_users`).Scan(&count)
+	return count
+}
+
 // Create creates a new admin account.
-func (a *AdminStore) Create(ctx context.Context, email, passwordHash string) error {
+func (a *AdminStore) Create(ctx context.Context, email, passwordHash, displayName string) error {
 	_, err := a.db.ExecContext(ctx,
-		`INSERT INTO admin_users (id, email, password_hash, created_at) VALUES (?,?,?,?)`,
-		uuid.New().String(), email, passwordHash, time.Now().Unix(),
+		`INSERT INTO admin_users (id, email, password_hash, display_name, created_at) VALUES (?,?,?,?,?)`,
+		uuid.New().String(), email, passwordHash, displayName, time.Now().Unix(),
 	)
 	return err
 }
@@ -252,9 +261,9 @@ func (a *AdminStore) Create(ctx context.Context, email, passwordHash string) err
 func (a *AdminStore) GetByID(ctx context.Context, id string) (*AdminUser, error) {
 	var admin AdminUser
 	err := a.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash FROM admin_users WHERE id=?`,
+		`SELECT id, email, password_hash, display_name, created_at FROM admin_users WHERE id=?`,
 		id,
-	).Scan(&admin.ID, &admin.Email, &admin.PasswordHash)
+	).Scan(&admin.ID, &admin.Email, &admin.PasswordHash, &admin.DisplayName, &admin.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -265,13 +274,39 @@ func (a *AdminStore) GetByID(ctx context.Context, id string) (*AdminUser, error)
 func (a *AdminStore) GetByEmail(ctx context.Context, email string) (*AdminUser, error) {
 	var admin AdminUser
 	err := a.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash FROM admin_users WHERE email=?`,
+		`SELECT id, email, password_hash, display_name, created_at FROM admin_users WHERE email=?`,
 		email,
-	).Scan(&admin.ID, &admin.Email, &admin.PasswordHash)
+	).Scan(&admin.ID, &admin.Email, &admin.PasswordHash, &admin.DisplayName, &admin.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &admin, err
+}
+
+// List returns all admin accounts ordered by creation date.
+func (a *AdminStore) List(ctx context.Context) ([]AdminUser, error) {
+	rows, err := a.db.QueryContext(ctx,
+		`SELECT id, email, password_hash, display_name, created_at FROM admin_users ORDER BY created_at`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AdminUser
+	for rows.Next() {
+		var admin AdminUser
+		if err := rows.Scan(&admin.ID, &admin.Email, &admin.PasswordHash, &admin.DisplayName, &admin.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, admin)
+	}
+	return out, nil
+}
+
+// Delete removes an admin account by ID.
+func (a *AdminStore) Delete(ctx context.Context, id string) error {
+	_, err := a.db.ExecContext(ctx, `DELETE FROM admin_users WHERE id=?`, id)
+	return err
 }
 
 // AdminSessionStore manages admin sessions.

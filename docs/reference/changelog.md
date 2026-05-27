@@ -5,6 +5,10 @@ description: Version history for GateKeeper.
 
 ## v0.6.0
 
+### Multiple admin accounts
+
+- **Admin accounts** - Create and manage multiple admin accounts from the new Admins page. Each admin has a display name, email, and password. The currently signed-in admin is shown with a "you" indicator. Deleting your own account or the last remaining account is blocked.
+
 ### Reverse proxy integrations
 
 - **Nginx auth_request** - Full configuration guide for protecting sites with nginx's `auth_request` module. See [Nginx auth_request](/integrations/nginx).

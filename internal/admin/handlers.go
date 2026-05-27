@@ -199,6 +199,8 @@ func activePageFor(name string) string {
 		return "webhooks"
 	case "admin_social.html":
 		return "social"
+	case "admin_admins.html":
+		return "admins"
 	}
 	return ""
 }
@@ -282,6 +284,10 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/webhooks/{id}/toggle", h.PostToggleWebhook)
 		r.Post("/webhooks/{id}/test", h.PostTestWebhook)
 
+		r.Get("/admins", h.GetAdmins)
+		r.Post("/admins", h.PostCreateAdmin)
+		r.Post("/admins/{id}/delete", h.PostDeleteAdmin)
+
 		r.Get("/profile", h.GetProfile)
 		r.Post("/profile/password", h.PostProfilePassword)
 		r.Get("/profile/totp/enroll", h.GetProfileTOTPEnroll)
@@ -319,7 +325,7 @@ func (h *Handlers) PostSetup(w http.ResponseWriter, r *http.Request) {
 		h.render(w, r, "admin_setup.html", map[string]interface{}{"Error": err.Error()})
 		return
 	}
-	if err := h.admins.Create(r.Context(), email, hash); err != nil {
+	if err := h.admins.Create(r.Context(), email, hash, ""); err != nil {
 		h.render(w, r, "admin_setup.html", map[string]interface{}{"Error": "Could not create admin: " + err.Error()})
 		return
 	}
@@ -1472,6 +1478,92 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Redirect(w, r, "/admin/settings?saved=1", http.StatusSeeOther)
+}
+
+func (h *Handlers) GetAdmins(w http.ResponseWriter, r *http.Request) {
+	admins, err := h.admins.List(r.Context())
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	currentID := h.adminIDFromRequest(r)
+	type row struct {
+		ID          string
+		Email       string
+		DisplayName string
+		CreatedAt   string
+		IsSelf      bool
+	}
+	var rows []row
+	for _, a := range admins {
+		rows = append(rows, row{
+			ID:          a.ID,
+			Email:       a.Email,
+			DisplayName: a.DisplayName,
+			CreatedAt:   time.Unix(a.CreatedAt, 0).Format("2006-01-02"),
+			IsSelf:      a.ID == currentID,
+		})
+	}
+	h.render(w, r, "admin_admins.html", map[string]interface{}{
+		"Admins":     rows,
+		"AdminCount": len(rows),
+		"Error":      r.URL.Query().Get("err"),
+	})
+}
+
+func (h *Handlers) PostCreateAdmin(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
+	displayName := strings.TrimSpace(r.FormValue("display_name"))
+	password := r.FormValue("password")
+	confirm := r.FormValue("confirm")
+	if email == "" || password == "" {
+		http.Redirect(w, r, "/admin/admins?err=missing", http.StatusSeeOther)
+		return
+	}
+	if password != confirm {
+		http.Redirect(w, r, "/admin/admins?err=mismatch", http.StatusSeeOther)
+		return
+	}
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		http.Redirect(w, r, "/admin/admins?err=server", http.StatusSeeOther)
+		return
+	}
+	if err := h.admins.Create(r.Context(), email, hash, displayName); err != nil {
+		http.Redirect(w, r, "/admin/admins?err=exists", http.StatusSeeOther)
+		return
+	}
+	h.auditLog.Log(r.Context(), "admin.admin_created", "", h.adminIDFromRequest(r), r.RemoteAddr, email)
+	http.Redirect(w, r, "/admin/admins", http.StatusSeeOther)
+}
+
+func (h *Handlers) PostDeleteAdmin(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	currentID := h.adminIDFromRequest(r)
+	if id == currentID {
+		http.Redirect(w, r, "/admin/admins?err=self", http.StatusSeeOther)
+		return
+	}
+	if h.admins.Count(r.Context()) <= 1 {
+		http.Redirect(w, r, "/admin/admins?err=last", http.StatusSeeOther)
+		return
+	}
+	target, _ := h.admins.GetByID(r.Context(), id)
+	if target == nil {
+		http.Redirect(w, r, "/admin/admins", http.StatusSeeOther)
+		return
+	}
+	h.admins.Delete(r.Context(), id)
+	h.auditLog.Log(r.Context(), "admin.admin_deleted", "", currentID, r.RemoteAddr, target.Email)
+	http.Redirect(w, r, "/admin/admins", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetProfile(w http.ResponseWriter, r *http.Request) {
