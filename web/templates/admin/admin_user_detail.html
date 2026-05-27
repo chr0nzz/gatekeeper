@@ -56,7 +56,7 @@
         {{else if .User.Locked}}<span class="pill pill-warn"><span class="dot"></span>Locked</span>
         {{else}}<span class="pill pill-ok"><span class="dot"></span>Active</span>{{end}}</dd>
         <dt>TOTP</dt>
-        <dd>{{if .User.TOTPEnabled}}<span class="pill pill-ok"><span class="dot"></span>Enrolled</span>{{if .RecoveryCodes}} <span style="font-size:11.5px;color:var(--tx-2);margin-left:4px">{{.RecoveryCodes}} codes left</span>{{end}}
+        <dd>{{if .User.TOTPEnabled}}<span class="pill pill-ok"><span class="dot"></span>Enrolled</span>
         {{else}}<span class="pill pill-off">Not enrolled</span>{{end}}</dd>
         <dt>Passwordless</dt>
         <dd>{{if .User.PasswordlessEnabled}}<span class="pill pill-info"><span class="dot"></span>Enabled</span>{{else}}<span class="pill pill-off">Disabled</span>{{end}}</dd>

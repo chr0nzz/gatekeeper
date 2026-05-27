@@ -15,47 +15,51 @@
 <form id="settings-form" method="POST" action="/admin/settings">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-head">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
-      <h3>Registration</h3>
-    </div>
-    <div class="card-body">
-      <label class="field">
-        <span class="field-label">Registration mode</span>
-        <select class="input select" name="registration_mode">
-          <option value="disabled" {{if eq .RegistrationMode "disabled"}}selected{{end}}>Disabled - no self-registration</option>
-          <option value="invite_only" {{if eq .RegistrationMode "invite_only"}}selected{{end}}>Invite only - requires an invite link</option>
-          <option value="open" {{if eq .RegistrationMode "open"}}selected{{end}}>Open - anyone can register</option>
-          <option value="approval" {{if eq .RegistrationMode "approval"}}selected{{end}}>Approval required - admin must approve</option>
-        </select>
-        <span class="field-hint">Invite links always work regardless of this setting.</span>
-      </label>
-      <label class="field" style="margin-bottom:0">
-        <span class="field-label">Allowed domains for registration <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
-        <input class="input" type="text" name="registration_allowed_domains" value="{{.RegistrationAllowedDomains}}" placeholder="example.com, company.org">
-        <span class="field-hint">Comma-separated. Leave blank to allow any email domain. Only applies to open and approval modes.</span>
-      </label>
-    </div>
-  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
 
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-head">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
-      <h3>Access control</h3>
+    <div class="card">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
+        <h3>Registration</h3>
+      </div>
+      <div class="card-body">
+        <label class="field">
+          <span class="field-label">Registration mode</span>
+          <select class="input select" name="registration_mode">
+            <option value="disabled" {{if eq .RegistrationMode "disabled"}}selected{{end}}>Disabled</option>
+            <option value="invite_only" {{if eq .RegistrationMode "invite_only"}}selected{{end}}>Invite only</option>
+            <option value="open" {{if eq .RegistrationMode "open"}}selected{{end}}>Open</option>
+            <option value="approval" {{if eq .RegistrationMode "approval"}}selected{{end}}>Approval required</option>
+          </select>
+          <span class="field-hint">Invite links always work regardless of this setting.</span>
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Allowed domains <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+          <input class="input" type="text" name="registration_allowed_domains" value="{{.RegistrationAllowedDomains}}" placeholder="example.com, company.org">
+          <span class="field-hint">Comma-separated. Leave blank for any domain. Only applies to open and approval modes.</span>
+        </label>
+      </div>
     </div>
-    <div class="card-body">
-      <label class="field">
-        <span class="field-label">Allowed email domains</span>
-        <input class="input" type="text" name="allowed_email_domains" value="{{.AllowedDomains}}" placeholder="example.com, company.org">
-        <span class="field-hint">Comma-separated. Leave blank to allow any email address.</span>
-      </label>
-      <label class="field" style="margin-bottom:0">
-        <span class="field-label">Session timeout (hours)</span>
-        <input class="input" type="number" name="session_ttl_hours" value="{{.SessionTTL}}" min="1" max="720" placeholder="8" style="max-width:140px">
-        <span class="field-hint">Default 8. Maximum 720 (30 days).</span>
-      </label>
+
+    <div class="card">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+        <h3>Access control</h3>
+      </div>
+      <div class="card-body">
+        <label class="field">
+          <span class="field-label">Allowed email domains</span>
+          <input class="input" type="text" name="allowed_email_domains" value="{{.AllowedDomains}}" placeholder="example.com, company.org">
+          <span class="field-hint">Comma-separated. Leave blank to allow any email address.</span>
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Session timeout (hours)</span>
+          <input class="input" type="number" name="session_ttl_hours" value="{{.SessionTTL}}" min="1" max="720" placeholder="8" style="max-width:120px">
+          <span class="field-hint">Default 8. Maximum 720 (30 days).</span>
+        </label>
+      </div>
     </div>
+
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -70,15 +74,13 @@
       </div>
     </div>
     <div class="card-body">
-      <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
-        <label class="field"><span class="field-label">Host</span><input class="input mono" type="text" name="smtp_host" value="{{.SMTPHost}}" placeholder="smtp.example.com"></label>
-        <label class="field"><span class="field-label">Port</span><input class="input mono" type="number" name="smtp_port" value="{{.SMTPPort}}" placeholder="587"></label>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+        <label class="field" style="margin-bottom:0"><span class="field-label">Host</span><input class="input mono" type="text" name="smtp_host" value="{{.SMTPHost}}" placeholder="smtp.example.com"></label>
+        <label class="field" style="margin-bottom:0"><span class="field-label">Port</span><input class="input mono" type="number" name="smtp_port" value="{{.SMTPPort}}" placeholder="587"></label>
+        <label class="field" style="margin-bottom:0"><span class="field-label">Username</span><input class="input mono" type="text" name="smtp_username" value="{{.SMTPUsername}}" autocomplete="off"></label>
+        <label class="field" style="margin-bottom:0"><span class="field-label">Password</span><input class="input" type="password" name="smtp_password" placeholder="unchanged" autocomplete="new-password"></label>
       </div>
-      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <label class="field"><span class="field-label">Username</span><input class="input mono" type="text" name="smtp_username" value="{{.SMTPUsername}}" autocomplete="off"></label>
-        <label class="field"><span class="field-label">Password</span><input class="input" type="password" name="smtp_password" placeholder="•••••••• (unchanged)" autocomplete="new-password"></label>
-      </div>
-      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <label class="field" style="margin-bottom:0"><span class="field-label">From address</span><input class="input" type="email" name="smtp_from" value="{{.SMTPFrom}}" placeholder="noreply@example.com"></label>
         <label class="field" style="margin-bottom:0"><span class="field-label">TLS mode</span>
           <select class="input select" name="smtp_tls">
@@ -91,21 +93,25 @@
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-head">
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
-      <h3>Audit log</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+    <div class="card">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
+        <h3>Audit log</h3>
+      </div>
+      <div class="card-body">
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Retention period (days)</span>
+          <input class="input" type="number" name="audit_retention_days" value="{{.AuditRetentionDays}}" min="0" max="3650" placeholder="90" style="max-width:120px">
+          <span class="field-hint">Events older than this are deleted automatically. Set to 0 to keep all events forever.</span>
+        </label>
+      </div>
     </div>
-    <div class="card-body">
-      <label class="field" style="margin-bottom:0">
-        <span class="field-label">Retention period (days)</span>
-        <input class="input" type="number" name="audit_retention_days" value="{{.AuditRetentionDays}}" min="0" max="3650" placeholder="90" style="max-width:140px">
-        <span class="field-hint">Events older than this are deleted automatically. Set to 0 to keep all events forever.</span>
-      </label>
-    </div>
+
   </div>
 
-  <div id="save-bar" style="display:none;position:sticky;bottom:16px;padding:12px 16px;background:var(--bg-elev);border:1px solid var(--bd-2);border-radius:10px;display:none;align-items:center;gap:10px;box-shadow:var(--shadow-pop)">
+  <div id="save-bar" style="display:none;position:sticky;bottom:16px;padding:12px 16px;background:var(--bg-elev);border:1px solid var(--bd-2);border-radius:10px;align-items:center;gap:10px;box-shadow:var(--shadow-pop)">
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--ac)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 9v6M12 7v.5"/></svg>
     <span style="font-size:13px">Unsaved changes</span>
     <div style="margin-left:auto;display:flex;gap:6px">
@@ -122,7 +128,6 @@
 (function() {
   var form = document.getElementById('settings-form');
   var bar = document.getElementById('save-bar');
-  var initial = new FormData(form);
   var dirty = false;
 
   function markDirty() {
