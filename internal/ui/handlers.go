@@ -273,12 +273,11 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tplData := map[string]interface{}{
-		"RedirectURI": redirectURI,
-		"OIDCRequest": oidcRequest,
-		"AppName":     "",
-		"FaviconURL":  "",
-	}
+	tplData := h.brand(r)
+	tplData["RedirectURI"] = redirectURI
+	tplData["OIDCRequest"] = oidcRequest
+	tplData["AppName"] = ""
+	tplData["FaviconURL"] = ""
 	if oidcRequest != "" && h.oidcStorage != nil {
 		if req, err := h.oidcStorage.AuthRequestByID(r.Context(), oidcRequest); err == nil {
 			clientID := req.GetClientID()
@@ -306,28 +305,37 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	ip := remoteIP(r)
+	redirectURI := r.FormValue("redirect_uri")
+	oidcRequest := r.FormValue("oidc_request")
+
+	loginErr := func(msg string) {
+		d := h.brand(r)
+		d["Error"] = msg
+		d["RedirectURI"] = redirectURI
+		d["OIDCRequest"] = oidcRequest
+		h.render(w, "login.html", d)
+	}
+
 	if !h.limiter.allow(ip) {
-		h.render(w, "login.html", map[string]string{"Error": "Too many login attempts. Please try again later."})
+		loginErr("Too many login attempts. Please try again later.")
 		return
 	}
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")
 	loginMode := r.FormValue("login_mode")
-	redirectURI := r.FormValue("redirect_uri")
-	oidcRequest := r.FormValue("oidc_request")
 
 	user, err := h.users.GetByEmail(r.Context(), email)
 	if err != nil || user == nil || user.Disabled {
 		h.limiter.record(ip)
 		h.auditLog.Log(r.Context(), audit.EventLoginFailure, "", "", r.RemoteAddr, email)
-		h.render(w, "login.html", map[string]string{"Error": "Invalid credentials", "RedirectURI": redirectURI})
+		loginErr("Invalid credentials")
 		return
 	}
 	if !h.emailDomainAllowed(r, email) {
 		h.limiter.record(ip)
 		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, "domain not allowed")
-		h.render(w, "login.html", map[string]string{"Error": "Invalid credentials", "RedirectURI": redirectURI})
+		loginErr("Invalid credentials")
 		return
 	}
 
@@ -339,7 +347,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	if auth.VerifyPassword(password, user.PasswordHash) != nil {
 		h.limiter.record(ip)
 		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, email)
-		h.render(w, "login.html", map[string]string{"Error": "Invalid credentials", "RedirectURI": redirectURI})
+		loginErr("Invalid credentials")
 		return
 	}
 
@@ -591,17 +599,25 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *Handlers) brand(r *http.Request) map[string]interface{} {
+	return map[string]interface{}{
+		"BrandName":    h.settings.Get(r.Context(), "login_app_name", ""),
+		"BrandLogoURL": h.settings.Get(r.Context(), "login_logo_url", ""),
+		"BrandTagline": h.settings.Get(r.Context(), "login_tagline", ""),
+	}
+}
+
 func (h *Handlers) GetForgotPassword(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "forgot_password.html", nil)
+	h.render(w, "forgot_password.html", h.brand(r))
 }
 
 func (h *Handlers) PostForgotPassword(w http.ResponseWriter, r *http.Request) {
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	ip := strings.Split(r.RemoteAddr, ":")[0]
 
-	h.render(w, "forgot_password.html", map[string]string{
-		"Success": "If an account with that email exists, a reset link has been sent.",
-	})
+	data := h.brand(r)
+	data["Success"] = "If an account with that email exists, a reset link has been sent."
+	h.render(w, "forgot_password.html", data)
 
 	go func() {
 		ctx := r.Context()
@@ -629,10 +645,14 @@ func (h *Handlers) GetResetPassword(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	_, err := h.resetStore.ValidateToken(r.Context(), token)
 	if err != nil {
-		h.render(w, "reset_password.html", map[string]string{"Error": "This link is invalid or has expired.", "Token": ""})
+		d := h.brand(r)
+		d["Error"] = "This link is invalid or has expired."
+		h.render(w, "reset_password.html", d)
 		return
 	}
-	h.render(w, "reset_password.html", map[string]string{"Token": token})
+	d := h.brand(r)
+	d["Token"] = token
+	h.render(w, "reset_password.html", d)
 }
 
 func (h *Handlers) PostResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -640,21 +660,28 @@ func (h *Handlers) PostResetPassword(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	confirm := r.FormValue("confirm")
 
+	resetErr := func(msg, tok string) {
+		d := h.brand(r)
+		d["Error"] = msg
+		d["Token"] = tok
+		h.render(w, "reset_password.html", d)
+	}
+
 	if password != confirm {
-		h.render(w, "reset_password.html", map[string]string{"Error": "Passwords do not match", "Token": token})
+		resetErr("Passwords do not match", token)
 		return
 	}
 
 	userID, err := h.resetStore.Redeem(r.Context(), token)
 	if err != nil {
 		h.auditLog.Log(r.Context(), audit.EventPasswordResetBad, "", "", r.RemoteAddr, "")
-		h.render(w, "reset_password.html", map[string]string{"Error": "This link is invalid or has expired.", "Token": ""})
+		resetErr("This link is invalid or has expired.", "")
 		return
 	}
 
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		h.render(w, "reset_password.html", map[string]string{"Error": err.Error(), "Token": token})
+		resetErr(err.Error(), token)
 		return
 	}
 
@@ -1052,23 +1079,25 @@ func (h *Handlers) GetRegister(w http.ResponseWriter, r *http.Request) {
 	if token != "" {
 		inv, err := h.invites.GetByToken(r.Context(), token)
 		if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
-			h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired."})
+			d := h.brand(r)
+			d["Error"] = "This invite link is invalid or has expired."
+			h.render(w, "register.html", d)
 			return
 		}
-		h.render(w, "register.html", map[string]interface{}{
-			"Token":     token,
-			"Email":     inv.Email,
-			"CSRFToken": h.csrf(r),
-		})
+		d := h.brand(r)
+		d["Token"] = token
+		d["Email"] = inv.Email
+		d["CSRFToken"] = h.csrf(r)
+		h.render(w, "register.html", d)
 		return
 	}
 
 	switch mode {
 	case "open", "approval":
-		h.render(w, "register.html", map[string]interface{}{
-			"CSRFToken": h.csrf(r),
-			"Mode":      mode,
-		})
+		d := h.brand(r)
+		d["CSRFToken"] = h.csrf(r)
+		d["Mode"] = mode
+		h.render(w, "register.html", d)
 	default:
 		http.NotFound(w, r)
 	}
@@ -1107,7 +1136,13 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 	confirm := r.FormValue("confirm_password")
 
 	errData := func(msg string) map[string]interface{} {
-		return map[string]interface{}{"Error": msg, "Token": token, "Email": invLockedEmail, "Mode": mode, "CSRFToken": h.csrf(r)}
+		d := h.brand(r)
+		d["Error"] = msg
+		d["Token"] = token
+		d["Email"] = invLockedEmail
+		d["Mode"] = mode
+		d["CSRFToken"] = h.csrf(r)
+		return d
 	}
 
 	if email == "" {

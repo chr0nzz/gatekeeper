@@ -97,6 +97,30 @@
 
     <div class="card">
       <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
+        <h3>Login page branding</h3>
+      </div>
+      <div class="card-body">
+        <label class="field">
+          <span class="field-label">App name <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+          <input class="input" type="text" name="login_app_name" value="{{.LoginAppName}}" placeholder="My Company">
+          <span class="field-hint">Shown in the sign-in heading. Leave blank to show "GateKeeper".</span>
+        </label>
+        <label class="field">
+          <span class="field-label">Tagline <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+          <input class="input" type="text" name="login_tagline" value="{{.LoginTagline}}" placeholder="Sign in to access your apps.">
+          <span class="field-hint">Shown below the heading on the sign-in page.</span>
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Logo URL <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+          <input class="input" type="url" name="login_logo_url" value="{{.LoginLogoURL}}" placeholder="https://example.com/logo.png">
+          <span class="field-hint">Replaces the GateKeeper mark on the login, register, and password reset pages.</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
         <h3>Email branding</h3>
       </div>

@@ -36,6 +36,18 @@ GateKeeper sends email for two purposes: one-time login codes and password reset
 
 Click **Send test** to verify your SMTP config sends a message to the From address.
 
+## Login page branding
+
+Customize the appearance of the login, registration, and password reset pages.
+
+| Field | Description |
+|---|---|
+| App name | Shown in the sign-in heading ("Sign in to ..."). Leave blank to show "GateKeeper". |
+| Tagline | Short line of text below the heading on the sign-in page. |
+| Logo URL | A public image URL that replaces the GateKeeper mark. Leave blank to keep the default mark. |
+
+When an OIDC client has its own icon configured, that icon takes priority over the logo URL on the sign-in page.
+
 ## Email branding
 
 Customize the appearance of all outgoing emails (login codes, password resets, and password change notifications).

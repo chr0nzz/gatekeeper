@@ -1463,6 +1463,9 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		"EmailLogoURL":               get("email_logo_url", ""),
 		"EmailSenderName":            get("email_sender_name", ""),
 		"EmailAccentColor":           get("email_accent_color", ""),
+		"LoginLogoURL":               get("login_logo_url", ""),
+		"LoginAppName":               get("login_app_name", ""),
+		"LoginTagline":               get("login_tagline", ""),
 		"BaseURL":                    h.baseURL,
 	}
 	if r.URL.Query().Get("saved") == "1" {
@@ -1486,6 +1489,9 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 	set("email_logo_url", r.FormValue("email_logo_url"))
 	set("email_sender_name", r.FormValue("email_sender_name"))
 	set("email_accent_color", r.FormValue("email_accent_color"))
+	set("login_logo_url", r.FormValue("login_logo_url"))
+	set("login_app_name", r.FormValue("login_app_name"))
+	set("login_tagline", r.FormValue("login_tagline"))
 	set("smtp_host", r.FormValue("smtp_host"))
 	set("smtp_port", r.FormValue("smtp_port"))
 	set("smtp_username", r.FormValue("smtp_username"))

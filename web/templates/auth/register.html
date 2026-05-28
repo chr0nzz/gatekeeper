@@ -3,10 +3,14 @@
 {{define "content"}}
 <div class="auth-wrap bg-grid">
   <div class="auth-top" style="justify-content:center">
+    {{if .BrandLogoURL}}
+    <img src="{{.BrandLogoURL}}" height="48" style="display:block;max-width:200px;object-fit:contain" onerror="this.style.display='none'">
+    {{else}}
     <div class="gk-mark">
       <div class="gk-glyph"><i></i></div>
       <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
     </div>
+    {{end}}
   </div>
   <div class="auth-card">
     {{if .Pending}}
@@ -24,11 +28,11 @@
     {{else}}
       <h1>Create account</h1>
       {{if .Token}}
-      <p class="lede">You have been invited to create a GateKeeper account.</p>
+      <p class="lede">You have been invited to create {{if .BrandName}}a {{.BrandName}} account{{else}}a GateKeeper account{{end}}.</p>
       {{else if eq .Mode "approval"}}
       <p class="lede">Create an account. An admin will review and approve your request.</p>
       {{else}}
-      <p class="lede">Create a GateKeeper account to get started.</p>
+      <p class="lede">Create {{if .BrandName}}a {{.BrandName}} account{{else}}a GateKeeper account{{end}} to get started.</p>
       {{end}}
 
       {{if .Error}}<div class="alert alert-err" style="margin-bottom:16px"><b>{{.Error}}</b></div>{{end}}

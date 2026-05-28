@@ -28,11 +28,11 @@
     </div>
   </div>
   <div class="auth-top" style="justify-content:center">
-    {{if .AppName}}
     {{if .FaviconURL}}
     <img src="{{.FaviconURL}}" width="48" height="48" style="border-radius:12px;display:block" onerror="this.style.display='none'">
-    {{end}}
-    {{else}}
+    {{else if .BrandLogoURL}}
+    <img src="{{.BrandLogoURL}}" height="48" style="display:block;max-width:200px;object-fit:contain" onerror="this.style.display='none'">
+    {{else if not .AppName}}
     <div class="gk-mark">
       <div class="gk-glyph"><i></i></div>
       <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
@@ -40,8 +40,8 @@
     {{end}}
   </div>
   <div class="auth-card">
-    <h1 style="text-align:center">{{if .AppName}}Sign in to {{.AppName}}{{else}}Sign in to GateKeeper{{end}}</h1>
-    <p class="lede" style="text-align:center">{{if .AppName}}Use your GateKeeper account to continue.{{else}}Authenticate to access your apps.{{end}}</p>
+    <h1 style="text-align:center">{{if .AppName}}Sign in to {{.AppName}}{{else if .BrandName}}Sign in to {{.BrandName}}{{else}}Sign in to GateKeeper{{end}}</h1>
+    <p class="lede" style="text-align:center">{{if .AppName}}Use your GateKeeper account to continue.{{else if .BrandTagline}}{{.BrandTagline}}{{else}}Authenticate to access your apps.{{end}}</p>
 
     {{if .Error}}<div class="alert alert-err" style="margin-bottom:16px"><b>{{.Error}}</b></div>{{end}}
 
