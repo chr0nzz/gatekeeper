@@ -61,19 +61,21 @@ function encodeCredentialAssertion(credential) {
   };
 }
 
-async function beginPasskeyLogin(beginURL, finishURL, errorEl) {
+async function beginPasskeyLogin(beginURL, finishURL, redirectURI, errorEl) {
   try {
     const beginResp = await fetch(beginURL, { method: 'POST' });
     const sessID = beginResp.headers.get('X-Passkey-Session');
     const options = prepareCredentialRequestOptions(await beginResp.json());
     const credential = await navigator.credentials.get(options);
-    const finishResp = await fetch(finishURL, {
+    const finish = redirectURI ? finishURL + '?redirect_uri=' + encodeURIComponent(redirectURI) : finishURL;
+    const finishResp = await fetch(finish, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Passkey-Session': sessID },
       body: JSON.stringify(encodeCredentialAssertion(credential)),
     });
     if (finishResp.ok) {
-      window.location.href = '/';
+      const target = (await finishResp.text()).trim();
+      window.location.href = target || '/';
     } else {
       const text = await finishResp.text();
       errorEl.textContent = text || 'Authentication failed.';
@@ -118,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
       beginPasskeyLogin(
         loginBtn.dataset.begin,
         loginBtn.dataset.finish,
+        loginBtn.dataset.redirect || '',
         document.getElementById('gk-passkey-error')
       );
     });

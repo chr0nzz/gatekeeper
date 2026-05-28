@@ -589,15 +589,32 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 	_ = cred
 	h.passkeys.UpdateCredential(r.Context(), userID, updatedCred)
 
-	sessData := auth.SessionData{UserID: userID}
-	_, err = h.sessions.Create(w, r, sessData)
-	if err != nil {
+	redirectURI := r.URL.Query().Get("redirect_uri")
+	sessData := auth.SessionData{UserID: userID, RedirectURI: redirectURI}
+	newSessID, err2 := h.sessions.Create(w, r, sessData)
+	if err2 != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
 	}
 	h.auditLog.Log(r.Context(), audit.EventLoginPasskey, userID, "", r.RemoteAddr, "")
+
+	target := redirectURI
+	if target == "" {
+		target = "/"
+	}
+	if h.needsCrossDomain(target) {
+		token := auth.GenerateCrossToken(newSessID, h.secretKey)
+		u, _ := url.Parse(target)
+		target = u.Scheme + "://" + u.Host + "/_gk/auth" +
+			"?token=" + url.QueryEscape(token) +
+			"&redirect=" + url.QueryEscape(u.RequestURI())
+	}
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(target))
 }
+
+
 
 func (h *Handlers) brand(r *http.Request) map[string]interface{} {
 	return map[string]interface{}{
