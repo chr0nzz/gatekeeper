@@ -12,6 +12,10 @@
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       New policy
     </button>
+    <button class="btn btn-ghost btn-sm" data-open-dialog="new-group-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      New group
+    </button>
     <button class="btn btn-ghost btn-sm" data-open-dialog="new-client-dialog">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       New client
@@ -542,6 +546,31 @@
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
       <button type="submit" class="btn btn-primary">Create client</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="new-group-dialog">
+  <div class="modal-head">
+    <h2>New group</h2>
+    <p>Groups are included as a <code>groups</code> claim in OIDC tokens. Use them for role mapping in Grafana, Jellyfin, and other apps.</p>
+  </div>
+  <form method="POST" action="/admin/groups">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input class="input" type="text" name="name" required placeholder="e.g. admins">
+        <span class="field-hint">This exact name will appear in the <code>groups</code> claim. Case-sensitive.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Description <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+        <input class="input" type="text" name="description" placeholder="What this group represents">
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-primary">Create group</button>
     </div>
   </form>
 </dialog>

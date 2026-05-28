@@ -776,6 +776,32 @@ func (h *Handlers) GetSearch(w http.ResponseWriter, r *http.Request) {
 				results = append(results, Result{Label: name, Sub: id, Icon: "clients", URL: "/admin/clients"})
 			}
 		}
+
+		grows, err := h.db.QueryContext(r.Context(),
+			`SELECT id, name FROM groups WHERE name LIKE ? LIMIT 4`,
+			like,
+		)
+		if err == nil {
+			defer grows.Close()
+			for grows.Next() {
+				var id, name string
+				grows.Scan(&id, &name)
+				results = append(results, Result{Label: name, Sub: "group", Icon: "groups", URL: "/admin/groups/" + id})
+			}
+		}
+
+		arows, err := h.db.QueryContext(r.Context(),
+			`SELECT id, COALESCE(NULLIF(display_name,''),email), email FROM admin_users WHERE email LIKE ? OR display_name LIKE ? LIMIT 4`,
+			like, like,
+		)
+		if err == nil {
+			defer arows.Close()
+			for arows.Next() {
+				var id, label, email string
+				arows.Scan(&id, &label, &email)
+				results = append(results, Result{Label: label, Sub: email, Icon: "admins", URL: "/admin/admins"})
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
