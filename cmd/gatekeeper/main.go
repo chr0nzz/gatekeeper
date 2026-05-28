@@ -117,6 +117,14 @@ func main() {
 		}
 	})
 
+	m.SetBrandingLoader(func(ctx context.Context) mailer.Branding {
+		return mailer.Branding{
+			LogoURL:     settingsStore.Get(ctx, "email_logo_url", ""),
+			SenderName:  settingsStore.Get(ctx, "email_sender_name", ""),
+			AccentColor: settingsStore.Get(ctx, "email_accent_color", ""),
+		}
+	})
+
 	notifyService := notify.New(database, webhookStore, m)
 	auditLog.AddHook(notifyService.Dispatch)
 

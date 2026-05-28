@@ -36,6 +36,18 @@ GateKeeper sends email for two purposes: one-time login codes and password reset
 
 Click **Send test** to verify your SMTP config sends a message to the From address.
 
+## Email branding
+
+Customize the appearance of all outgoing emails (login codes, password resets, and password change notifications).
+
+| Field | Description |
+|---|---|
+| Sender name | Shown in the email header and footer text. Defaults to "GateKeeper". |
+| Logo URL | A public image URL displayed in the email header. Leave blank to show the sender name as text instead. |
+| Accent color | Hex color used for the header background and button color. Defaults to `#2563eb`. |
+
+Changes apply to the next email sent - no restart required.
+
 ## OIDC provider
 
 Read-only information about GateKeeper's OIDC configuration:

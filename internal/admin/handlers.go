@@ -1460,6 +1460,9 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		"AuditRetentionDays":         get("audit_retention_days", "90"),
 		"RegistrationMode":           get("registration_mode", h.envDefaults.RegistrationMode),
 		"RegistrationAllowedDomains": get("registration_allowed_domains", h.envDefaults.RegistrationAllowedDomains),
+		"EmailLogoURL":               get("email_logo_url", ""),
+		"EmailSenderName":            get("email_sender_name", ""),
+		"EmailAccentColor":           get("email_accent_color", ""),
 		"BaseURL":                    h.baseURL,
 	}
 	if r.URL.Query().Get("saved") == "1" {
@@ -1480,6 +1483,9 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 	set("session_ttl_hours", r.FormValue("session_ttl_hours"))
 	set("registration_mode", r.FormValue("registration_mode"))
 	set("registration_allowed_domains", r.FormValue("registration_allowed_domains"))
+	set("email_logo_url", r.FormValue("email_logo_url"))
+	set("email_sender_name", r.FormValue("email_sender_name"))
+	set("email_accent_color", r.FormValue("email_accent_color"))
 	set("smtp_host", r.FormValue("smtp_host"))
 	set("smtp_port", r.FormValue("smtp_port"))
 	set("smtp_username", r.FormValue("smtp_username"))

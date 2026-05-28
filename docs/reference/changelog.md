@@ -8,6 +8,12 @@ description: Version history for GateKeeper.
 ### Multiple admin accounts
 
 - **Admin accounts** - Create and manage multiple admin accounts from the new Admins page. Each admin has a display name, email, and password. The currently signed-in admin is shown with a "you" indicator. Deleting your own account or the last remaining account is blocked.
+- **Promote user to admin** - Any regular user can be promoted to an admin account directly from their user detail page. Sets a separate admin password and creates an independent admin account using the user's email and display name.
+- **Admin profile redesign** - The My Account page is redesigned to match the user detail layout. Includes display name editing, active session count, and a "Revoke all other sessions" action.
+
+### Email branding
+
+- **Email templates** - All outgoing emails (login codes, password resets, password change notifications) now use a clean branded layout. Set a sender name, logo URL, and accent color from Settings. The header background and CTA button color both use the accent color. Defaults to "GateKeeper" as the sender name and blue (`#2563eb`) as the accent.
 
 ### Reverse proxy integrations
 

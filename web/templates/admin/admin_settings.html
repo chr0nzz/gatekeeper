@@ -97,6 +97,33 @@
 
     <div class="card">
       <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
+        <h3>Email branding</h3>
+      </div>
+      <div class="card-body">
+        <label class="field">
+          <span class="field-label">Sender name</span>
+          <input class="input" type="text" name="email_sender_name" value="{{.EmailSenderName}}" placeholder="GateKeeper">
+          <span class="field-hint">Shown in the email header and footer. Defaults to "GateKeeper".</span>
+        </label>
+        <label class="field">
+          <span class="field-label">Logo URL <span style="color:var(--tx-3);font-weight:400">(optional)</span></span>
+          <input class="input" type="url" name="email_logo_url" value="{{.EmailLogoURL}}" placeholder="https://example.com/logo.png">
+          <span class="field-hint">Displayed in the email header. Leave blank to show the sender name as text.</span>
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Accent color</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="color" name="email_accent_color_picker" value="{{if .EmailAccentColor}}{{.EmailAccentColor}}{{else}}#2563eb{{end}}" style="width:36px;height:34px;padding:2px;border:1px solid var(--bd-1);border-radius:6px;cursor:pointer;background:none" oninput="document.getElementById('email_accent_color').value=this.value">
+            <input class="input mono" type="text" id="email_accent_color" name="email_accent_color" value="{{if .EmailAccentColor}}{{.EmailAccentColor}}{{else}}#2563eb{{end}}" placeholder="#2563eb" style="max-width:110px" oninput="document.querySelector('[name=email_accent_color_picker]').value=this.value">
+          </div>
+          <span class="field-hint">Used for the email header background and button color.</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
         <h3>Audit log</h3>
       </div>
