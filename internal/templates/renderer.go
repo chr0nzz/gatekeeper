@@ -43,6 +43,21 @@ var funcMap = template.FuncMap{
 	"formatdate": func(t time.Time) string {
 		return t.Format("2006-01-02")
 	},
+	"formatSize": func(bytes int64) string {
+		const unit = 1024
+		if bytes < unit {
+			return fmt.Sprintf("%d B", bytes)
+		}
+		div, exp := int64(unit), 0
+		for n := bytes / unit; n >= unit; n /= unit {
+			div *= unit
+			exp++
+		}
+		return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+	},
+	"formatBackupTime": func(unix int64) string {
+		return time.Unix(unix, 0).UTC().Format("2006-01-02 15:04:05 UTC")
+	},
 }
 
 // New builds a Renderer from the given FS. templateRoot is the directory

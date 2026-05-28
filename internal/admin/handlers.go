@@ -49,7 +49,10 @@ type Handlers struct {
 	webhooks       *queries.WebhookStore
 	claims         *queries.ClaimStore
 	notifier       *notify.Service
+	backups        *queries.BackupStore
 	baseURL        string
+	dbPath         string
+	secretKey      string
 	version        string
 	envSMTP        mailer.Settings
 	envDefaults    EnvDefaults
@@ -100,7 +103,7 @@ func New(
 	settings *queries.SettingsStore,
 	auditLog *audit.Logger,
 	renderer *templates.Renderer,
-	baseURL, version string,
+	baseURL, version, dbPath, secretKey string,
 	envSMTP mailer.Settings,
 	envDefaults EnvDefaults,
 	policies *queries.PolicyStore,
@@ -109,6 +112,7 @@ func New(
 	webhooks *queries.WebhookStore,
 	claims *queries.ClaimStore,
 	notifier *notify.Service,
+	backups *queries.BackupStore,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, admins: admins, adminSess: adminSess,
@@ -117,7 +121,9 @@ func New(
 		oidcStorage: oidcStorage, mailer: m, resetStore: resetStore,
 		settings: settings, auditLog: auditLog, renderer: renderer,
 		policies: policies, groups: groups, invites: invites, webhooks: webhooks, claims: claims, notifier: notifier,
-		baseURL: baseURL, version: version, envSMTP: envSMTP, envDefaults: envDefaults,
+		backups: backups,
+		baseURL: baseURL, version: version, dbPath: dbPath, secretKey: secretKey,
+		envSMTP: envSMTP, envDefaults: envDefaults,
 	}
 }
 
@@ -201,6 +207,8 @@ func activePageFor(name string) string {
 		return "social"
 	case "admin_admins.html":
 		return "admins"
+	case "admin_backups.html":
+		return "backups"
 	}
 	return ""
 }
@@ -285,6 +293,12 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/webhooks/{id}/toggle", h.PostToggleWebhook)
 		r.Post("/webhooks/{id}/test", h.PostTestWebhook)
 
+		r.Get("/backups", h.GetBackups)
+		r.Post("/backups/settings", h.PostBackupSettings)
+		r.Post("/backups/now", h.PostBackupNow)
+		r.Get("/backups/{id}/download", h.GetBackupDownload)
+		r.Post("/backups/{id}/restore", h.PostBackupRestore)
+		r.Post("/backups/{id}/delete", h.PostBackupDelete)
 		r.Get("/admins", h.GetAdmins)
 		r.Post("/admins", h.PostCreateAdmin)
 		r.Post("/admins/{id}/delete", h.PostDeleteAdmin)

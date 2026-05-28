@@ -73,6 +73,10 @@
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2"/></svg>
         <span>Webhooks</span>
       </a>
+      <a class="side-link {{if eq .ActivePage "backups"}}active{{end}}" href="/admin/backups">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>Backups</span>
+      </a>
       <a class="side-link {{if eq .ActivePage "admins"}}active{{end}}" href="/admin/admins">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/><path d="M19 8v6M22 11h-6"/></svg>
         <span>Admins</span>
@@ -218,6 +222,10 @@
     <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="/admin/webhooks">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2"/></svg>
       <span>Webhooks</span>
+    </a>
+    <a class="side-link {{if eq .ActivePage "backups"}}active{{end}}" href="/admin/backups">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      <span>Backups</span>
     </a>
     <a class="side-link {{if eq .ActivePage "admins"}}active{{end}}" href="/admin/admins">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/><path d="M19 8v6M22 11h-6"/></svg>

@@ -24,7 +24,7 @@ export default defineConfig({
       { text: 'Security', link: '/security/overview' },
       { text: 'Reference', link: '/reference/env-vars' },
       {
-        text: 'v0.6.0',
+        text: 'v0.7.0',
         items: [
           { text: 'Changelog', link: '/reference/changelog' },
           { text: 'GitHub', link: 'https://github.com/chr0nzz/gatekeeper' },
@@ -77,6 +77,7 @@ export default defineConfig({
           { text: 'Social login', link: '/admin/social-login' },
           { text: 'Webhooks', link: '/admin/webhooks' },
           { text: 'Notification log', link: '/admin/notifications' },
+          { text: 'Backups', link: '/admin/backups' },
         ],
       },
       {

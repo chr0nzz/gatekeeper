@@ -3,6 +3,18 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.7.0
+
+### Backup and restore
+
+- **Encrypted backups** - Snapshot the database on demand or automatically (hourly, daily, or weekly). Each backup is encrypted with AES-256-GCM using a key derived from `SECRET_KEY`. See [Backups](/admin/backups).
+- **Local storage** - Write backups to a directory inside the container. Mount a host volume to persist them across restarts.
+- **S3-compatible storage** - Upload backups to any S3-compatible object store: AWS S3, Cloudflare R2, Backblaze B2, MinIO, Garage, and others. No SDK dependency - uses a minimal AWS Signature v4 implementation.
+- **Retention policy** - Keep the last N backups. Older ones are deleted from storage automatically when a new backup is created.
+- **Download and restore** - Download any backup from the Backups page or trigger an in-place restore. The restore decrypts the backup and writes a `.restore` file; a restart completes the swap.
+
+---
+
 ## v0.6.0
 
 ### Multiple admin accounts

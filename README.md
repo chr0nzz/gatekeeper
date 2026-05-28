@@ -13,7 +13,8 @@ A lightweight, self-hosted authentication server. Single Docker container, SQLit
 - **Multiple sign-in methods** - password + email OTP, passwordless email OTP, TOTP (authenticator app), passkeys (WebAuthn), social OAuth2.
 - **Webhooks** - push notifications to Discord, Slack, Telegram, ntfy, or any HTTP endpoint when auth and admin events occur.
 - **Multiple admin accounts** - create and manage admin accounts from the Admins page.
-- **Admin UI** - manage users, groups, OIDC clients, policies, invites, webhooks, settings, and audit log from a browser. No config files or CLI.
+- **Backups** - encrypted database snapshots to local storage or any S3-compatible object store (AWS S3, Cloudflare R2, Backblaze B2, MinIO). Schedule automatically, download, and restore from the admin UI.
+- **Admin UI** - manage users, groups, OIDC clients, policies, invites, webhooks, backups, settings, and audit log from a browser. No config files or CLI.
 
 ## Quick start
 
@@ -145,6 +146,7 @@ The following can also be set as env vars and serve as fallback defaults - the a
 | `/admin/integrations` | Reverse proxy configuration snippets (Traefik, Nginx, Caddy) |
 | `/admin/social` | Enable and configure GitHub, Google, and Discord social login |
 | `/admin/admins` | Create and manage admin accounts |
+| `/admin/backups` | Encrypted database backups to local storage or S3-compatible object stores |
 | `/admin/profile` | Admin display name, password, TOTP, passkeys, session revocation |
 | `/admin/settings` | SMTP, session timeout, allowed domains, registration mode, email branding, audit log retention |
 
@@ -179,7 +181,7 @@ go build -o gatekeeper ./cmd/gatekeeper
 ## Docker
 
 ```bash
-docker build --build-arg VERSION=v0.6.0 -t gatekeeper:v0.6.0 .
+docker build --build-arg VERSION=v0.7.0 -t gatekeeper:v0.7.0 .
 ```
 
 ## Project layout
@@ -190,6 +192,7 @@ internal/
   admin/              admin UI handlers
   auth/               password, OTP, TOTP, passkey, session, trusted devices
   audit/              audit log
+  backup/             encrypted database backup engine, S3 client, scheduler
   config/             environment variable loading
   db/                 SQLite init, migrations, query helpers
   mailer/             SMTP client

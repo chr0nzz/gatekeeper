@@ -15,6 +15,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	gatekeeper "github.com/chr0nzz/gatekeeper"
 	"github.com/chr0nzz/gatekeeper/internal/admin"
+	gkbackup "github.com/chr0nzz/gatekeeper/internal/backup"
 	gktemplates "github.com/chr0nzz/gatekeeper/internal/templates"
 	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
@@ -29,7 +30,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
-var version = "0.5.0"
+var version = "0.7.0"
 
 func main() {
 	cfg, err := config.Load()
@@ -66,6 +67,7 @@ func main() {
 	claimStore := queries.NewClaimStore(database)
 	socialStore := queries.NewSocialStore(database)
 	settingsStore := queries.NewSettingsStore(database)
+	backupStore := queries.NewBackupStore(database)
 	{
 		ctx := context.Background()
 		seed := func(key, val string) {
@@ -159,8 +161,8 @@ func main() {
 	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
 
 	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore)
-	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, envSMTP,
-		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains, GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret, DiscordClientID: cfg.DiscordClientID, DiscordClientSecret: cfg.DiscordClientSecret}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService)
+	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, cfg.DBPath, cfg.SecretKey, envSMTP,
+		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains, GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret, DiscordClientID: cfg.DiscordClientID, DiscordClientSecret: cfg.DiscordClientSecret}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService, backupStore)
 
 	secretKey := [32]byte{}
 	copy(secretKey[:], []byte(cfg.SecretKey))
@@ -260,6 +262,26 @@ func main() {
 			purgeAuditLog()
 		}
 	}()
+
+	var backupScheduler gkbackup.Scheduler
+	backupScheduler.Start(
+		func() time.Duration {
+			return gkbackup.ScheduleInterval(settingsStore.Get(context.Background(), "backup_schedule", "manual"))
+		},
+		func(ctx context.Context) error {
+			storage := gkbackup.BuildStorage(settingsStore)
+			if storage == nil {
+				return nil
+			}
+			retentionStr := settingsStore.Get(ctx, "backup_retention", "10")
+			retention, _ := strconv.Atoi(retentionStr)
+			if retention <= 0 {
+				retention = 10
+			}
+			return gkbackup.RunBackup(ctx, database, cfg.DBPath, []byte(cfg.SecretKey), storage, backupStore, retention)
+		},
+	)
+	defer backupScheduler.Stop()
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	slog.Info("gatekeeper starting", "addr", addr, "base_url", cfg.BaseURL, "version", version)
