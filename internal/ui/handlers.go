@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -156,6 +157,22 @@ func (h *Handlers) csrf(r *http.Request) string {
 func (h *Handlers) checkCSRF(r *http.Request) bool {
 	token := h.csrf(r)
 	return token != "" && r.FormValue("csrf_token") == token
+}
+
+func (h *Handlers) checkPasswordPolicy(ctx context.Context, password string) error {
+	minLen := 12
+	if v := h.settings.Get(ctx, "password_min_length", "12"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 8 {
+			minLen = n
+		}
+	}
+	return auth.CheckPasswordPolicy(
+		password,
+		minLen,
+		h.settings.Get(ctx, "password_require_uppercase", "0") == "1",
+		h.settings.Get(ctx, "password_require_number", "0") == "1",
+		h.settings.Get(ctx, "password_require_symbol", "0") == "1",
+	)
 }
 
 func remoteIP(r *http.Request) string {
@@ -688,6 +705,10 @@ func (h *Handlers) PostResetPassword(w http.ResponseWriter, r *http.Request) {
 		resetErr("Passwords do not match", token)
 		return
 	}
+	if err := h.checkPasswordPolicy(r.Context(), password); err != nil {
+		resetErr(err.Error(), token)
+		return
+	}
 
 	userID, err := h.resetStore.Redeem(r.Context(), token)
 	if err != nil {
@@ -850,6 +871,10 @@ func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	if newPass != confirm {
 		h.render(w, "change_password.html", map[string]string{"Error": "Passwords do not match"})
+		return
+	}
+	if err := h.checkPasswordPolicy(r.Context(), newPass); err != nil {
+		h.render(w, "change_password.html", map[string]string{"Error": err.Error()})
 		return
 	}
 	if user.TOTPEnabled {
@@ -1170,8 +1195,8 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 		h.render(w, "register.html", errData("Registration is not allowed for this email domain."))
 		return
 	}
-	if len(password) < 12 {
-		h.render(w, "register.html", errData("Password must be at least 12 characters."))
+	if err := h.checkPasswordPolicy(r.Context(), password); err != nil {
+		h.render(w, "register.html", errData(err.Error()))
 		return
 	}
 	if password != confirm {

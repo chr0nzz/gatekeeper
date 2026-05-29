@@ -26,14 +26,61 @@ const (
 	resetPerIP      = 10
 	resetWindow     = time.Hour
 
-	minPasswordLen = 12
+	minPasswordLen = 8
 )
 
 // ErrInvalidPassword is returned when password verification fails.
 var ErrInvalidPassword = errors.New("invalid password")
 
 // ErrPasswordTooShort is returned when the password is too short.
-var ErrPasswordTooShort = errors.New("password must be at least 12 characters")
+var ErrPasswordTooShort = errors.New("password must be at least 8 characters")
+
+// CheckPasswordPolicy validates a password against configurable policy settings.
+func CheckPasswordPolicy(password string, minLen int, requireUpper, requireNumber, requireSymbol bool) error {
+	if minLen < minPasswordLen {
+		minLen = minPasswordLen
+	}
+	if len(password) < minLen {
+		return fmt.Errorf("password must be at least %d characters", minLen)
+	}
+	if requireUpper {
+		hasUpper := false
+		for _, c := range password {
+			if c >= 'A' && c <= 'Z' {
+				hasUpper = true
+				break
+			}
+		}
+		if !hasUpper {
+			return errors.New("password must contain at least one uppercase letter")
+		}
+	}
+	if requireNumber {
+		hasNum := false
+		for _, c := range password {
+			if c >= '0' && c <= '9' {
+				hasNum = true
+				break
+			}
+		}
+		if !hasNum {
+			return errors.New("password must contain at least one number")
+		}
+	}
+	if requireSymbol {
+		hasSymbol := false
+		for _, c := range password {
+			if (c >= '!' && c <= '/') || (c >= ':' && c <= '@') || (c >= '[' && c <= '`') || (c >= '{' && c <= '~') {
+				hasSymbol = true
+				break
+			}
+		}
+		if !hasSymbol {
+			return errors.New("password must contain at least one symbol")
+		}
+	}
+	return nil
+}
 
 // HashPassword hashes a password with argon2id.
 func HashPassword(password string) (string, error) {

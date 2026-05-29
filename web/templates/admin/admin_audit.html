@@ -8,10 +8,10 @@
     <p class="sub">Read-only record of every authentication and admin event.</p>
   </div>
   <div class="head-actions">
-    <button id="audit-export-btn" class="btn btn-ghost btn-sm">
+    <a id="audit-export-btn" href="/admin/audit/export.csv?days={{.ActiveDays}}{{if .EventFilter}}&event={{.EventFilter}}{{end}}" class="btn btn-ghost btn-sm">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>
-      Export JSON
-    </button>
+      Export CSV
+    </a>
   </div>
 </div>
 
@@ -45,11 +45,19 @@
     </div>
     <div class="audit-filter-sep" style="width:1px;height:16px;background:var(--bd-1);flex-shrink:0"></div>
     <div class="filter-chips" style="margin:0">
-      <a class="fchip{{if eq .ActiveDays 0}} on{{end}}" href="/admin/audit?days=0">All</a>
-      <a class="fchip{{if eq .ActiveDays 1}} on{{end}}" href="/admin/audit?days=1">Today</a>
-      <a class="fchip{{if eq .ActiveDays 7}} on{{end}}" href="/admin/audit?days=7">7 days</a>
-      <a class="fchip{{if eq .ActiveDays 30}} on{{end}}" href="/admin/audit?days=30">30 days</a>
-      <a class="fchip{{if eq .ActiveDays 90}} on{{end}}" href="/admin/audit?days=90">90 days</a>
+      <a class="fchip{{if eq .ActiveDays 0}} on{{end}}" href="/admin/audit?days=0{{if .EventFilter}}&event={{.EventFilter}}{{end}}">All time</a>
+      <a class="fchip{{if eq .ActiveDays 1}} on{{end}}" href="/admin/audit?days=1{{if .EventFilter}}&event={{.EventFilter}}{{end}}">Today</a>
+      <a class="fchip{{if eq .ActiveDays 7}} on{{end}}" href="/admin/audit?days=7{{if .EventFilter}}&event={{.EventFilter}}{{end}}">7 days</a>
+      <a class="fchip{{if eq .ActiveDays 30}} on{{end}}" href="/admin/audit?days=30{{if .EventFilter}}&event={{.EventFilter}}{{end}}">30 days</a>
+      <a class="fchip{{if eq .ActiveDays 90}} on{{end}}" href="/admin/audit?days=90{{if .EventFilter}}&event={{.EventFilter}}{{end}}">90 days</a>
+    </div>
+    <div class="audit-filter-sep" style="width:1px;height:16px;background:var(--bd-1);flex-shrink:0"></div>
+    <div class="filter-chips" style="margin:0">
+      <a class="fchip{{if eq .EventFilter ""}} on{{end}}" href="/admin/audit?days={{.ActiveDays}}">All events</a>
+      <a class="fchip{{if eq .EventFilter "login"}} on{{end}}" href="/admin/audit?days={{.ActiveDays}}&event=login">Login</a>
+      <a class="fchip{{if eq .EventFilter "user"}} on{{end}}" href="/admin/audit?days={{.ActiveDays}}&event=user">User</a>
+      <a class="fchip{{if eq .EventFilter "admin"}} on{{end}}" href="/admin/audit?days={{.ActiveDays}}&event=admin">Admin</a>
+      <a class="fchip{{if eq .EventFilter "invite"}} on{{end}}" href="/admin/audit?days={{.ActiveDays}}&event=invite">Invites</a>
     </div>
   </div>
 

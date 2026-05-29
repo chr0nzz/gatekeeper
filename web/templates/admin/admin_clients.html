@@ -69,6 +69,9 @@
       </td>
       <td>
         <div class="row-actions">
+          <button class="btn btn-ghost btn-xs" title="Test client" data-test-client="/admin/clients/{{.ClientID}}/test">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+          </button>
           <a href="/admin/clients/{{.ClientID}}/claims" class="btn btn-ghost btn-xs" title="Custom claims">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M7 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 4h6v4H9z"/></svg>
           </a>
@@ -257,4 +260,59 @@ document.addEventListener('DOMContentLoaded', function() {
   </form>
 </dialog>
 {{end}}
+
+<dialog id="client-test-dialog" style="max-width:480px;width:90%">
+  <div class="modal-head">
+    <h2>Client test</h2>
+    <p id="client-test-name" style="color:var(--tx-2);font-size:13px"></p>
+  </div>
+  <div class="modal-body" id="client-test-body" style="display:flex;flex-direction:column;gap:10px">
+    <div style="color:var(--tx-3);font-size:13px">Loading...</div>
+  </div>
+  <div class="modal-foot">
+    <button type="button" class="btn btn-ghost" data-close-dialog>Close</button>
+    <a id="client-test-auth-link" href="#" target="_blank" class="btn btn-primary" style="display:none">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>
+      Open auth flow
+    </a>
+  </div>
+</dialog>
+
+<script>
+(function() {
+  document.querySelectorAll('[data-test-client]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var url = btn.getAttribute('data-test-client');
+      var dialog = document.getElementById('client-test-dialog');
+      var body = document.getElementById('client-test-body');
+      var nameEl = document.getElementById('client-test-name');
+      var authLink = document.getElementById('client-test-auth-link');
+      body.innerHTML = '<div style="color:var(--tx-3);font-size:13px">Loading...</div>';
+      nameEl.textContent = '';
+      authLink.style.display = 'none';
+      dialog.showModal();
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        nameEl.textContent = data.name + ' (' + data.client_id + ')';
+        var html = data.checks.map(function(c) {
+          var icon = c.ok
+            ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--success)" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>'
+            : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--danger)" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg>';
+          return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--bg-2);border-radius:7px;border:1px solid var(--bd-0)">'
+            + '<span style="margin-top:1px;flex-shrink:0">' + icon + '</span>'
+            + '<div><div style="font-size:13px;font-weight:500">' + c.label + '</div>'
+            + (c.note ? '<div style="font-size:12px;color:var(--tx-3);margin-top:2px">' + c.note + '</div>' : '')
+            + '</div></div>';
+        }).join('');
+        body.innerHTML = html;
+        if (data.auth_url) {
+          authLink.href = data.auth_url;
+          authLink.style.display = '';
+        }
+      }).catch(function() {
+        body.innerHTML = '<div style="color:var(--danger);font-size:13px">Failed to load test results.</div>';
+      });
+    });
+  });
+})();
+</script>
 {{end}}

@@ -265,6 +265,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Get("/clients/{id}/claims", h.GetClientClaims)
 		r.Post("/clients/{id}/claims", h.PostCreateClaim)
 		r.Post("/clients/{id}/claims/{claimID}/delete", h.PostDeleteClaim)
+		r.Get("/clients/{id}/test", h.GetClientTest)
 		r.Get("/policies", h.GetPolicies)
 		r.Post("/policies", h.PostCreatePolicy)
 		r.Get("/policies/{id}", h.GetPolicy)
@@ -282,6 +283,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/groups/{id}/members/{userID}/remove", h.PostRemoveGroupMember)
 		r.Get("/integrations", h.GetIntegrations)
 		r.Get("/audit", h.GetAudit)
+		r.Get("/audit/export.csv", h.GetAuditExport)
 		r.Get("/settings", h.GetSettings)
 		r.Post("/settings", h.PostSettings)
 		r.Get("/social", h.GetSocialSettings)
@@ -479,10 +481,10 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	var passkeyLogins, totpLogins, otpLogins int
 	var activeSessions, trustedDevices, totalAuditEvents int
 	var usersWithPasskeys, usersWithTOTP, usersNoFactor int
-	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey') AND created_at > ?`, since24h).Scan(&signIns24h)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.social','admin.login','admin.login.passkey') AND created_at > ?`, since24h).Scan(&signIns24h)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event LIKE '%fail%' AND created_at > ?`, since24h).Scan(&failed24h)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_tokens WHERE created_at > ?`, since24h).Scan(&oidcTokens24h)
-	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.failure') AND created_at > ?`, since24h).Scan(&totalAttempts)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.social','admin.login','admin.login.passkey','login.failure') AND created_at > ?`, since24h).Scan(&totalAttempts)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT user_id) FROM otp_lockouts WHERE locked_until > ?`, now).Scan(&lockedUsers)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE disabled=0 AND totp_enabled=0`).Scan(&no2faUsers)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event='login.passkey' AND created_at > ?`, since24h).Scan(&passkeyLogins)
@@ -633,10 +635,10 @@ func (h *Handlers) GetDashboardStats(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().Unix()
 	since24h := now - 86400
 	var signIns24h, failed24h, oidcTokens24h, totalAttempts, lockedUsers int
-	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey') AND created_at > ?`, since24h).Scan(&signIns24h)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.social','admin.login','admin.login.passkey') AND created_at > ?`, since24h).Scan(&signIns24h)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event LIKE '%fail%' AND created_at > ?`, since24h).Scan(&failed24h)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM oidc_tokens WHERE created_at > ?`, since24h).Scan(&oidcTokens24h)
-	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.failure') AND created_at > ?`, since24h).Scan(&totalAttempts)
+	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey','login.social','admin.login','admin.login.passkey','login.failure') AND created_at > ?`, since24h).Scan(&totalAttempts)
 	h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM otp_lockouts WHERE locked_until > ?`, now).Scan(&lockedUsers)
 	successRate := 0
 	if totalAttempts > 0 {
@@ -687,7 +689,7 @@ func (h *Handlers) GetActivityData(w http.ResponseWriter, r *http.Request) {
 		`SELECT created_at,
 		  CASE WHEN event LIKE '%fail%' OR event LIKE '%failure%' THEN 1 ELSE 0 END
 		 FROM audit_log
-		 WHERE event IN ('login.success','login.passkey','login.failure','otp.failed','totp.failed')
+		 WHERE event IN ('login.success','login.passkey','login.social','admin.login','admin.login.passkey','login.failure','otp.failed','totp.failed')
 		   AND created_at >= ?`,
 		since,
 	)
@@ -1334,6 +1336,77 @@ var reservedClaims = map[string]bool{
 	"at_hash": true, "c_hash": true, "jti": true,
 }
 
+func (h *Handlers) GetClientTest(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	type check struct {
+		Label string `json:"label"`
+		OK    bool   `json:"ok"`
+		Note  string `json:"note,omitempty"`
+	}
+	type result struct {
+		ClientID string  `json:"client_id"`
+		Name     string  `json:"name"`
+		AuthURL  string  `json:"auth_url"`
+		Checks   []check `json:"checks"`
+	}
+
+	var name, secret, redirectsRaw string
+	err := h.db.QueryRowContext(r.Context(),
+		`SELECT name, COALESCE(client_secret,''), COALESCE(redirect_uris,'[]') FROM oidc_clients WHERE client_id=?`, id,
+	).Scan(&name, &secret, &redirectsRaw)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	var redirectURIs []string
+	json.Unmarshal([]byte(redirectsRaw), &redirectURIs)
+
+	var policyName string
+	h.db.QueryRowContext(r.Context(),
+		`SELECT p.name FROM policies p JOIN policy_clients pc ON pc.policy_id=p.id WHERE pc.client_id=?`, id,
+	).Scan(&policyName)
+
+	claimList, _ := h.claims.List(r.Context(), id)
+
+	checks := []check{
+		{Label: "Client secret configured", OK: secret != "", Note: func() string {
+			if secret == "" {
+				return "Set a client secret on this client."
+			}
+			return ""
+		}()},
+		{Label: "Redirect URI configured", OK: len(redirectURIs) > 0, Note: func() string {
+			if len(redirectURIs) == 0 {
+				return "Add at least one redirect URI."
+			}
+			return ""
+		}()},
+		{Label: "Access policy", OK: true, Note: func() string {
+			if policyName != "" {
+				return "Restricted to policy: " + policyName
+			}
+			return "Open to all users (no policy assigned)."
+		}()},
+		{Label: "Custom claims", OK: true, Note: func() string {
+			if len(claimList) > 0 {
+				return fmt.Sprintf("%d claim(s) configured.", len(claimList))
+			}
+			return "No custom claims (groups claim always included)."
+		}()},
+	}
+
+	authURL := ""
+	if len(redirectURIs) > 0 {
+		authURL = h.baseURL + "/oauth/authorize?client_id=" + id +
+			"&redirect_uri=" + redirectURIs[0] +
+			"&response_type=code&scope=openid+profile+email&prompt=login"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result{ClientID: id, Name: name, AuthURL: authURL, Checks: checks})
+}
+
 func (h *Handlers) GetClientClaims(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var clientName string
@@ -1390,13 +1463,24 @@ func (h *Handlers) GetIntegrations(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
-	days := 30
-	if d := r.URL.Query().Get("days"); d != "" {
-		if n, err := strconv.Atoi(d); err == nil && n >= 0 {
-			days = n
-		}
-	}
+type AuditEntry struct {
+	Event       string
+	User        string
+	UserName    string
+	UserID      string
+	HasAvatar   bool
+	Actor       string
+	IP          string
+	Detail      string
+	Method      string
+	MethodClass string
+	Time        string
+	Date        string
+	Kind        string
+	EventPrefix string
+}
+
+func (h *Handlers) auditQuery(ctx context.Context, days int, eventFilter, userFilter string, limit int) ([]AuditEntry, error) {
 	base := `SELECT a.event,
 			COALESCE(u.email, au.email, a.user_id, ''),
 			COALESCE(u.display_name, au.email, ''),
@@ -1409,40 +1493,73 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN admin_users au ON au.id = a.user_id
 		LEFT JOIN admin_users aa ON aa.id = a.actor_id
 		LEFT JOIN users act ON act.id = a.actor_id`
-	var (
-		queryStr string
-		args     []interface{}
-	)
+
+	var conds []string
+	var args []interface{}
 	if days > 0 {
-		cutoff := time.Now().AddDate(0, 0, -days).Unix()
-		queryStr = base + ` WHERE a.created_at >= ? ORDER BY a.created_at DESC LIMIT 1000`
-		args = []interface{}{cutoff}
-	} else {
-		queryStr = base + ` ORDER BY a.created_at DESC LIMIT 1000`
+		conds = append(conds, "a.created_at >= ?")
+		args = append(args, time.Now().AddDate(0, 0, -days).Unix())
 	}
-	rows, err := h.db.QueryContext(r.Context(), queryStr, args...)
+	if eventFilter != "" {
+		conds = append(conds, "a.event LIKE ?")
+		args = append(args, eventFilter+"%")
+	}
+	if userFilter != "" {
+		like := "%" + userFilter + "%"
+		conds = append(conds, "(COALESCE(u.email,au.email,a.user_id,'') LIKE ? OR a.ip LIKE ?)")
+		args = append(args, like, like)
+	}
+
+	q := base
+	for i, c := range conds {
+		if i == 0 {
+			q += " WHERE " + c
+		} else {
+			q += " AND " + c
+		}
+	}
+	q += " ORDER BY a.created_at DESC"
+	if limit > 0 {
+		q += fmt.Sprintf(" LIMIT %d", limit)
+	}
+
+	rows, err := h.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		var ts int64
+		rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Actor, &e.IP, &e.Detail, &ts)
+		t := time.Unix(ts, 0)
+		e.Time = t.Format("15:04:05")
+		e.Date = t.Format("2006-01-02")
+		e.Kind = eventKind(e.Event)
+		e.EventPrefix = eventCategory(e.Event)
+		e.Method, e.MethodClass = loginMethod(e.Event)
+		entries = append(entries, e)
+	}
+	return entries, nil
+}
+
+func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if n, err := strconv.Atoi(d); err == nil && n >= 0 {
+			days = n
+		}
+	}
+	eventFilter := r.URL.Query().Get("event")
+
+	entries, err := h.auditQuery(r.Context(), days, eventFilter, "", 2000)
 	if err != nil {
 		http.Error(w, "DB error", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 
-	type AuditEntry struct {
-		Event       string
-		User        string
-		UserName    string
-		UserID      string
-		HasAvatar   bool
-		Actor       string
-		IP          string
-		Detail      string
-		Method      string
-		MethodClass string
-		Time        string
-		Date        string
-		Kind        string
-		EventPrefix string
-	}
 	type AuditGroup struct {
 		Date    string
 		Entries []AuditEntry
@@ -1453,36 +1570,67 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 	today := time.Now().Format("2006-01-02")
 	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 
-	for rows.Next() {
-		var e AuditEntry
-		var ts int64
-		rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Actor, &e.IP, &e.Detail, &ts)
-		t := time.Unix(ts, 0)
-		e.Time = t.Format("15:04:05")
-		e.Kind = eventKind(e.Event)
-		e.EventPrefix = eventCategory(e.Event)
-		e.Method, e.MethodClass = loginMethod(e.Event)
-		rawDate := t.Format("2006-01-02")
-		switch rawDate {
+	for _, e := range entries {
+		label := e.Date
+		switch e.Date {
 		case today:
-			e.Date = "Today"
+			label = "Today"
 		case yesterday:
-			e.Date = "Yesterday"
+			label = "Yesterday"
 		default:
-			e.Date = t.Format("Jan 2, 2006")
+			t, _ := time.Parse("2006-01-02", e.Date)
+			label = t.Format("Jan 2, 2006")
 		}
-		if idx, ok := groupIdx[e.Date]; ok {
+		e.Date = label
+		if idx, ok := groupIdx[label]; ok {
 			groups[idx].Entries = append(groups[idx].Entries, e)
 		} else {
-			groupIdx[e.Date] = len(groups)
-			groups = append(groups, AuditGroup{Date: e.Date, Entries: []AuditEntry{e}})
+			groupIdx[label] = len(groups)
+			groups = append(groups, AuditGroup{Date: label, Entries: []AuditEntry{e}})
 		}
 	}
-	total := 0
-	for _, g := range groups {
-		total += len(g.Entries)
+
+	h.render(w, r, "admin_audit.html", map[string]interface{}{
+		"Groups":      groups,
+		"TotalEvents": len(entries),
+		"ActiveDays":  days,
+		"EventFilter": eventFilter,
+	})
+}
+
+func (h *Handlers) GetAuditExport(w http.ResponseWriter, r *http.Request) {
+	days := 30
+	if d := r.URL.Query().Get("days"); d != "" {
+		if n, err := strconv.Atoi(d); err == nil && n >= 0 {
+			days = n
+		}
 	}
-	h.render(w, r, "admin_audit.html", map[string]interface{}{"Groups": groups, "TotalEvents": total, "ActiveDays": days})
+	eventFilter := r.URL.Query().Get("event")
+
+	entries, err := h.auditQuery(r.Context(), days, eventFilter, "", 0)
+	if err != nil {
+		http.Error(w, "DB error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", `attachment; filename="audit.csv"`)
+	fmt.Fprintf(w, "date,time,event,user,actor,ip,detail\n")
+	for _, e := range entries {
+		fmt.Fprintf(w, "%s,%s,%s,%s,%s,%s,%s\n",
+			csvEscape(e.Date), csvEscape(e.Time),
+			csvEscape(e.Event), csvEscape(e.User),
+			csvEscape(e.Actor), csvEscape(e.IP),
+			csvEscape(e.Detail),
+		)
+	}
+}
+
+func csvEscape(s string) string {
+	if strings.ContainsAny(s, ",\"\n\r") {
+		return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+	}
+	return s
 }
 
 func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -1500,6 +1648,10 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		"AuditRetentionDays":         get("audit_retention_days", "90"),
 		"RegistrationMode":           get("registration_mode", h.envDefaults.RegistrationMode),
 		"RegistrationAllowedDomains": get("registration_allowed_domains", h.envDefaults.RegistrationAllowedDomains),
+		"PasswordMinLength":          get("password_min_length", "12"),
+		"PasswordRequireUppercase":   get("password_require_uppercase", "0") == "1",
+		"PasswordRequireNumber":      get("password_require_number", "0") == "1",
+		"PasswordRequireSymbol":      get("password_require_symbol", "0") == "1",
 		"EmailLogoURL":               get("email_logo_url", ""),
 		"EmailSenderName":            get("email_sender_name", ""),
 		"EmailAccentColor":           get("email_accent_color", ""),
@@ -1526,6 +1678,26 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 	set("session_ttl_hours", r.FormValue("session_ttl_hours"))
 	set("registration_mode", r.FormValue("registration_mode"))
 	set("registration_allowed_domains", r.FormValue("registration_allowed_domains"))
+	if ml := strings.TrimSpace(r.FormValue("password_min_length")); ml != "" {
+		if n, err := strconv.Atoi(ml); err == nil && n >= 8 && n <= 128 {
+			h.settings.Set(r.Context(), "password_min_length", ml)
+		}
+	}
+	if r.FormValue("password_require_uppercase") == "1" {
+		h.settings.Set(r.Context(), "password_require_uppercase", "1")
+	} else {
+		h.settings.Set(r.Context(), "password_require_uppercase", "0")
+	}
+	if r.FormValue("password_require_number") == "1" {
+		h.settings.Set(r.Context(), "password_require_number", "1")
+	} else {
+		h.settings.Set(r.Context(), "password_require_number", "0")
+	}
+	if r.FormValue("password_require_symbol") == "1" {
+		h.settings.Set(r.Context(), "password_require_symbol", "1")
+	} else {
+		h.settings.Set(r.Context(), "password_require_symbol", "0")
+	}
 	set("email_logo_url", r.FormValue("email_logo_url"))
 	set("email_sender_name", r.FormValue("email_sender_name"))
 	set("email_accent_color", r.FormValue("email_accent_color"))
