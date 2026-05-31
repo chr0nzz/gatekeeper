@@ -390,6 +390,7 @@ func (s *Storage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc.UserI
 	userinfo.Subject = subject
 	userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(true)}
 	userinfo.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
+	userinfo.Claims = s.userGroupClaims(ctx, subject)
 	return nil
 }
 
@@ -763,5 +764,25 @@ func (s *Storage) GetUserinfo(ctx context.Context, userID, clientID string, scop
 			info.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
 		}
 	}
+	info.Claims = s.userGroupClaims(ctx, userID)
 	return info, nil
+}
+
+func (s *Storage) userGroupClaims(ctx context.Context, userID string) map[string]any {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT gr.name FROM groups gr
+		 INNER JOIN group_members gm ON gm.group_id = gr.id
+		 WHERE gm.user_id=? ORDER BY gr.name`,
+		userID,
+	)
+	groups := []string{}
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var name string
+			rows.Scan(&name)
+			groups = append(groups, name)
+		}
+	}
+	return map[string]any{"groups": groups}
 }
