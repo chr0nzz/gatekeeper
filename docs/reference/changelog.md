@@ -13,6 +13,24 @@ description: Version history for GateKeeper.
 - **Retention policy** - Keep the last N backups. Older ones are deleted from storage automatically when a new backup is created.
 - **Download and restore** - Download any backup from the Backups page or trigger an in-place restore. The restore decrypts the backup and writes a `.restore` file; a restart completes the swap.
 
+### Password policy
+
+- **Configurable password rules** - Set a minimum password length (8-72) and require uppercase letters, numbers, or symbols from Settings. Rules apply at registration, password change, and password reset. Defaults to 8-character minimum with no complexity requirements.
+
+### OIDC improvements
+
+- **Client test button** - Test any OIDC client directly from the Clients page. Shows a checklist of config details and opens a live auth flow with `prompt=login` so you can verify the full round-trip without wiring up the app.
+- **Groups claim in userinfo** - The `groups` array is now included in the `/userinfo` endpoint response in addition to the ID token. Apps like Grafana that call `/userinfo` after the token exchange now receive group membership correctly.
+
+### Audit log
+
+- **Server-side event filter** - Filter the audit log by event category (Login, User, Admin, Invites) via URL params. Filters persist across page loads and are applied server-side, removing the 1000-row client-side cap.
+- **CSV export** - Export the full filtered result set as a CSV file with no row limit. The export respects the active day range and event category filter.
+
+### Bug fixes
+
+- **Dashboard sign-in activity** - Social logins (`login.social`) and admin logins (`admin.login`, `admin.login.passkey`) are now counted in the sign-in stats and activity chart on the dashboard.
+
 ---
 
 ## v0.6.0
