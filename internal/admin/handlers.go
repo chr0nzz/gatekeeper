@@ -272,6 +272,8 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/policies/{id}/delete", h.PostDeletePolicy)
 		r.Post("/policies/{id}/members", h.PostAddPolicyMember)
 		r.Post("/policies/{id}/members/{userID}/remove", h.PostRemovePolicyMember)
+		r.Post("/policies/{id}/inject", h.PostPolicyInject)
+		r.Post("/policies/{id}/inject/clear", h.PostPolicyInjectClear)
 		r.Get("/invites", h.GetInvites)
 		r.Post("/invites", h.PostCreateInvite)
 		r.Post("/invites/{id}/revoke", h.PostRevokeInvite)
@@ -2171,12 +2173,15 @@ func (h *Handlers) GetPolicy(w http.ResponseWriter, r *http.Request) {
 		}
 		clientRows.Close()
 	}
+	var injectUsername string
+	h.db.QueryRowContext(r.Context(), `SELECT inject_username FROM policies WHERE id=?`, id).Scan(&injectUsername)
 	h.render(w, r, "admin_policy_detail.html", map[string]interface{}{
-		"Policy":     pol,
-		"Members":    members,
-		"NonMembers": nonMembers,
-		"Clients":    clientNames,
-		"BaseURL":    h.baseURL,
+		"Policy":          pol,
+		"Members":         members,
+		"NonMembers":      nonMembers,
+		"Clients":         clientNames,
+		"BaseURL":         h.baseURL,
+		"InjectUsername":  injectUsername,
 	})
 }
 
@@ -2211,6 +2216,44 @@ func (h *Handlers) PostRemovePolicyMember(w http.ResponseWriter, r *http.Request
 	id := chi.URLParam(r, "id")
 	userID := chi.URLParam(r, "userID")
 	h.policies.RemoveMember(r.Context(), id, userID)
+	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
+}
+
+func (h *Handlers) PostPolicyInject(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	username := strings.TrimSpace(r.FormValue("inject_username"))
+	password := strings.TrimSpace(r.FormValue("inject_password"))
+	if username == "" {
+		h.db.ExecContext(r.Context(), `UPDATE policies SET inject_username='', inject_password='' WHERE id=?`, id)
+		http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
+		return
+	}
+	var encPass string
+	if password != "" {
+		enc, err := auth.EncryptSecret([]byte(password), []byte(h.secretKey))
+		if err != nil {
+			http.Error(w, "Encryption error", http.StatusInternalServerError)
+			return
+		}
+		encPass = enc
+	} else {
+		h.db.QueryRowContext(r.Context(), `SELECT inject_password FROM policies WHERE id=?`, id).Scan(&encPass)
+	}
+	h.db.ExecContext(r.Context(), `UPDATE policies SET inject_username=?, inject_password=? WHERE id=?`, username, encPass, id)
+	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
+}
+
+func (h *Handlers) PostPolicyInjectClear(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	h.db.ExecContext(r.Context(), `UPDATE policies SET inject_username='', inject_password='' WHERE id=?`, id)
 	http.Redirect(w, r, "/admin/policies/"+id, http.StatusFound)
 }
 

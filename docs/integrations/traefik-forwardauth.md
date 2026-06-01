@@ -70,6 +70,25 @@ When authentication succeeds, GateKeeper sets headers that Traefik forwards to y
 
 Your app can read these to identify who is logged in and what roles they have, without any SDK or API call.
 
+## Credential injection
+
+For apps that require a username and password rather than header-based auth, you can store credentials on the policy and have GateKeeper inject them automatically. Add `Authorization` to `authResponseHeaders` and Traefik will forward the `Authorization: Basic` header to the upstream:
+
+```yaml
+http:
+  middlewares:
+    sonarr-auth:
+      forwardAuth:
+        address: "https://auth.example.com/auth/verify?policy=sonarr"
+        authResponseHeaders:
+          - X-Auth-User
+          - X-Auth-Email
+          - X-Auth-Groups
+          - Authorization
+```
+
+Set the app credentials on the policy detail page under **Credential injection**. See [Access policies](/admin/policies) for the full setup guide.
+
 ```python
 # Flask example
 @app.route("/")

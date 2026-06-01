@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"net/http"
 	"net/url"
 	"strings"
@@ -63,6 +64,16 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 		if err != nil || !ok {
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
+		}
+		var injectUser, injectPass string
+		f.db.QueryRowContext(r.Context(),
+			`SELECT inject_username, inject_password FROM policies WHERE name=?`, policyName,
+		).Scan(&injectUser, &injectPass)
+		if injectUser != "" && injectPass != "" {
+			if plain, err := auth.DecryptSecret(injectPass, []byte(f.secretKey)); err == nil {
+				cred := base64.StdEncoding.EncodeToString([]byte(injectUser + ":" + string(plain)))
+				w.Header().Set("Authorization", "Basic "+cred)
+			}
 		}
 	}
 

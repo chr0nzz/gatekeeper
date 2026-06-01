@@ -80,6 +80,7 @@
         </div>
         <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
           On success GateKeeper sets <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-User</span>, <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-Email</span>, and <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-Groups</span> (comma-separated group names) headers on the forwarded request.
+          <span style="display:inline-block;margin-left:10px;padding-left:10px;border-left:1px solid var(--bd-1)">Using <a href="/admin/policies" style="color:var(--ac)">credential injection</a>? Also add <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> to <span style="font-family:var(--font-mono);color:var(--tx-2)">authResponseHeaders</span>.</span>
         </div>
       </div>
 
@@ -94,9 +95,11 @@
         auth_request_set $auth_user   $upstream_http_x_auth_user;
         auth_request_set $auth_email  $upstream_http_x_auth_email;
         auth_request_set $auth_groups $upstream_http_x_auth_groups;
+        auth_request_set $auth_cred   $upstream_http_authorization;
         proxy_set_header X-Auth-User   $auth_user;
         proxy_set_header X-Auth-Email  $auth_email;
         proxy_set_header X-Auth-Groups $auth_groups;
+        proxy_set_header Authorization $auth_cred;
         proxy_pass       http://localhost:3000;
     }
 
@@ -109,7 +112,7 @@
 }</pre>
         </div>
         <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
-          Requires <span style="font-family:var(--font-mono);color:var(--tx-2)">ngx_http_auth_request_module</span> - included in most Nginx builds.
+          Requires <span style="font-family:var(--font-mono);color:var(--tx-2)">ngx_http_auth_request_module</span> - included in most Nginx builds. The <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> lines are only needed when using <a href="/admin/policies" style="color:var(--ac)">credential injection</a>.
         </div>
       </div>
 
@@ -118,13 +121,13 @@
           <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">app.example.com {
     forward_auth {{.BaseURL}} {
         uri /auth/verify
-        copy_headers X-Auth-User X-Auth-Email X-Auth-Groups
+        copy_headers X-Auth-User X-Auth-Email X-Auth-Groups Authorization
     }
     reverse_proxy localhost:3000
 }</pre>
         </div>
         <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
-          Requires Caddy v2.5+ with the <span style="font-family:var(--font-mono);color:var(--tx-2)">forward_auth</span> directive.
+          Requires Caddy v2.5+ with the <span style="font-family:var(--font-mono);color:var(--tx-2)">forward_auth</span> directive. <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> is only forwarded when using <a href="/admin/policies" style="color:var(--ac)">credential injection</a>.
         </div>
       </div>
     </div>

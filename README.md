@@ -5,7 +5,7 @@ A lightweight, self-hosted authentication server. Single Docker container, SQLit
 ## What it does
 
 - **OIDC identity provider** - any app that supports OpenID Connect can delegate login to GateKeeper. Users authenticate once; apps receive a verified identity token. Works with Grafana, Jellyfin, Portainer, Traefik Manager, or any standard OIDC client.
-- **ForwardAuth middleware** - protect apps at the reverse proxy level without touching their code. Works with Traefik, Nginx, and Caddy.
+- **ForwardAuth middleware** - protect apps at the reverse proxy level without touching their code. Works with Traefik, Nginx, and Caddy. Credential injection automatically supplies a stored username and password to apps that do not support SSO.
 - **Groups** - create named groups and assign users to them. Group membership is included as a `groups` claim in all OIDC tokens, enabling role mapping in apps like Grafana and Jellyfin.
 - **Access policies** - create named policies, assign users to them, and attach policies to OIDC clients or ForwardAuth routes to restrict which users can access each app.
 - **Social login** - sign in with GitHub, Google, or Discord. Enable providers from the admin UI; GateKeeper auto-links on email match.
@@ -99,6 +99,8 @@ Works with Traefik (`forwardAuth`), Nginx (`auth_request`), and Caddy (`forward_
 
 To restrict a route to a specific access policy, append `?policy=<name>` to the verify URL.
 
+**Credential injection:** for apps that do not support SSO, store a username and password on the policy. GateKeeper injects `Authorization: Basic` on a successful verify so the app never shows its own login form. Add `Authorization` to `authResponseHeaders` in your Traefik middleware config to enable it.
+
 ## Configuration
 
 | Variable | Required | Default | Description |
@@ -160,7 +162,7 @@ Keyboard shortcuts: `⌘K` / `/` command palette, `g d/u/c/a/s/p` navigate secti
 - Login rate limiting: 20 failed attempts per 15-minute window per IP
 - OTP issuance rate limited to 3 codes per 10-minute window per user
 - Password reset tokens: 32-byte random, argon2id hashed, single-use, 30-minute TTL
-- TOTP secrets encrypted at rest with AES-256-GCM derived from `SECRET_KEY`
+- TOTP secrets and injected app credentials encrypted at rest with AES-256-GCM derived from `SECRET_KEY`
 - Email OTP codes stored as HMAC-SHA256 digests - a database dump without the key cannot reconstruct active codes
 - Recovery codes stored as individual argon2id hashes
 - OIDC client icons fetched and cached server-side - never loaded from external servers by users
