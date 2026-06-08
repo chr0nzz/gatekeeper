@@ -607,13 +607,23 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 	h.passkeys.UpdateCredential(r.Context(), userID, updatedCred)
 
 	redirectURI := r.URL.Query().Get("redirect_uri")
-	sessData := auth.SessionData{UserID: userID, RedirectURI: redirectURI}
+	oidcRequest := r.URL.Query().Get("oidc_request")
+	sessData := auth.SessionData{UserID: userID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest}
 	newSessID, err2 := h.sessions.Create(w, r, sessData)
 	if err2 != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
 	}
 	h.auditLog.Log(r.Context(), audit.EventLoginPasskey, userID, "", r.RemoteAddr, "")
+
+	if oidcRequest != "" && h.oidcStorage != nil {
+		if err := h.oidcStorage.AuthRequestDone(r.Context(), oidcRequest, userID); err == nil {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("/authorize/callback?id=" + url.QueryEscape(oidcRequest)))
+			return
+		}
+	}
 
 	target := redirectURI
 	if target == "" {

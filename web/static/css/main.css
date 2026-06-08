@@ -197,6 +197,7 @@ a { color: inherit; text-decoration: none; }
    ============================================================ */
 .shell { display: grid; grid-template-columns: 244px 1fr; min-height: 100vh; background: var(--bg-0); }
 .shell.signed-out { display: block; }
+:root.sidebar-collapsed .shell { grid-template-columns: 56px 1fr; }
 
 .sidebar {
   border-right: 1px solid var(--bd-0);
@@ -204,8 +205,35 @@ a { color: inherit; text-decoration: none; }
   display: flex; flex-direction: column;
   padding: 16px 14px;
   position: sticky; top: 0; height: 100vh;
+  overflow: visible;
 }
 .sidebar .gk-mark { padding: 4px 6px 18px; }
+
+:root.sidebar-collapsed .sidebar { padding: 16px 8px; z-index: 1000; }
+:root.sidebar-collapsed .sidebar .gk-name { display: none; }
+:root.sidebar-collapsed .sidebar .gk-mark { padding: 4px 4px 18px; justify-content: center; }
+:root.sidebar-collapsed .sidebar .side-label { display: none; }
+:root.sidebar-collapsed .sidebar .side-link { justify-content: center; padding: 8px; gap: 0; }
+:root.sidebar-collapsed .sidebar .side-link > span { display: none; }
+:root.sidebar-collapsed .sidebar .side-link .count { display: none; }
+:root.sidebar-collapsed .sidebar .side-link.active::before { left: -8px; }
+:root.sidebar-collapsed .sidebar .user-chip { padding: 8px; justify-content: center; }
+:root.sidebar-collapsed .sidebar .user-chip .meta { display: none; }
+:root.sidebar-collapsed .sidebar .user-chip > svg { display: none; }
+:root.sidebar-collapsed .sidebar .sidebar-signout > span { display: none; }
+:root.sidebar-collapsed .sidebar .sidebar-signout { justify-content: center; }
+:root.sidebar-collapsed .sidebar .sidebar-toggle-label { display: none; }
+
+
+.sidebar-toggle {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 6px 8px; margin-bottom: 8px;
+  border-radius: var(--r-sm); border: 0; background: transparent;
+  color: var(--tx-3); font-size: 12px; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: background 0.12s, color 0.12s;
+}
+.sidebar-toggle:hover { background: var(--bg-3); color: var(--tx-1); }
+:root.sidebar-collapsed .sidebar-toggle { justify-content: center; padding: 6px; }
 
 .side-section { display: flex; flex-direction: column; gap: 1px; margin-bottom: 14px; }
 .side-label {

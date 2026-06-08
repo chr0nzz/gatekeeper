@@ -61,13 +61,16 @@ function encodeCredentialAssertion(credential) {
   };
 }
 
-async function beginPasskeyLogin(beginURL, finishURL, redirectURI, errorEl) {
+async function beginPasskeyLogin(beginURL, finishURL, redirectURI, oidcRequest, errorEl) {
   try {
     const beginResp = await fetch(beginURL, { method: 'POST' });
     const sessID = beginResp.headers.get('X-Passkey-Session');
     const options = prepareCredentialRequestOptions(await beginResp.json());
     const credential = await navigator.credentials.get(options);
-    const finish = redirectURI ? finishURL + '?redirect_uri=' + encodeURIComponent(redirectURI) : finishURL;
+    const params = new URLSearchParams();
+    if (redirectURI) params.set('redirect_uri', redirectURI);
+    if (oidcRequest) params.set('oidc_request', oidcRequest);
+    const finish = params.toString() ? finishURL + '?' + params.toString() : finishURL;
     const finishResp = await fetch(finish, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Passkey-Session': sessID },
@@ -121,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginBtn.dataset.begin,
         loginBtn.dataset.finish,
         loginBtn.dataset.redirect || '',
+        loginBtn.dataset.oidcRequest || '',
         document.getElementById('gk-passkey-error')
       );
     });
