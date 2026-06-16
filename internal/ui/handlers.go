@@ -107,6 +107,7 @@ type Handlers struct {
 	policies       *queries.PolicyStore
 	invites        *queries.InviteStore
 	socialAccounts *queries.SocialStore
+	qrTokens       *queries.QRTokenStore
 	limiter        *loginLimiter
 	baseURL        string
 	issuer         string
@@ -133,6 +134,7 @@ func New(
 	policies *queries.PolicyStore,
 	invites *queries.InviteStore,
 	socialAccounts *queries.SocialStore,
+	qrTokens *queries.QRTokenStore,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, sessions: sessions, otps: otps, totp: totp,
@@ -140,6 +142,7 @@ func New(
 		trustedDevices: trustedDevices, mailer: m,
 		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
 		policies: policies, invites: invites, socialAccounts: socialAccounts,
+		qrTokens: qrTokens,
 		limiter: newLoginLimiter(),
 		baseURL: baseURL, issuer: issuer,
 		secretKey: secretKey, cookieDomain: cookieDomain,
@@ -208,6 +211,10 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Post("/login/totp/recovery", h.PostTOTPRecovery)
 	r.Post("/login/passkey/begin", h.PostPasskeyLoginBegin)
 	r.Post("/login/passkey/finish", h.PostPasskeyLoginFinish)
+	r.Post("/login/qr/begin", h.PostQRBegin)
+	r.Get("/login/qr/poll", h.GetQRPoll)
+	r.Get("/login/qr/approve", h.GetQRApprove)
+	r.Post("/login/qr/approve", h.PostQRApprove)
 	r.Get("/forgot-password", h.GetForgotPassword)
 	r.Post("/forgot-password", h.PostForgotPassword)
 	r.Get("/reset-password", h.GetResetPassword)

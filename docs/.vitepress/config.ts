@@ -24,7 +24,7 @@ export default defineConfig({
       { text: 'Security', link: '/security/overview' },
       { text: 'Reference', link: '/reference/env-vars' },
       {
-        text: 'v0.7.0',
+        text: 'v0.8.0',
         items: [
           { text: 'Changelog', link: '/reference/changelog' },
           { text: 'GitHub', link: 'https://github.com/chr0nzz/gatekeeper' },
@@ -51,6 +51,7 @@ export default defineConfig({
           { text: 'TOTP (authenticator app)', link: '/auth/totp' },
           { text: 'TOTP recovery codes', link: '/auth/totp-recovery' },
           { text: 'Passkeys', link: '/auth/passkeys' },
+          { text: 'QR code sign-in', link: '/auth/qr-login' },
           { text: 'Password recovery', link: '/auth/password-recovery' },
           { text: 'Password change', link: '/auth/password-change' },
           { text: 'Your profile', link: '/auth/profile' },
@@ -78,6 +79,7 @@ export default defineConfig({
           { text: 'Webhooks', link: '/admin/webhooks' },
           { text: 'Notification log', link: '/admin/notifications' },
           { text: 'Backups', link: '/admin/backups' },
+          { text: 'API key', link: '/admin/api-key' },
         ],
       },
       {

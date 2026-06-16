@@ -1,0 +1,1 @@
+ALTER TABLE admin_users ADD COLUMN api_key TEXT NOT NULL DEFAULT '';

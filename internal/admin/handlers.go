@@ -128,6 +128,9 @@ func New(
 }
 
 func (h *Handlers) adminIDFromRequest(r *http.Request) string {
+	if key := r.Header.Get("X-Api-Key"); key != "" {
+		return h.admins.GetByAPIKey(r.Context(), key)
+	}
 	cookie, err := r.Cookie(adminCookieName)
 	if err != nil {
 		return ""
@@ -311,6 +314,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/profile/display-name", h.PostProfileDisplayName)
 		r.Post("/profile/password", h.PostProfilePassword)
 		r.Post("/profile/revoke-sessions", h.PostProfileRevokeSessions)
+		r.Post("/profile/api-key/rotate", h.PostProfileAPIKeyRotate)
 		r.Get("/profile/totp/enroll", h.GetProfileTOTPEnroll)
 		r.Post("/profile/totp/enroll", h.PostProfileTOTPEnroll)
 		r.Post("/profile/totp/disable", h.PostProfileTOTPDisable)
@@ -1867,6 +1871,7 @@ func (h *Handlers) profilePageData(r *http.Request) map[string]interface{} {
 		"TOTPEnabled":  totpEnabled,
 		"Passkeys":     passkeys,
 		"SessionCount": h.adminSess.CountByAdmin(r.Context(), adminID),
+		"APIKey":       h.admins.GetAPIKey(r.Context(), adminID),
 	}
 }
 
@@ -1879,6 +1884,7 @@ func (h *Handlers) GetProfile(w http.ResponseWriter, r *http.Request) {
 			"sessions_revoked": "All other sessions have been revoked.",
 			"totp_enrolled":    "Authenticator app enrolled.",
 			"totp_removed":     "Authenticator app removed.",
+			"api_key_rotated":  "API key rotated.",
 		}
 		if s, ok := successMsgs[msg]; ok {
 			data["Success"] = s
@@ -1896,6 +1902,24 @@ func (h *Handlers) PostProfileDisplayName(w http.ResponseWriter, r *http.Request
 	name := strings.TrimSpace(r.FormValue("display_name"))
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET display_name=? WHERE id=?`, name, adminID)
 	http.Redirect(w, r, "/admin/profile?success=display_name", http.StatusSeeOther)
+}
+
+func (h *Handlers) PostProfileAPIKeyRotate(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
+	adminID := h.adminIDFromRequest(r)
+	key, err := auth.RandomTokenExport(32)
+	if err != nil {
+		http.Error(w, "failed to generate key", http.StatusInternalServerError)
+		return
+	}
+	if err := h.admins.SetAPIKey(r.Context(), adminID, key); err != nil {
+		http.Error(w, "failed to save key", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/admin/profile?success=api_key_rotated", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfileRevokeSessions(w http.ResponseWriter, r *http.Request) {

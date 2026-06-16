@@ -1,0 +1,28 @@
+{{template "base" .}}
+{{define "title"}}Approve login - GateKeeper{{end}}
+{{define "content"}}
+<div class="auth-wrap bg-grid">
+  <div class="auth-top" style="justify-content:center">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+  </div>
+  <div class="auth-card" style="text-align:center">
+    <div style="width:56px;height:56px;margin:8px auto 20px;border-radius:14px;background:var(--ac-bg);border:1px solid var(--ac-bd);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--ac)" stroke-width="1.5" style="width:28px;height:28px" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2zM18 14h3M14 18h3M20 18v3M17 21h3"/></svg>
+    </div>
+    <h1 style="font-size:22px;margin-bottom:6px">Approve sign-in</h1>
+    <p class="lede" style="margin-bottom:24px">Someone scanned a QR code to sign in as <strong>{{.Name}}</strong>. Approve only if this was you.</p>
+    <form method="POST" action="/login/qr/approve">
+      <input type="hidden" name="token" value="{{.Token}}">
+      <button type="submit" class="btn btn-primary" style="width:100%;height:42px;font-size:14px;justify-content:center;margin-bottom:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:15px;height:15px" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Approve sign-in
+      </button>
+    </form>
+    <a href="/" class="btn btn-ghost" style="width:100%;height:40px;font-size:14px;justify-content:center">Deny</a>
+  </div>
+</div>
+<script src="/static/js/theme.js"></script>
+{{end}}

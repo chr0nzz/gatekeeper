@@ -66,6 +66,7 @@ func main() {
 	inviteStore := queries.NewInviteStore(database)
 	claimStore := queries.NewClaimStore(database)
 	socialStore := queries.NewSocialStore(database)
+	qrTokenStore := queries.NewQRTokenStore(database)
 	settingsStore := queries.NewSettingsStore(database)
 	backupStore := queries.NewBackupStore(database)
 	{
@@ -160,7 +161,7 @@ func main() {
 
 	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
 
-	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore)
+	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore, qrTokenStore)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, cfg.DBPath, cfg.SecretKey, envSMTP,
 		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains, GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret, DiscordClientID: cfg.DiscordClientID, DiscordClientSecret: cfg.DiscordClientSecret}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService, backupStore)
 

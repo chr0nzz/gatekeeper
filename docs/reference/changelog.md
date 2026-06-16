@@ -3,6 +3,30 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.8.0
+
+### QR code sign-in
+
+- **Scan to sign in** - A new QR code tab on the login page lets you sign in to any device by scanning a code with your phone. Approve the login on your phone and the PC session is created automatically. No password or email code needed on the secondary device. See [QR code sign-in](/auth/qr-login).
+- **One-time tokens** - Each QR code encodes a short-lived token (5 minute TTL) that is deleted from the database once used or expired. Expired codes reload automatically after a short pause.
+
+### Credential injection
+
+- **Per-policy auto-login** - Store a username and password on any access policy. When `/auth/verify` approves a request, GateKeeper returns an `Authorization: Basic` header that your reverse proxy forwards to the upstream app. The app receives a pre-authenticated request and skips its own login prompt - the same pattern as Authentik's outpost proxy. See [Access policies - Credential injection](/admin/policies#credential-injection).
+- **Encrypted storage** - Injected passwords are encrypted with AES-256-GCM using a key derived from `SECRET_KEY` before being written to the database.
+- **Traefik, Nginx, and Caddy support** - The integrations page documents how to configure each reverse proxy to forward the injected `Authorization` header.
+
+### Admin API key
+
+- **Personal API key** - Each admin account can generate a personal API key from the My Account page. Send it as `X-Api-Key` to authenticate server-side API requests without a browser session. Useful for dashboards and monitoring scripts. See [Admin API key](/admin/api-key).
+- **Rotate on demand** - Keys can be rotated at any time from the profile page. The old key is invalidated immediately.
+
+### Bug fixes
+
+- **Passkey OIDC redirect** - Logging in with a passkey during an OIDC flow now correctly redirects back to the app after authentication. Previously the `oidc_request` token was lost during the passkey finish step, leaving the user on their profile page instead.
+
+---
+
 ## v0.7.0
 
 ### Backup and restore

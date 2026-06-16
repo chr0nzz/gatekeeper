@@ -1,0 +1,21 @@
+{{template "base" .}}
+{{define "title"}}QR code expired - GateKeeper{{end}}
+{{define "content"}}
+<div class="auth-wrap bg-grid">
+  <div class="auth-top" style="justify-content:center">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+  </div>
+  <div class="auth-card" style="text-align:center">
+    <div style="width:56px;height:56px;margin:8px auto 20px;border-radius:14px;background:var(--bg-2);border:1px solid var(--bd-1);display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--tx-3)" stroke-width="1.6" style="width:28px;height:28px" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    </div>
+    <h1 style="font-size:22px;margin-bottom:6px">QR code expired</h1>
+    <p class="lede" style="margin-bottom:24px">This QR code is no longer valid. Go back to the sign-in page and scan a new one.</p>
+    <a href="/login" class="btn btn-ghost" style="width:100%;height:40px;font-size:14px;justify-content:center">Back to sign in</a>
+  </div>
+</div>
+<script src="/static/js/theme.js"></script>
+{{end}}

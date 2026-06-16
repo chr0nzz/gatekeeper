@@ -309,6 +309,29 @@ func (a *AdminStore) Delete(ctx context.Context, id string) error {
 	return err
 }
 
+// GetAPIKey returns the API key for an admin.
+func (a *AdminStore) GetAPIKey(ctx context.Context, id string) string {
+	var key string
+	a.db.QueryRowContext(ctx, `SELECT api_key FROM admin_users WHERE id=?`, id).Scan(&key)
+	return key
+}
+
+// SetAPIKey stores an API key for an admin.
+func (a *AdminStore) SetAPIKey(ctx context.Context, id, key string) error {
+	_, err := a.db.ExecContext(ctx, `UPDATE admin_users SET api_key=? WHERE id=?`, key, id)
+	return err
+}
+
+// GetByAPIKey returns the admin ID associated with the given API key.
+func (a *AdminStore) GetByAPIKey(ctx context.Context, key string) string {
+	if key == "" {
+		return ""
+	}
+	var id string
+	a.db.QueryRowContext(ctx, `SELECT id FROM admin_users WHERE api_key=? AND api_key!=''`, key).Scan(&id)
+	return id
+}
+
 // AdminSessionStore manages admin sessions.
 type AdminSessionStore struct {
 	db *sql.DB

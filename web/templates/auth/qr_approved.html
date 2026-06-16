@@ -1,0 +1,20 @@
+{{template "base" .}}
+{{define "title"}}Sign-in approved - GateKeeper{{end}}
+{{define "content"}}
+<div class="auth-wrap bg-grid">
+  <div class="auth-top" style="justify-content:center">
+    <div class="gk-mark">
+      <div class="gk-glyph"><i></i></div>
+      <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
+    </div>
+  </div>
+  <div class="auth-card" style="text-align:center">
+    <div style="width:56px;height:56px;margin:8px auto 20px;border-radius:14px;background:#dcfce7;border:1px solid #bbf7d0;display:flex;align-items:center;justify-content:center">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.6" style="width:28px;height:28px" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1 style="font-size:22px;margin-bottom:6px">Sign-in approved</h1>
+    <p class="lede">You can close this page. The other device has been signed in.</p>
+  </div>
+</div>
+<script src="/static/js/theme.js"></script>
+{{end}}
