@@ -10,9 +10,9 @@ A lightweight, self-hosted authentication server. Single Docker container, SQLit
 - **Access policies** - create named policies, assign users to them, and attach policies to OIDC clients or ForwardAuth routes to restrict which users can access each app.
 - **Social login** - sign in with GitHub, Google, or Discord. Enable providers from the admin UI; GateKeeper auto-links on email match.
 - **Self-registration** - choose between disabled, invite-only, open, and approval-required modes. Invite links are single-use with configurable expiry.
-- **Multiple sign-in methods** - password + email OTP, passwordless email OTP, TOTP (authenticator app), passkeys (WebAuthn), social OAuth2.
+- **Multiple sign-in methods** - password + email OTP, passwordless email OTP, TOTP (authenticator app), passkeys (WebAuthn), QR code (scan with phone to approve), social OAuth2.
 - **Webhooks** - push notifications to Discord, Slack, Telegram, ntfy, or any HTTP endpoint when auth and admin events occur.
-- **Multiple admin accounts** - create and manage admin accounts from the Admins page.
+- **Multiple admin accounts** - create and manage admin accounts from the Admins page. Generate a personal API key per admin for server-side API access using the `X-Api-Key` header.
 - **Backups** - encrypted database snapshots to local storage or any S3-compatible object store (AWS S3, Cloudflare R2, Backblaze B2, MinIO). Schedule automatically, download, and restore from the admin UI.
 - **Admin UI** - manage users, groups, OIDC clients, policies, invites, webhooks, backups, settings, and audit log from a browser. No config files or CLI.
 
@@ -51,6 +51,7 @@ Visit `https://auth.example.com/admin` on first run - you'll be prompted to crea
 | Passwordless | Email only, then a 6-digit OTP code (enabled per user by admin) |
 | TOTP | Email + password, then a code from an authenticator app |
 | Passkey | Device biometric or hardware key - no password, no code |
+| QR code | Scan with your phone camera - approve on a device already signed in |
 | Social | One-click sign-in via GitHub, Google, or Discord |
 
 Trusted device tokens skip 2FA for 30 days after first verification on a device.
@@ -183,7 +184,7 @@ go build -o gatekeeper ./cmd/gatekeeper
 ## Docker
 
 ```bash
-docker build --build-arg VERSION=v0.7.0 -t gatekeeper:v0.7.0 .
+docker build --build-arg VERSION=v0.8.0 -t gatekeeper:v0.8.0 .
 ```
 
 ## Project layout
