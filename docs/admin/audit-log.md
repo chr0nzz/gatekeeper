@@ -3,7 +3,7 @@ title: Audit log
 description: What gets logged and how to read the audit log.
 ---
 
-The audit log at `/admin/audit` is an append-only record of every authentication and admin event.
+The audit log at `/audit` is an append-only record of every authentication and admin event.
 
 ## Reading the log
 

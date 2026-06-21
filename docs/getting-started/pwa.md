@@ -16,7 +16,7 @@ There are two separate apps you can install: one for the regular user portal and
 4. Confirm - the app installs as **GateKeeper**.
 
 **Admin app:**
-1. Navigate to `/admin` and sign in as admin.
+1. Open your admin panel (its own domain, e.g. `admin.auth.example.com`) and sign in as admin.
 2. Tap the three-dot menu.
 3. Tap **Add to Home screen** or **Install app**.
 4. Confirm - the app installs as **GK Admin** with a distinct icon.
@@ -25,12 +25,12 @@ Both apps can be installed at the same time. They open directly to the correct s
 
 ## Installing on iOS (Safari)
 
-1. Open GateKeeper (or `/admin`) in Safari.
+1. Open GateKeeper (or your admin panel) in Safari.
 2. Tap the Share button (the box with an arrow pointing up).
 3. Scroll down and tap **Add to Home Screen**.
 4. Edit the name if you like, then tap **Add**.
 
-Repeat the process on the `/admin` page to add the admin shortcut separately.
+Repeat the process on the admin panel to add the admin shortcut separately.
 
 ::: info
 Safari on iOS does not show an automatic install prompt like Chrome does. You need to use the Share menu manually.

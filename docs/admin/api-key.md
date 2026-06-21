@@ -7,7 +7,7 @@ Each admin account can generate a personal API key. The key lets server-side ser
 
 ## Generating a key
 
-Go to **My account** (`/admin/profile`) and scroll to the **API key** card. Click **Generate key**. The key is displayed once - copy it now. Click the eye icon to reveal it, then use the copy button.
+Go to **My account** (`/profile`) and scroll to the **API key** card. Click **Generate key**. The key is displayed once - copy it now. Click the eye icon to reveal it, then use the copy button.
 
 ## Rotating the key
 

@@ -5,12 +5,12 @@ description: Create, edit, disable, and delete users from the admin panel.
 
 ## Creating a user
 
-Go to `/admin/users` and click **New user**. Enter an email address and choose a sign-in method:
+Go to `/users` and click **New user**. Enter an email address and choose a sign-in method:
 
 - **Email + Password** - the user gets a temporary password (minimum 12 characters) and is required to change it on first login.
 - **Email Only** - creates a passwordless account. The user signs in with just their email address and a one-time code sent to it. No password is set.
 
-If allowed email domains are configured in `/admin/settings`, the email must match one of those domains.
+If allowed email domains are configured in `/settings`, the email must match one of those domains.
 
 ## User list
 
@@ -50,4 +50,4 @@ Registered passkeys are listed on the detail page with name and registration dat
 
 ## Admin account
 
-Your own admin account (password, TOTP, passkeys) is managed at `/admin/profile` ("My account" in the sidebar).
+Your own admin account (password, TOTP, passkeys) is managed at `/profile` ("My account" in the sidebar).

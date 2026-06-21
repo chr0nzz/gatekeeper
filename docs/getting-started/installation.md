@@ -20,15 +20,22 @@ services:
     restart: unless-stopped
     environment:
       BASE_URL: "https://auth.example.com"
+      ADMIN_URL: "https://admin.auth.example.com"
       SECRET_KEY: "your-64-char-hex-secret"
     volumes:
       - gatekeeper_data:/data
     ports:
-      - "8080:8080"
+      - "8282:8282"
+      - "8283:8283"
 
 volumes:
   gatekeeper_data:
 ```
+
+GateKeeper listens on two ports:
+
+- **`8282`** - the public side: login, OIDC, and ForwardAuth. Route your public domain (`auth.example.com`) here.
+- **`8283`** - the admin panel, served at the root. Route a private domain (`admin.example.com`) here and keep it off the public internet. Set `ADMIN_URL` to that domain so admin passkeys work.
 
 Generate a `SECRET_KEY`:
 

@@ -37,7 +37,7 @@ Apps that support OIDC discovery only need the discovery URL - everything else a
 
 ## Registering a client
 
-1. Go to `/admin/clients` and click **New client**
+1. Go to `/clients` and click **New client**
 2. Enter a display name and optionally an icon URL (fetched and cached server-side at save time)
 3. Choose a client ID - lowercase, digits, dashes. Public and permanent.
 4. Click **Generate** for the client secret. Copy it - it is not shown again.

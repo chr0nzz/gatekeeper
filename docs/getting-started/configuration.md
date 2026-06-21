@@ -25,8 +25,12 @@ openssl rand -hex 32
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8080` | Port to listen on |
+| `PORT` | `8282` | Public HTTP port (login, OIDC, ForwardAuth) |
+| `ADMIN_PORT` | `8283` | Admin-only HTTP port, served at the root. Keep it off the public internet. |
+| `ADMIN_URL` | - | Public URL of the admin panel when it runs on its own subdomain, e.g. `https://admin.auth.example.com`. Enables admin passkeys. |
+| `ADMIN_BASE_PATH` | - | Serve the admin under a path prefix (e.g. `/admin`) instead of the root. Leave empty when the admin has its own domain. |
 | `DB_PATH` | `/data/gatekeeper.db` | SQLite database path. Mount a volume here. |
+| `COOKIE_DOMAIN` | - | Cookie domain for cross-subdomain session sharing, e.g. `.example.com` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error` |
 
 ## Env var fallbacks (overridden by admin UI)

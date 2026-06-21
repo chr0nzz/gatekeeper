@@ -7,19 +7,19 @@ A policy is a named list of users. Once created, you can attach a policy to an O
 
 ## Creating a policy
 
-Go to `/admin/policies` and click **New policy**.
+Go to `/policies` and click **New policy**.
 
 Give it a short, descriptive name. The name is used in the `?policy=` URL parameter, so stick to lowercase letters, digits, and dashes (for example `internal-team` or `beta-users`). The description is optional - it is shown on the policies list page.
 
 ## Adding users to a policy
 
-Open the policy detail page (`/admin/policies/<id>`). The **Add user** section at the bottom shows a dropdown of all users not already in the policy. Select a user and click **Add**.
+Open the policy detail page (`/policies/<id>`). The **Add user** section at the bottom shows a dropdown of all users not already in the policy. Select a user and click **Add**.
 
 To remove a user, click **Remove** next to their name in the members table.
 
 ## Attaching a policy to an OIDC client
 
-Open `/admin/clients` and create or edit a client. The **Required policy** field shows a dropdown of all existing policies. Select one and save. Users who are not in that policy will see an "Access denied" screen after authenticating instead of being redirected back to the app.
+Open `/clients` and create or edit a client. The **Required policy** field shows a dropdown of all existing policies. Select one and save. Users who are not in that policy will see an "Access denied" screen after authenticating instead of being redirected back to the app.
 
 Leave the field set to "No restriction" to allow all authenticated users.
 
@@ -34,7 +34,7 @@ http:
   middlewares:
     gk-internal:
       forwardAuth:
-        address: "https://auth.example.com/auth/verify?policy=internal-team"
+        address: "http://gatekeeper:8282/auth/verify?policy=internal-team"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
@@ -89,7 +89,7 @@ http:
   middlewares:
     sonarr-auth:
       forwardAuth:
-        address: "https://auth.example.com/auth/verify?policy=sonarr"
+        address: "http://gatekeeper:8282/auth/verify?policy=sonarr"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email

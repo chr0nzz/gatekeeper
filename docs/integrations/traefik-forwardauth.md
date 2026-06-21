@@ -23,14 +23,16 @@ http:
   middlewares:
     gk-auth:
       forwardAuth:
-        address: "https://auth.example.com/auth/verify"
+        address: "http://gatekeeper:8282/auth/verify"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
           - X-Auth-Groups
 ```
 
-Replace `auth.example.com` with the `BASE_URL` you configured for GateKeeper.
+Point `address` **directly at the GateKeeper container** on its public port (`8282`) - use the Docker service name (`gatekeeper:8282`), a private IP, or a Tailscale address. Do **not** point it at your public `BASE_URL` (`https://auth.example.com/auth/verify`).
+
+The reason: a ForwardAuth request routed back through the `auth.example.com` router gets its `X-Forwarded-Host` header rewritten to `auth.example.com`. GateKeeper then builds the post-login redirect back to itself, and users land on their profile page instead of the app they were trying to reach. Hitting the container directly preserves the real app host. GateKeeper still reads `X-Forwarded-Proto: https` (set by Traefik) to build correct `https://` redirects, so a plain `http://` address to the container is fine on a private network.
 
 Traefik hot-reloads the dynamic config directory, so no restart is needed after adding this file.
 
@@ -79,7 +81,7 @@ http:
   middlewares:
     sonarr-auth:
       forwardAuth:
-        address: "https://auth.example.com/auth/verify?policy=sonarr"
+        address: "http://gatekeeper:8282/auth/verify?policy=sonarr"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email

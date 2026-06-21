@@ -47,8 +47,8 @@ services:
       - traefik.http.routers.gk.rule=Host(`auth.example.com`)
       - traefik.http.routers.gk.entrypoints=websecure
       - traefik.http.routers.gk.tls.certresolver=le
-      - traefik.http.services.gk.loadbalancer.server.port=8080
-      - traefik.http.middlewares.gk-auth.forwardauth.address=http://gatekeeper:8080/auth/verify
+      - traefik.http.services.gk.loadbalancer.server.port=8282
+      - traefik.http.middlewares.gk-auth.forwardauth.address=http://gatekeeper:8282/auth/verify
       - traefik.http.middlewares.gk-auth.forwardauth.authResponseHeaders=X-Auth-User,X-Auth-Email
 
   grafana:
@@ -73,7 +73,7 @@ volumes:
 ## How it works
 
 1. A browser visits `grafana.example.com`.
-2. Traefik intercepts the request and calls `http://gatekeeper:8080/auth/verify`.
+2. Traefik intercepts the request and calls `http://gatekeeper:8282/auth/verify`.
 3. If the user has a valid session, GateKeeper returns `200` with `X-Auth-Email` set.
 4. Traefik forwards the request to Grafana with the `X-Auth-Email` header.
 5. Grafana uses proxy auth to log the user in automatically based on the header.

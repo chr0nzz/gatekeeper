@@ -47,10 +47,12 @@ http:
   middlewares:
     gk-auth:
       forwardAuth:
-        address: "https://auth.example.com/auth/verify"
+        address: "http://gatekeeper:8282/auth/verify"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
 ```
+
+Point `address` directly at the GateKeeper container (`gatekeeper:8282`, a private IP, or a Tailscale address), not at the public `auth.example.com`. Routing the ForwardAuth request through the auth domain rewrites `X-Forwarded-Host` and breaks the cross-domain redirect back to the app.
 
 Apply this middleware to routes on any domain, including domains unrelated to `example.com`. GateKeeper handles the cross-domain handoff transparently.

@@ -3,7 +3,7 @@ title: Notification log
 description: View the history of all dispatched webhook notifications.
 ---
 
-The notification log at `/admin/notifications` shows every webhook dispatch attempt - what was sent, to which webhook, and whether it succeeded.
+The notification log at `/notifications` shows every webhook dispatch attempt - what was sent, to which webhook, and whether it succeeded.
 
 ## Reading the log
 

@@ -3,7 +3,7 @@ title: Managing OIDC clients
 description: Register, edit, and manage OIDC clients in the admin panel.
 ---
 
-OIDC clients are applications that delegate authentication to GateKeeper. Manage them at `/admin/clients`.
+OIDC clients are applications that delegate authentication to GateKeeper. Manage them at `/clients`.
 
 ## Endpoint reference
 

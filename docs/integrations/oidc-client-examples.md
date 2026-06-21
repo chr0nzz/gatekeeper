@@ -5,7 +5,7 @@ description: Code examples for connecting applications to GateKeeper as an OIDC 
 
 These examples show how to connect applications to GateKeeper using the OIDC (OpenID Connect) protocol. All examples use the authorization code flow with PKCE.
 
-Before connecting a client, register it in the admin panel at `/admin/clients`. You'll need the client ID, client secret, and allowed redirect URIs.
+Before connecting a client, register it in the admin panel at `/clients`. You'll need the client ID, client secret, and allowed redirect URIs.
 
 ## Discovery URL
 

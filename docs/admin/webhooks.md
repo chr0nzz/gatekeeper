@@ -7,7 +7,7 @@ Webhooks let GateKeeper push notifications to Discord, Slack, Telegram, ntfy, a 
 
 ## Adding a webhook
 
-Go to `/admin/webhooks` and click **Add webhook**. Choose a type, fill in the required fields, and optionally restrict which events it receives.
+Go to `/webhooks` and click **Add webhook**. Choose a type, fill in the required fields, and optionally restrict which events it receives.
 
 By default a webhook receives all events. To restrict it, check only the events you care about in the **Events** section of the dialog.
 

@@ -16,7 +16,7 @@ If passwordless mode is not enabled for the account, a missing password is treat
 
 ## Enabling passwordless for a user
 
-Only admins can enable or disable passwordless mode per user. Go to `/admin/users/:id` and click **Enable passwordless**.
+Only admins can enable or disable passwordless mode per user. Go to `/users/:id` and click **Enable passwordless**.
 
 Passwordless mode is off by default for all users.
 

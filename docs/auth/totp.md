@@ -28,7 +28,7 @@ After 5 failed attempts within 10 minutes, the account is locked for 10 minutes.
 
 If you lose access to your authenticator app, use one of your recovery codes at `/login/totp/recovery`. Each code works once and is permanently invalidated after use.
 
-The admin can see how many recovery codes you have left at `/admin/users/:id`. They cannot see the codes themselves.
+The admin can see how many recovery codes you have left at `/users/:id`. They cannot see the codes themselves.
 
 ## Disabling TOTP
 

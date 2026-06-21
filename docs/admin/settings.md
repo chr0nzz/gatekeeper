@@ -3,7 +3,7 @@ title: Settings
 description: Configure GateKeeper from the admin UI - no restart required.
 ---
 
-The settings page at `/admin/settings` lets you configure GateKeeper while it is running. All changes apply immediately with no restart.
+The settings page at `/settings` lets you configure GateKeeper while it is running. All changes apply immediately with no restart.
 
 ## Access control
 

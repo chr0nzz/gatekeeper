@@ -65,27 +65,29 @@ description: All HTTP endpoints, methods, and their behavior.
 
 ## Admin endpoints (require admin session)
 
+These are served on the admin port (`ADMIN_PORT`, default `8283`) at the root - not on the public port. The paths below are relative to the admin domain. If you set `ADMIN_BASE_PATH`, prefix them with that value.
+
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/admin/login` | Admin login form |
-| `POST` | `/admin/login` | Submit admin credentials |
-| `POST` | `/admin/logout` | Destroy admin session |
-| `GET` | `/admin/users` | User list |
-| `POST` | `/admin/users` | Create user |
-| `GET` | `/admin/users/:id` | User detail |
-| `POST` | `/admin/users/:id/password` | Set user password |
-| `POST` | `/admin/users/:id/reset-email` | Send reset email |
-| `POST` | `/admin/users/:id/disable` | Disable account |
-| `POST` | `/admin/users/:id/enable` | Enable account |
-| `POST` | `/admin/users/:id/delete` | Delete account |
-| `POST` | `/admin/users/:id/revoke-sessions` | Revoke all sessions |
-| `POST` | `/admin/users/:id/revoke-totp` | Revoke TOTP enrollment |
-| `POST` | `/admin/users/:id/passwordless` | Toggle passwordless mode |
-| `GET` | `/admin/clients` | OIDC client list |
-| `POST` | `/admin/clients` | Create OIDC client |
-| `POST` | `/admin/clients/:id/delete` | Delete OIDC client |
-| `GET` | `/admin/audit` | Audit log |
-| `GET` | `/admin/settings` | Settings page |
+| `GET` | `/login` | Admin login form |
+| `POST` | `/login` | Submit admin credentials |
+| `POST` | `/logout` | Destroy admin session |
+| `GET` | `/users` | User list |
+| `POST` | `/users` | Create user |
+| `GET` | `/users/:id` | User detail |
+| `POST` | `/users/:id/password` | Set user password |
+| `POST` | `/users/:id/reset-email` | Send reset email |
+| `POST` | `/users/:id/disable` | Disable account |
+| `POST` | `/users/:id/enable` | Enable account |
+| `POST` | `/users/:id/delete` | Delete account |
+| `POST` | `/users/:id/revoke-sessions` | Revoke all sessions |
+| `POST` | `/users/:id/revoke-totp` | Revoke TOTP enrollment |
+| `POST` | `/users/:id/passwordless` | Toggle passwordless mode |
+| `GET` | `/clients` | OIDC client list |
+| `POST` | `/clients` | Create OIDC client |
+| `POST` | `/clients/:id/delete` | Delete OIDC client |
+| `GET` | `/audit` | Audit log |
+| `GET` | `/settings` | Settings page |
 
 ## Static assets
 

@@ -17,7 +17,7 @@ Recovery codes look like this: `aB-3x-Qz-7m-Kp`. They are case-sensitive. GateKe
 
 ## What to do if you run out of codes
 
-If you have used all your recovery codes and cannot log in, an admin can revoke your TOTP enrollment from `/admin/users/:id`. After that, you can log in with email OTP and re-enroll TOTP if you want.
+If you have used all your recovery codes and cannot log in, an admin can revoke your TOTP enrollment from `/users/:id`. After that, you can log in with email OTP and re-enroll TOTP if you want.
 
 If you are the only admin and have lost access, you will need to manually update the database. Connect to the SQLite file and set `totp_enabled=0` for your admin user record.
 

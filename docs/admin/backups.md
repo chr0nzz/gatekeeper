@@ -5,7 +5,7 @@ description: Encrypted database backups to local storage or any S3-compatible ob
 
 GateKeeper stores all of its state - users, sessions, OIDC clients, groups, settings - in a single SQLite file. The Backups page lets you snapshot that file on demand or on a schedule, encrypt it, and store it locally or in the cloud.
 
-Manage backups at `/admin/backups`.
+Manage backups at `/backups`.
 
 ## How it works
 

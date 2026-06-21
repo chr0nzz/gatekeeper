@@ -18,12 +18,12 @@ Caddy's `forward_auth` directive sends each incoming request to an authenticatio
 ```caddy
 # GateKeeper
 auth.example.com {
-    reverse_proxy localhost:8080
+    reverse_proxy localhost:8282
 }
 
 # Protected app
 app.example.com {
-    forward_auth localhost:8080 {
+    forward_auth localhost:8282 {
         uri /auth/verify
         copy_headers X-Auth-User X-Auth-Email X-Auth-Groups
     }
@@ -40,7 +40,7 @@ Append a `policy` query parameter to enforce a named policy. Only users in that 
 
 ```caddy
 app.example.com {
-    forward_auth localhost:8080 {
+    forward_auth localhost:8282 {
         uri /auth/verify?policy=my-policy
         copy_headers X-Auth-User X-Auth-Email X-Auth-Groups
     }

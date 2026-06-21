@@ -34,7 +34,7 @@ Your browser must support WebAuthn. All modern browsers (Chrome, Firefox, Safari
 
 You can register as many passkeys as you want. This is encouraged - register one on each device you regularly use. If one device is lost, the others still work.
 
-Admins can see which passkeys are registered for a user at `/admin/users/:id`. Individual passkeys can also be revoked from there.
+Admins can see which passkeys are registered for a user at `/users/:id`. Individual passkeys can also be revoked from there.
 
 ## Admin on a subdomain
 

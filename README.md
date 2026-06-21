@@ -90,12 +90,14 @@ http:
   middlewares:
     gk-auth:
       forwardAuth:
-        address: "https://auth.example.com/auth/verify"
+        address: "http://gatekeeper:8282/auth/verify"
         authResponseHeaders:
           - X-Auth-User
           - X-Auth-Email
           - X-Auth-Groups
 ```
+
+Point `address` directly at the GateKeeper container on its public port (`8282`) - a Docker service name, private IP, or Tailscale address. Do not route it through your public `auth.example.com`, or the ForwardAuth request's `X-Forwarded-Host` gets rewritten and the post-login redirect sends users to their profile instead of the app.
 
 On success, GateKeeper passes `X-Auth-User` (UUID), `X-Auth-Email`, and `X-Auth-Groups` (comma-separated group names) to the upstream app.
 
@@ -113,7 +115,7 @@ To restrict a route to a specific access policy, append `?policy=<name>` to the 
 | `SECRET_KEY` | Yes | - | 32+ character secret. Signs sessions and encrypts TOTP secrets. |
 | `PORT` | No | `8282` | Public HTTP port (login, OIDC, ForwardAuth). |
 | `ADMIN_PORT` | No | `8283` | Admin-only HTTP port. Never expose publicly - route via a private reverse proxy. |
-| `ADMIN_URL` | No | - | Full URL of the admin panel (e.g. `https://admin.auth.example.com`). Required when admin runs on a different domain - enables passkeys on the admin panel. |
+| `ADMIN_URL` | No | - | Full URL of the admin panel (e.g. `https://admin.auth.example.com`). Set when admin runs on its own subdomain - enables admin passkeys. Must be under the same registrable domain as `BASE_URL`. |
 | `ADMIN_BASE_PATH` | No | - | Serve the admin under a path prefix (e.g. `/admin`) instead of the root. Leave empty when admin has its own domain. |
 | `DB_PATH` | No | `/data/gatekeeper.db` | SQLite database path. |
 | `COOKIE_DOMAIN` | No | - | Cookie domain for cross-subdomain sharing, e.g. `.example.com`. |
