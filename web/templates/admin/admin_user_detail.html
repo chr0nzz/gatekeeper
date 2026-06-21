@@ -1,6 +1,6 @@
 {{template "admin_base" .}}
 {{define "title"}}{{.User.Email}} - GateKeeper Admin{{end}}
-{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/users">Users</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.User.Email}}</b>{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="{{$.AdminBase}}/users">Users</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.User.Email}}</b>{{end}}
 {{define "content"}}
 <div class="page-head">
   <div style="display:flex;align-items:center;gap:14px">
@@ -32,7 +32,7 @@
 <div class="alert alert-warn" style="margin-bottom:14px">
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22zM12 9v5M12 18v.5"/></svg>
   <div><b>Locked out</b><p>Too many OTP failures. Auto-unlocks after the lockout period, or unlock now.</p></div>
-  <form method="POST" action="/admin/users/{{.User.ID}}/unlock" style="margin-left:auto">
+  <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/unlock" style="margin-left:auto">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <button type="submit" class="btn btn-warning btn-sm">Unlock now</button>
   </form>
@@ -77,7 +77,7 @@
           <div style="font-size:12.5px;font-weight:600">Set password</div>
           <div style="font-size:11.5px;color:var(--tx-2)">Replace this user's password. Signs them out everywhere.</div>
         </div>
-        <form method="POST" action="/admin/users/{{.User.ID}}/password" style="display:flex;gap:6px;align-items:center">
+        <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/password" style="display:flex;gap:6px;align-items:center">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="12+ chars" style="height:28px;max-width:160px;font-size:12px">
           <button type="submit" class="btn btn-ghost btn-sm">Set</button>
@@ -88,7 +88,7 @@
           <div style="font-size:12.5px;font-weight:600">Send password reset email</div>
           <div style="font-size:11.5px;color:var(--tx-2)">Link expires in 30 minutes. Single-use.</div>
         </div>
-        <form method="POST" action="/admin/users/{{.User.ID}}/reset-email">
+        <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/reset-email">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <button type="submit" class="btn btn-ghost btn-sm">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
@@ -101,7 +101,7 @@
           <div style="font-size:12.5px;font-weight:600">Revoke all sessions</div>
           <div style="font-size:11.5px;color:var(--tx-2)">Ends all {{.User.Sessions}} active sessions immediately.</div>
         </div>
-        <form method="POST" action="/admin/users/{{.User.ID}}/revoke-sessions">
+        <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/revoke-sessions">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <button type="submit" class="btn btn-warning btn-sm">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM5 5l14 14"/></svg>
@@ -114,7 +114,7 @@
           <div style="font-size:12.5px;font-weight:600">Toggle passwordless</div>
           <div style="font-size:11.5px;color:var(--tx-2)">{{if .User.PasswordlessEnabled}}Currently can sign in with email code only.{{else}}Allow sign-in with email code, no password.{{end}}</div>
         </div>
-        <form method="POST" action="/admin/users/{{.User.ID}}/passwordless">
+        <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/passwordless">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="enabled" value="{{if .User.PasswordlessEnabled}}0{{else}}1{{end}}">
           <button type="submit" class="btn btn-ghost btn-sm">{{if .User.PasswordlessEnabled}}Disable{{else}}Enable{{end}}</button>
@@ -126,7 +126,7 @@
           <div style="font-size:12.5px;font-weight:600">Reset TOTP</div>
           <div style="font-size:11.5px;color:var(--tx-2)">Removes their authenticator enrollment and recovery codes.</div>
         </div>
-        <form method="POST" action="/admin/users/{{.User.ID}}/revoke-totp">
+        <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/revoke-totp">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <button type="submit" class="btn btn-warning btn-sm">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.6-6.1L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5"/></svg>
@@ -160,12 +160,12 @@
         <td style="color:var(--tx-3);font-size:12px">{{if .Group.Description}}{{.Group.Description}}{{end}}</td>
         <td style="width:100px;text-align:right">
           {{if .IsMember}}
-          <form method="POST" action="/admin/users/{{$.User.ID}}/groups/{{.Group.ID}}/remove" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/users/{{$.User.ID}}/groups/{{.Group.ID}}/remove" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">Remove</button>
           </form>
           {{else}}
-          <form method="POST" action="/admin/users/{{$.User.ID}}/groups/{{.Group.ID}}/add" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/users/{{$.User.ID}}/groups/{{.Group.ID}}/add" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-ghost btn-xs">Add</button>
           </form>
@@ -224,7 +224,7 @@
     <h2>Promote to admin</h2>
     <p>Set a password for the new admin account. The email will be <b>{{.User.Email}}</b>.</p>
   </div>
-  <form method="POST" action="/admin/users/{{.User.ID}}/make-admin">
+  <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/make-admin">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -257,12 +257,12 @@
         <div style="font-size:11.5px;color:var(--tx-2)">{{if .User.Disabled}}User can sign in again. No data is lost.{{else}}User can no longer sign in. Sessions revoked. Reversible.{{end}}</div>
       </div>
       {{if .User.Disabled}}
-      <form method="POST" action="/admin/users/{{.User.ID}}/enable">
+      <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/enable">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit" class="btn btn-primary btn-sm">Enable</button>
       </form>
       {{else}}
-      <form method="POST" action="/admin/users/{{.User.ID}}/disable">
+      <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/disable">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit" class="btn btn-danger btn-sm">Disable</button>
       </form>
@@ -273,7 +273,7 @@
         <div style="font-size:12.5px;font-weight:600">Delete user</div>
         <div style="font-size:11.5px;color:var(--tx-2)">Permanently removes the account, sessions, and credentials. Cannot be undone.</div>
       </div>
-      <form method="POST" action="/admin/users/{{.User.ID}}/delete">
+      <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/delete">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{.User.Email}}? This cannot be undone.')">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>

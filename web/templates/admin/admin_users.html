@@ -37,14 +37,14 @@
       <td style="color:var(--tx-2);font-size:12px">{{unixdate .CreatedAt}}</td>
       <td>
         <div class="row-actions">
-          <form method="POST" action="/admin/users/{{.ID}}/approve" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/users/{{.ID}}/approve" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--ok)">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6 9 17l-5-5"/></svg>
               Approve
             </button>
           </form>
-          <form method="POST" action="/admin/users/{{.ID}}/reject" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/users/{{.ID}}/reject" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Reject and delete this account request?')">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -101,7 +101,7 @@
       </td>
       <td>
         <div>
-          <a href="/admin/users/{{.ID}}" style="font-weight:500;color:var(--tx-0)">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</a>
+          <a href="{{$.AdminBase}}/users/{{.ID}}" style="font-weight:500;color:var(--tx-0)">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Email}}{{end}}</a>
           {{if .DisplayName}}<div style="font-size:11px;color:var(--tx-3)">{{.Email}}</div>{{end}}
         </div>
       </td>
@@ -124,7 +124,7 @@
       </td>
       <td>
         <div class="row-actions">
-          <a href="/admin/users/{{.ID}}" class="btn btn-ghost btn-xs">
+          <a href="{{$.AdminBase}}/users/{{.ID}}" class="btn btn-ghost btn-xs">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
           <button class="btn btn-ghost btn-xs" data-copy="{{.ID}}" title="Copy user ID">
@@ -156,7 +156,7 @@
     <h2>New user</h2>
     <p>Create an account with a password or email-code-only sign in.</p>
   </div>
-  <form method="POST" action="/admin/users">
+  <form method="POST" action="{{$.AdminBase}}/users">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">

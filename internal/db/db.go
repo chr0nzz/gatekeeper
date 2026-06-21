@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"os"
 
 	_ "modernc.org/sqlite"
 )
@@ -13,6 +14,9 @@ var migrations embed.FS
 
 // Open opens the SQLite database and runs all pending migrations.
 func Open(path string) (*sql.DB, error) {
+	if err := applyPendingRestore(path); err != nil {
+		return nil, fmt.Errorf("apply restore: %w", err)
+	}
 	db, err := sql.Open("sqlite", path+"?_journal=WAL&_timeout=5000&_fk=true")
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
@@ -23,6 +27,21 @@ func Open(path string) (*sql.DB, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return db, nil
+}
+
+// applyPendingRestore swaps in a restored database written by the backup restore handler.
+// If <path>.restore exists, it replaces the live database and clears stale WAL sidecar files.
+func applyPendingRestore(path string) error {
+	restorePath := path + ".restore"
+	if _, err := os.Stat(restorePath); err != nil {
+		return nil
+	}
+	for _, sidecar := range []string{path, path + "-wal", path + "-shm"} {
+		if err := os.Remove(sidecar); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return os.Rename(restorePath, path)
 }
 
 func migrate(db *sql.DB) error {

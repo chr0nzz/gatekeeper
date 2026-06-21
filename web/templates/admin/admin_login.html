@@ -50,7 +50,7 @@
 
     {{if .Error}}<div class="alert alert-err" style="margin-bottom:16px"><b>{{.Error}}</b></div>{{end}}
 
-    <form method="POST" action="/admin/login" style="margin-top:4px">
+    <form method="POST" action="{{$.AdminBase}}/login" style="margin-top:4px">
       <label class="field">
         <span class="field-label">Email address</span>
         <input class="input" type="email" name="email" required autofocus autocomplete="username" placeholder="admin@example.com">
@@ -86,7 +86,7 @@
     btn.disabled = true;
     btn.textContent = 'Waiting for passkey…';
     try {
-      var beginRes = await fetch('/admin/login/passkey/begin', {method:'POST'});
+      var beginRes = await fetch('{{$.AdminBase}}/login/passkey/begin', {method:'POST'});
       if(!beginRes.ok) throw new Error('Failed to begin');
       var sessID = beginRes.headers.get('X-Passkey-Session');
       var options = await beginRes.json();
@@ -106,13 +106,13 @@
           userHandle: cred.response.userHandle ? bufToB64(cred.response.userHandle) : null
         }
       };
-      var finishRes = await fetch('/admin/login/passkey/finish', {
+      var finishRes = await fetch('{{$.AdminBase}}/login/passkey/finish', {
         method:'POST',
         headers:{'Content-Type':'application/json','X-Passkey-Session':sessID},
         body: JSON.stringify(body)
       });
       if(!finishRes.ok) throw new Error('Authentication failed');
-      var redirect = finishRes.headers.get('X-Redirect') || '/admin';
+      var redirect = finishRes.headers.get('X-Redirect') || '{{$.AdminBase}}/';
       window.location.href = redirect;
     } catch(e) {
       btn.disabled = false;

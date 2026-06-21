@@ -1,7 +1,9 @@
 package admin
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -54,7 +56,7 @@ func (h *Handlers) PostBackupSettings(w http.ResponseWriter, r *http.Request) {
 	set("backup_schedule", r.FormValue("backup_schedule"))
 	set("backup_retention", r.FormValue("backup_retention"))
 
-	http.Redirect(w, r, "/admin/backups?ok=Settings+saved", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase + "/backups?ok=Settings+saved", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostBackupNow(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +67,7 @@ func (h *Handlers) PostBackupNow(w http.ResponseWriter, r *http.Request) {
 
 	storage := gkbackup.BuildStorage(h.settings)
 	if storage == nil {
-		http.Redirect(w, r, "/admin/backups?err=Configure+storage+before+running+a+backup", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase + "/backups?err=Configure+storage+before+running+a+backup", http.StatusSeeOther)
 		return
 	}
 
@@ -76,12 +78,12 @@ func (h *Handlers) PostBackupNow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := gkbackup.RunBackup(r.Context(), h.db, h.dbPath, []byte(h.secretKey), storage, h.backups, retention); err != nil {
-		http.Redirect(w, r, "/admin/backups?err="+encodeMsg(err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg(err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	h.auditLog.Log(r.Context(), "backup.created", "", h.adminIDFromRequest(r), r.RemoteAddr, "manual")
-	http.Redirect(w, r, "/admin/backups?ok=Backup+completed+successfully", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase + "/backups?ok=Backup+completed+successfully", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetBackupDownload(w http.ResponseWriter, r *http.Request) {
@@ -125,32 +127,78 @@ func (h *Handlers) PostBackupRestore(w http.ResponseWriter, r *http.Request) {
 
 	storage := gkbackup.BuildStorage(h.settings)
 	if storage == nil {
-		http.Redirect(w, r, "/admin/backups?err=Storage+not+configured", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase + "/backups?err=Storage+not+configured", http.StatusSeeOther)
 		return
 	}
 
 	encrypted, err := storage.Download(r.Context(), rec.Name)
 	if err != nil {
-		http.Redirect(w, r, "/admin/backups?err="+encodeMsg("Download failed: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg("Download failed: "+err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	plain, err := gkbackup.Decrypt(encrypted, []byte(h.secretKey))
 	if err != nil {
-		http.Redirect(w, r, "/admin/backups?err="+encodeMsg("Decrypt failed - wrong SECRET_KEY or corrupt backup"), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg("Decrypt failed - wrong SECRET_KEY or corrupt backup"), http.StatusSeeOther)
 		return
 	}
 
 	restorePath := h.dbPath + ".restore"
 	if err := os.WriteFile(restorePath, plain, 0600); err != nil {
-		http.Redirect(w, r, "/admin/backups?err="+encodeMsg("Write failed: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg("Write failed: "+err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	h.auditLog.Log(r.Context(), "backup.restored", "", h.adminIDFromRequest(r), r.RemoteAddr, rec.Name)
 
-	http.Redirect(w, r, "/admin/backups?ok="+encodeMsg(
-		"Restore file written to "+restorePath+". Stop GateKeeper, rename it to "+h.dbPath+", then restart to complete the restore.",
+	http.Redirect(w, r, h.adminBase + "/backups?ok="+encodeMsg(
+		"Restore staged. Restart GateKeeper now to complete the restore - the backup is applied automatically on startup. All sessions will be reset.",
+	), http.StatusSeeOther)
+}
+
+// PostBackupUpload accepts an encrypted backup file, decrypts it, and stages it for restore on next restart.
+func (h *Handlers) PostBackupUpload(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "invalid CSRF token", http.StatusForbidden)
+		return
+	}
+
+	if err := r.ParseMultipartForm(64 << 20); err != nil {
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Upload too large or malformed"), http.StatusSeeOther)
+		return
+	}
+	file, _, err := r.FormFile("backup")
+	if err != nil {
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("No file uploaded"), http.StatusSeeOther)
+		return
+	}
+	defer file.Close()
+
+	encrypted, err := io.ReadAll(file)
+	if err != nil {
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Read failed: "+err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	plain, err := gkbackup.Decrypt(encrypted, []byte(h.secretKey))
+	if err != nil {
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Decrypt failed - this backup was not encrypted with the current SECRET_KEY, or the file is corrupt"), http.StatusSeeOther)
+		return
+	}
+	if !bytes.HasPrefix(plain, []byte("SQLite format 3\x00")) {
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Decrypted file is not a valid GateKeeper database"), http.StatusSeeOther)
+		return
+	}
+
+	if err := os.WriteFile(h.dbPath+".restore", plain, 0600); err != nil {
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Write failed: "+err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	h.auditLog.Log(r.Context(), "backup.uploaded", "", h.adminIDFromRequest(r), r.RemoteAddr, "")
+
+	http.Redirect(w, r, h.adminBase+"/backups?ok="+encodeMsg(
+		"Backup uploaded and staged. Restart GateKeeper now to complete the restore. All sessions will be reset.",
 	), http.StatusSeeOther)
 }
 
@@ -174,7 +222,7 @@ func (h *Handlers) PostBackupDelete(w http.ResponseWriter, r *http.Request) {
 
 	h.backups.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), "backup.deleted", "", h.adminIDFromRequest(r), r.RemoteAddr, rec.Name)
-	http.Redirect(w, r, "/admin/backups?ok=Backup+deleted", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase + "/backups?ok=Backup+deleted", http.StatusSeeOther)
 }
 
 func encodeMsg(s string) string {

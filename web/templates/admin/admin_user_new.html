@@ -1,6 +1,6 @@
 {{template "admin_base" .}}
 {{define "title"}}New user - GateKeeper Admin{{end}}
-{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/users">Users</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>New user</b>{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="{{$.AdminBase}}/users">Users</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>New user</b>{{end}}
 {{define "content"}}
 <div class="page-head">
   <div>
@@ -11,7 +11,7 @@
 {{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
 <div class="card" style="max-width:600px">
   <div class="card-body">
-    <form method="POST" action="/admin/users">
+    <form method="POST" action="{{$.AdminBase}}/users">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label class="field">
         <span class="field-label">Email address</span>
@@ -45,7 +45,7 @@
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           Create user
         </button>
-        <a href="/admin/users" class="btn btn-quiet">Cancel</a>
+        <a href="{{$.AdminBase}}/users" class="btn btn-quiet">Cancel</a>
       </div>
     </form>
   </div>

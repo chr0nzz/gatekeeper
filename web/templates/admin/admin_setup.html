@@ -22,7 +22,7 @@
     <h1>Create admin account</h1>
     <p class="lede">You're running GateKeeper for the first time. Set up your admin credentials to get started.</p>
     {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
-    <form method="POST" action="/admin/setup" style="margin-top:4px">
+    <form method="POST" action="{{$.AdminBase}}/setup" style="margin-top:4px">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label class="field">
         <span class="field-label">Admin email</span>

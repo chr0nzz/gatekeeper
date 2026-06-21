@@ -46,13 +46,13 @@
       </td>
       <td>
         <div class="row-actions">
-          <form method="POST" action="/admin/webhooks/{{.ID}}/test" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/webhooks/{{.ID}}/test" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-ghost btn-xs" title="Send test">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
           </form>
-          <form method="POST" action="/admin/webhooks/{{.ID}}/toggle" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/webhooks/{{.ID}}/toggle" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-ghost btn-xs" title="{{if .Enabled}}Disable{{else}}Enable{{end}}">
               {{if .Enabled}}<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
@@ -62,7 +62,7 @@
           <button class="btn btn-ghost btn-xs" data-open-dialog="edit-wh-{{.ID}}" title="Edit">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11-4-4L4 16zM14 5l4 4"/></svg>
           </button>
-          <form method="POST" action="/admin/webhooks/{{.ID}}/delete" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/webhooks/{{.ID}}/delete" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete {{.Name}}?')">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -81,7 +81,7 @@
   <div class="modal-head">
     <h2>{{.Name}}</h2>
   </div>
-  <form method="POST" action="/admin/webhooks/{{.ID}}/edit" class="wh-form" data-events="{{.Events}}">
+  <form method="POST" action="{{$.AdminBase}}/webhooks/{{.ID}}/edit" class="wh-form" data-events="{{.Events}}">
     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
     <input type="hidden" name="events" class="events-out" value="{{.Events}}">
     <div class="modal-body">
@@ -158,7 +158,7 @@
     <h2>Add webhook</h2>
     <p>Send notifications to an external service when events occur.</p>
   </div>
-  <form method="POST" action="/admin/webhooks" class="wh-form" data-events="all">
+  <form method="POST" action="{{$.AdminBase}}/webhooks" class="wh-form" data-events="all">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <input type="hidden" name="events" class="events-out" value="all">
     <div class="modal-body">

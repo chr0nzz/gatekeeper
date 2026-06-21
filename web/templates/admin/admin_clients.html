@@ -8,7 +8,7 @@
     <p class="sub">Apps that authenticate users through GateKeeper.</p>
   </div>
   <div class="head-actions">
-    <a href="/admin/integrations" class="btn btn-ghost btn-sm">
+    <a href="{{$.AdminBase}}/integrations" class="btn btn-ghost btn-sm">
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
       Integrations
     </a>
@@ -69,16 +69,16 @@
       </td>
       <td>
         <div class="row-actions">
-          <button class="btn btn-ghost btn-xs" title="Test client" data-test-client="/admin/clients/{{.ClientID}}/test">
+          <button class="btn btn-ghost btn-xs" title="Test client" data-test-client="{{$.AdminBase}}/clients/{{.ClientID}}/test">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
           </button>
-          <a href="/admin/clients/{{.ClientID}}/claims" class="btn btn-ghost btn-xs" title="Custom claims">
+          <a href="{{$.AdminBase}}/clients/{{.ClientID}}/claims" class="btn btn-ghost btn-xs" title="Custom claims">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M7 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 4h6v4H9z"/></svg>
           </a>
           <button class="btn btn-ghost btn-xs" data-open-dialog="edit-client-{{.ClientID}}">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11-4-4L4 16zM14 5l4 4"/></svg>
           </button>
-          <form method="POST" action="/admin/clients/{{.ClientID}}/delete">
+          <form method="POST" action="{{$.AdminBase}}/clients/{{.ClientID}}/delete">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete client {{.ClientID}}?')">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <h2>Register new OIDC client</h2>
     <p>Configures an application to authenticate users via GateKeeper.</p>
   </div>
-  <form method="POST" action="/admin/clients">
+  <form method="POST" action="{{$.AdminBase}}/clients">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <h2>Edit {{.Name}}</h2>
     <p>Client ID <span class="tag" style="font-size:11px">{{.ClientID}}</span> cannot be changed.</p>
   </div>
-  <form method="POST" action="/admin/clients/{{.ClientID}}/edit">
+  <form method="POST" action="{{$.AdminBase}}/clients/{{.ClientID}}/edit">
     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
     <div class="modal-body">
       <label class="field">

@@ -522,26 +522,29 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 	h.redirect(w, r, sessID, data.RedirectURI)
 }
 
-// redirect sends the user to target, using cross-domain token handoff when
-// the target is outside the shared cookie domain.
-func (h *Handlers) redirect(w http.ResponseWriter, r *http.Request, sessID, target string) {
+// redirectURL resolves where a freshly authenticated session should land,
+// using a cross-domain token handoff when the target is outside the shared cookie domain.
+func (h *Handlers) redirectURL(sessID, target string) string {
 	if target == "" {
 		target = "/"
 	}
 	if h.needsCrossDomain(target) {
-		token := auth.GenerateCrossToken(sessID, h.secretKey)
 		u, err := url.Parse(target)
 		if err != nil {
-			http.Redirect(w, r, "/", http.StatusFound)
-			return
+			return "/"
 		}
-		cb := u.Scheme + "://" + u.Host + "/_gk/auth" +
+		token := auth.GenerateCrossToken(sessID, h.secretKey)
+		return u.Scheme + "://" + u.Host + "/_gk/auth" +
 			"?token=" + url.QueryEscape(token) +
 			"&redirect=" + url.QueryEscape(u.RequestURI())
-		http.Redirect(w, r, cb, http.StatusFound)
-		return
 	}
-	http.Redirect(w, r, target, http.StatusFound)
+	return target
+}
+
+// redirect sends the user to target, using cross-domain token handoff when
+// the target is outside the shared cookie domain.
+func (h *Handlers) redirect(w http.ResponseWriter, r *http.Request, sessID, target string) {
+	http.Redirect(w, r, h.redirectURL(sessID, target), http.StatusFound)
 }
 
 // needsCrossDomain returns true when the target URL's host is not covered by

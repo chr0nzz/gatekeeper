@@ -21,71 +21,71 @@
 <body>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <a href="/admin" style="text-decoration:none">
+    <a href="{{$.AdminBase}}/" style="text-decoration:none">
       <div class="gk-mark" style="padding:4px 6px 18px">
         <div class="gk-glyph"><i></i></div>
         <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
       </div>
     </a>
     <div class="side-section">
-      <a class="side-link {{if eq .ActivePage "dashboard"}}active{{end}}" href="/admin" data-tooltip="Dashboard">
+      <a class="side-link {{if eq .ActivePage "dashboard"}}active{{end}}" href="{{$.AdminBase}}/" data-tooltip="Dashboard">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
         <span>Dashboard</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "users"}}active{{end}}" href="/admin/users" data-tooltip="Users">
+      <a class="side-link {{if eq .ActivePage "users"}}active{{end}}" href="{{$.AdminBase}}/users" data-tooltip="Users">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
         <span>Users</span>
         {{if .SidebarUserCount}}<span class="count">{{.SidebarUserCount}}</span>{{end}}
       </a>
-      <a class="side-link {{if eq .ActivePage "invites"}}active{{end}}" href="/admin/invites" data-tooltip="Invites">
+      <a class="side-link {{if eq .ActivePage "invites"}}active{{end}}" href="{{$.AdminBase}}/invites" data-tooltip="Invites">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         <span>Invites</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "clients"}}active{{end}}" href="/admin/clients" data-tooltip="OIDC Clients">
+      <a class="side-link {{if eq .ActivePage "clients"}}active{{end}}" href="{{$.AdminBase}}/clients" data-tooltip="OIDC Clients">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
         <span>OIDC Clients</span>
         {{if .SidebarClientCount}}<span class="count">{{.SidebarClientCount}}</span>{{end}}
       </a>
-      <a class="side-link {{if eq .ActivePage "policies"}}active{{end}}" href="/admin/policies" data-tooltip="Policies">
+      <a class="side-link {{if eq .ActivePage "policies"}}active{{end}}" href="{{$.AdminBase}}/policies" data-tooltip="Policies">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
         <span>Policies</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "groups"}}active{{end}}" href="/admin/groups" data-tooltip="Groups">
+      <a class="side-link {{if eq .ActivePage "groups"}}active{{end}}" href="{{$.AdminBase}}/groups" data-tooltip="Groups">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Groups</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit" data-tooltip="Audit Log">
+      <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="{{$.AdminBase}}/audit" data-tooltip="Audit Log">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
         <span>Audit Log</span>
       </a>
     </div>
     <div class="side-section">
       <div class="side-label">System</div>
-      <a class="side-link {{if eq .ActivePage "integrations"}}active{{end}}" href="/admin/integrations" data-tooltip="Integrations">
+      <a class="side-link {{if eq .ActivePage "integrations"}}active{{end}}" href="{{$.AdminBase}}/integrations" data-tooltip="Integrations">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
         <span>Integrations</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "social"}}active{{end}}" href="/admin/social" data-tooltip="Social login">
+      <a class="side-link {{if eq .ActivePage "social"}}active{{end}}" href="{{$.AdminBase}}/social" data-tooltip="Social login">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
         <span>Social login</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="/admin/webhooks" data-tooltip="Webhooks">
+      <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="{{$.AdminBase}}/webhooks" data-tooltip="Webhooks">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2"/></svg>
         <span>Webhooks</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "backups"}}active{{end}}" href="/admin/backups" data-tooltip="Backups">
+      <a class="side-link {{if eq .ActivePage "backups"}}active{{end}}" href="{{$.AdminBase}}/backups" data-tooltip="Backups">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         <span>Backups</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "admins"}}active{{end}}" href="/admin/admins" data-tooltip="Admins">
+      <a class="side-link {{if eq .ActivePage "admins"}}active{{end}}" href="{{$.AdminBase}}/admins" data-tooltip="Admins">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/><path d="M19 8v6M22 11h-6"/></svg>
         <span>Admins</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="/admin/profile" data-tooltip="My account">
+      <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="{{$.AdminBase}}/profile" data-tooltip="My account">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/></svg>
         <span>My account</span>
       </a>
-      <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings" data-tooltip="Settings">
+      <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="{{$.AdminBase}}/settings" data-tooltip="Settings">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
         <span>Settings</span>
       </a>
@@ -95,7 +95,7 @@
         <svg id="sidebar-toggle-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/></svg>
         <span class="sidebar-toggle-label">Collapse</span>
       </button>
-      <form method="POST" action="/admin/logout">
+      <form method="POST" action="{{$.AdminBase}}/logout">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit" class="btn btn-quiet btn-sm sidebar-signout" style="width:100%;justify-content:flex-start;gap:8px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:14px;height:14px;flex-shrink:0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h4M15 17l5-5-5-5M20 12H9"/></svg>
@@ -103,7 +103,7 @@
         </button>
       </form>
       {{if .AdminEmail}}
-      <a href="/admin/profile" style="text-decoration:none;margin-top:6px;display:block">
+      <a href="{{$.AdminBase}}/profile" style="text-decoration:none;margin-top:6px;display:block">
         <div class="user-chip">
           <div class="av">{{slice .AdminEmail 0 2}}</div>
           <div class="meta">
@@ -119,7 +119,7 @@
 
   <div class="main">
     <header class="topbar">
-      <a href="/admin" class="topbar-logo" style="text-decoration:none">
+      <a href="{{$.AdminBase}}/" class="topbar-logo" style="text-decoration:none">
         <div class="gk-mark" style="padding:0">
           <div class="gk-glyph"><i></i></div>
           <div class="gk-name"><b>Gate</b><span>Keeper</span></div>
@@ -182,70 +182,70 @@
     </button>
   </div>
   <div class="side-section">
-    <a class="side-link {{if eq .ActivePage "dashboard"}}active{{end}}" href="/admin">
+    <a class="side-link {{if eq .ActivePage "dashboard"}}active{{end}}" href="{{$.AdminBase}}/">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
       <span>Dashboard</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "users"}}active{{end}}" href="/admin/users">
+    <a class="side-link {{if eq .ActivePage "users"}}active{{end}}" href="{{$.AdminBase}}/users">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 0a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-7 1.5-7 5v1h10v-1c0-1.5.7-2.7 1.8-3.6C12 16.6 10.4 16 8 16zm8 0c-.6 0-1.2 0-1.7.1 1.8 1.2 2.7 2.9 2.7 4.9V22h6v-1c0-3.5-4-5-7-5z"/></svg>
       <span>Users</span>
       {{if .SidebarUserCount}}<span class="count">{{.SidebarUserCount}}</span>{{end}}
     </a>
-    <a class="side-link {{if eq .ActivePage "invites"}}active{{end}}" href="/admin/invites">
+    <a class="side-link {{if eq .ActivePage "invites"}}active{{end}}" href="{{$.AdminBase}}/invites">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       <span>Invites</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "clients"}}active{{end}}" href="/admin/clients">
+    <a class="side-link {{if eq .ActivePage "clients"}}active{{end}}" href="{{$.AdminBase}}/clients">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>
       <span>OIDC Clients</span>
       {{if .SidebarClientCount}}<span class="count">{{.SidebarClientCount}}</span>{{end}}
     </a>
-    <a class="side-link {{if eq .ActivePage "policies"}}active{{end}}" href="/admin/policies">
+    <a class="side-link {{if eq .ActivePage "policies"}}active{{end}}" href="{{$.AdminBase}}/policies">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
       <span>Policies</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "groups"}}active{{end}}" href="/admin/groups">
+    <a class="side-link {{if eq .ActivePage "groups"}}active{{end}}" href="{{$.AdminBase}}/groups">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Groups</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="/admin/audit">
+    <a class="side-link {{if eq .ActivePage "audit"}}active{{end}}" href="{{$.AdminBase}}/audit">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
       <span>Audit Log</span>
     </a>
   </div>
   <div class="side-section">
     <div class="side-label">System</div>
-    <a class="side-link {{if eq .ActivePage "integrations"}}active{{end}}" href="/admin/integrations">
+    <a class="side-link {{if eq .ActivePage "integrations"}}active{{end}}" href="{{$.AdminBase}}/integrations">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
       <span>Integrations</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "social"}}active{{end}}" href="/admin/social">
+    <a class="side-link {{if eq .ActivePage "social"}}active{{end}}" href="{{$.AdminBase}}/social">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
       <span>Social login</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="/admin/webhooks">
+    <a class="side-link {{if eq .ActivePage "webhooks"}}active{{end}}" href="{{$.AdminBase}}/webhooks">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-6-6M6 8a6 6 0 0 1 6-6m0 0v4M9 21h6M12 17v4M5 8H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-2"/></svg>
       <span>Webhooks</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "backups"}}active{{end}}" href="/admin/backups">
+    <a class="side-link {{if eq .ActivePage "backups"}}active{{end}}" href="{{$.AdminBase}}/backups">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       <span>Backups</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "admins"}}active{{end}}" href="/admin/admins">
+    <a class="side-link {{if eq .ActivePage "admins"}}active{{end}}" href="{{$.AdminBase}}/admins">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/><path d="M19 8v6M22 11h-6"/></svg>
       <span>Admins</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="/admin/profile">
+    <a class="side-link {{if eq .ActivePage "profile"}}active{{end}}" href="{{$.AdminBase}}/profile">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6v1H4z"/></svg>
       <span>My account</span>
     </a>
-    <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="/admin/settings">
+    <a class="side-link {{if eq .ActivePage "settings"}}active{{end}}" href="{{$.AdminBase}}/settings">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1A2 2 0 1 1 4 17l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1A2 2 0 1 1 7 4l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1A2 2 0 1 1 20 7l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
       <span>Settings</span>
     </a>
   </div>
   <div class="sidebar-foot">
-    <form method="POST" action="/admin/logout">
+    <form method="POST" action="{{$.AdminBase}}/logout">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-quiet btn-sm" style="width:100%;justify-content:flex-start;gap:8px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:14px;height:14px;flex-shrink:0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h4M15 17l5-5-5-5M20 12H9"/></svg>
@@ -253,7 +253,7 @@
       </button>
     </form>
     {{if .AdminEmail}}
-    <a href="/admin/profile" style="text-decoration:none;margin-top:6px;display:block">
+    <a href="{{$.AdminBase}}/profile" style="text-decoration:none;margin-top:6px;display:block">
       <div class="user-chip">
         <div class="av">{{slice .AdminEmail 0 2}}</div>
         <div class="meta">
@@ -311,6 +311,7 @@
   </div>
 </dialog>
 
+<script>window.GK_ADMIN_BASE = "{{$.AdminBase}}";</script>
 <script src="/static/js/theme.js"></script>
 <script src="/static/js/admin.js"></script>
 <script src="/static/js/admin_search.js"></script>
@@ -414,7 +415,7 @@
     var title   = document.getElementById('update-modal-title');
     if (loading) loading.style.display = 'block';
     if (notes)   notes.innerHTML = '';
-    fetch('/admin/api/version-check')
+    fetch('{{$.AdminBase}}/api/version-check')
       .then(function(r){ return r.json(); })
       .then(function(d) {
         if (loading) loading.style.display = 'none';
@@ -434,7 +435,7 @@
       .catch(function(){ if (loading) loading.textContent = 'Could not reach GitHub.'; });
   };
 
-  fetch('/admin/api/version-check')
+  fetch('{{$.AdminBase}}/api/version-check')
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if (d.has_update) {

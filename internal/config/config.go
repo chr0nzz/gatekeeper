@@ -9,8 +9,12 @@ import (
 // Config holds infrastructure-level configuration that cannot change without a restart.
 // Runtime settings (SMTP, session TTL, allowed domains) are managed in the admin UI.
 type Config struct {
-	Port    int    `env:"PORT" envDefault:"8080"`
-	BaseURL string `env:"BASE_URL,required"`
+	Port      int `env:"PORT" envDefault:"8282"`
+	AdminPort int `env:"ADMIN_PORT" envDefault:"8283"`
+
+	BaseURL       string `env:"BASE_URL,required"`
+	AdminURL      string `env:"ADMIN_URL"`
+	AdminBasePath string `env:"ADMIN_BASE_PATH"`
 
 	SecretKey string `env:"SECRET_KEY,required"`
 

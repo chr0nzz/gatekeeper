@@ -37,7 +37,7 @@
       <h3>Profile</h3>
     </div>
     <div class="card-body">
-      <form method="POST" action="/admin/profile/display-name">
+      <form method="POST" action="{{$.AdminBase}}/profile/display-name">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <label class="field">
           <span class="field-label">Display name</span>
@@ -69,7 +69,7 @@
     <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
       <div style="padding:12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:8px">
         <div style="font-size:12.5px;font-weight:600;margin-bottom:10px">Change password</div>
-        <form method="POST" action="/admin/profile/password" style="display:flex;flex-direction:column;gap:8px">
+        <form method="POST" action="{{$.AdminBase}}/profile/password" style="display:flex;flex-direction:column;gap:8px">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input class="input" type="password" name="current_password" required autocomplete="current-password" placeholder="Current password">
           <input class="input" type="password" name="new_password" required minlength="12" autocomplete="new-password" placeholder="New password (12+ chars)">
@@ -82,7 +82,7 @@
           <div style="font-size:12.5px;font-weight:600">Revoke other sessions</div>
           <div style="font-size:11.5px;color:var(--tx-2)">Signs you out everywhere except this browser.</div>
         </div>
-        <form method="POST" action="/admin/profile/revoke-sessions">
+        <form method="POST" action="{{$.AdminBase}}/profile/revoke-sessions">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <button type="submit" class="btn btn-warning btn-sm">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM5 5l14 14"/></svg>
@@ -101,7 +101,7 @@
     <h3>Authenticator app (TOTP)</h3>
     {{if not .EnrollTOTP}}
     <div class="head-actions">
-      <a href="/admin/profile/totp/enroll" class="btn btn-ghost btn-sm">
+      <a href="{{$.AdminBase}}/profile/totp/enroll" class="btn btn-ghost btn-sm">
         {{if .TOTPEnabled}}Re-enroll{{else}}Set up{{end}}
       </a>
     </div>
@@ -125,7 +125,7 @@
               </button>
             </div>
           </details>
-          <form method="POST" action="/admin/profile/totp/enroll">
+          <form method="POST" action="{{$.AdminBase}}/profile/totp/enroll">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <input type="hidden" name="secret" value="{{.Secret}}">
             <label class="field">
@@ -134,7 +134,7 @@
             </label>
             <div style="display:flex;gap:8px">
               <button type="submit" class="btn btn-primary btn-sm">Confirm and enable</button>
-              <a href="/admin/profile" class="btn btn-quiet btn-sm">Cancel</a>
+              <a href="{{$.AdminBase}}/profile" class="btn btn-quiet btn-sm">Cancel</a>
             </div>
           </form>
         </div>
@@ -147,7 +147,7 @@
         </div>
       </div>
       <div style="border-top:1px solid var(--bd-0);margin-top:16px;padding-top:14px">
-        <form method="POST" action="/admin/profile/totp/disable">
+        <form method="POST" action="{{$.AdminBase}}/profile/totp/disable">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <label class="field" style="margin-bottom:8px">
             <span class="field-label">Enter current code to remove</span>
@@ -162,7 +162,7 @@
           <div style="font-size:13px;font-weight:500;margin-bottom:2px">No authenticator enrolled</div>
           <div style="font-size:12px;color:var(--tx-2)">Add TOTP to protect your admin account with a second factor.</div>
         </div>
-        <a href="/admin/profile/totp/enroll" class="btn btn-ghost btn-sm">Set up</a>
+        <a href="{{$.AdminBase}}/profile/totp/enroll" class="btn btn-ghost btn-sm">Set up</a>
       </div>
     {{end}}
   </div>
@@ -173,7 +173,7 @@
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21v-1a5 5 0 0 1 5-5h2c.7 0 1.3.1 2 .3M19 13l-2 2 4 4-2 2-4-4-2 2v-4l4-4z"/></svg>
     <h3>Passkeys</h3>
     <div class="head-actions">
-      <a href="/admin/profile/passkey" class="btn btn-primary btn-sm">
+      <a href="{{$.AdminBase}}/profile/passkey" class="btn btn-primary btn-sm">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         Add passkey
       </a>
@@ -189,7 +189,7 @@
         <td style="font-weight:500">{{.Name}}</td>
         <td class="mono" style="color:var(--tx-2)">{{.CreatedAt}}</td>
         <td>
-          <form method="POST" action="/admin/profile/passkey/{{.ID}}/delete" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/profile/passkey/{{.ID}}/delete" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Remove this passkey?')">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -207,7 +207,7 @@
       </div>
       <h4>No passkeys registered</h4>
       <p>Passkeys let you sign in with Touch ID, Face ID, or a security key.</p>
-      <a href="/admin/profile/passkey" class="btn btn-primary btn-sm">
+      <a href="{{$.AdminBase}}/profile/passkey" class="btn btn-primary btn-sm">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
         Add passkey
       </a>
@@ -222,7 +222,7 @@
           <span class="field-label">Passkey name</span>
           <input class="input" type="text" id="gk-passkey-name" value="Admin passkey">
         </label>
-        <button id="gk-passkey-register-btn" data-begin="/admin/profile/passkey/begin" data-finish="/admin/profile/passkey/finish" class="btn btn-ghost btn-sm">Register</button>
+        <button id="gk-passkey-register-btn" data-begin="{{$.AdminBase}}/profile/passkey/begin" data-finish="{{$.AdminBase}}/profile/passkey/finish" class="btn btn-ghost btn-sm">Register</button>
       </div>
     </div>
     <script src="/static/js/passkey.js"></script>
@@ -276,7 +276,7 @@
     {{else}}
     <div style="font-size:12.5px;color:var(--tx-2);margin-bottom:14px">No API key generated yet.</div>
     {{end}}
-    <form method="POST" action="/admin/profile/api-key/rotate" {{if .APIKey}}onsubmit="return confirm('Generate a new key? The current key will stop working immediately.')"{{end}}>
+    <form method="POST" action="{{$.AdminBase}}/profile/api-key/rotate" {{if .APIKey}}onsubmit="return confirm('Generate a new key? The current key will stop working immediately.')"{{end}}>
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-ghost btn-sm">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>

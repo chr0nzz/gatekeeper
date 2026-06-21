@@ -35,3 +35,9 @@ Your browser must support WebAuthn. All modern browsers (Chrome, Firefox, Safari
 You can register as many passkeys as you want. This is encouraged - register one on each device you regularly use. If one device is lost, the others still work.
 
 Admins can see which passkeys are registered for a user at `/admin/users/:id`. Individual passkeys can also be revoked from there.
+
+## Admin on a subdomain
+
+Passkeys are bound to the host in `BASE_URL`. When the admin panel runs on its own subdomain (for example `admin.auth.example.com` while `BASE_URL` is `https://auth.example.com`), set the `ADMIN_URL` environment variable to that admin address. GateKeeper adds it to the list of allowed passkey origins so admin passkeys register and sign in correctly.
+
+The admin subdomain must sit under the same registrable domain as `BASE_URL` (both under `example.com` in the example above). Passkeys cannot be shared across entirely separate domains, such as `.app` and `.live`.

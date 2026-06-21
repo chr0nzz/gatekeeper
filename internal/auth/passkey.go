@@ -20,11 +20,12 @@ type PasskeyStore struct {
 }
 
 // NewPasskeyStore creates a PasskeyStore.
-func NewPasskeyStore(db *sql.DB, rpID, rpDisplayName, rpOrigin string) (*PasskeyStore, error) {
+func NewPasskeyStore(db *sql.DB, rpID, rpDisplayName, rpOrigin string, extraOrigins []string) (*PasskeyStore, error) {
+	origins := append([]string{rpOrigin}, extraOrigins...)
 	wauth, err := webauthn.New(&webauthn.Config{
 		RPID:          rpID,
 		RPDisplayName: rpDisplayName,
-		RPOrigins:     []string{rpOrigin},
+		RPOrigins:     origins,
 	})
 	if err != nil {
 		return nil, err

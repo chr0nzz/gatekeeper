@@ -35,7 +35,7 @@
         <span>Key rotation: <span style="color:var(--tx-2)">every 30 days</span></span>
         <span>Grant: <span style="color:var(--tx-2)">Authorization Code + PKCE only</span></span>
         <span>Scopes: <span class="tag" style="font-size:10px">openid</span> <span class="tag" style="font-size:10px">email</span> <span class="tag" style="font-size:10px">profile</span> <span class="tag" style="font-size:10px">offline_access</span></span>
-        <a href="/admin/clients" style="margin-left:auto;color:var(--ac);font-size:11.5px">Manage clients</a>
+        <a href="{{$.AdminBase}}/clients" style="margin-left:auto;color:var(--ac);font-size:11.5px">Manage clients</a>
       </div>
     </div>
 
@@ -80,7 +80,7 @@
         </div>
         <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
           On success GateKeeper sets <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-User</span>, <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-Email</span>, and <span style="font-family:var(--font-mono);color:var(--tx-2)">X-Auth-Groups</span> (comma-separated group names) headers on the forwarded request.
-          <span style="display:inline-block;margin-left:10px;padding-left:10px;border-left:1px solid var(--bd-1)">Using <a href="/admin/policies" style="color:var(--ac)">credential injection</a>? Also add <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> to <span style="font-family:var(--font-mono);color:var(--tx-2)">authResponseHeaders</span>.</span>
+          <span style="display:inline-block;margin-left:10px;padding-left:10px;border-left:1px solid var(--bd-1)">Using <a href="{{$.AdminBase}}/policies" style="color:var(--ac)">credential injection</a>? Also add <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> to <span style="font-family:var(--font-mono);color:var(--tx-2)">authResponseHeaders</span>.</span>
         </div>
       </div>
 
@@ -112,7 +112,7 @@
 }</pre>
         </div>
         <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
-          Requires <span style="font-family:var(--font-mono);color:var(--tx-2)">ngx_http_auth_request_module</span> - included in most Nginx builds. The <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> lines are only needed when using <a href="/admin/policies" style="color:var(--ac)">credential injection</a>.
+          Requires <span style="font-family:var(--font-mono);color:var(--tx-2)">ngx_http_auth_request_module</span> - included in most Nginx builds. The <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> lines are only needed when using <a href="{{$.AdminBase}}/policies" style="color:var(--ac)">credential injection</a>.
         </div>
       </div>
 
@@ -127,7 +127,7 @@
 }</pre>
         </div>
         <div style="padding:10px 16px;border-top:1px solid var(--bd-0);font-size:11.5px;color:var(--tx-3)">
-          Requires Caddy v2.5+ with the <span style="font-family:var(--font-mono);color:var(--tx-2)">forward_auth</span> directive. <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> is only forwarded when using <a href="/admin/policies" style="color:var(--ac)">credential injection</a>.
+          Requires Caddy v2.5+ with the <span style="font-family:var(--font-mono);color:var(--tx-2)">forward_auth</span> directive. <span style="font-family:var(--font-mono);color:var(--tx-2)">Authorization</span> is only forwarded when using <a href="{{$.AdminBase}}/policies" style="color:var(--ac)">credential injection</a>.
         </div>
       </div>
     </div>
@@ -146,7 +146,7 @@
         </div>
       </div>
       <div style="padding:14px 16px;border-bottom:1px solid var(--bd-0);background:var(--bg-2);font-size:12px;color:var(--tx-2);line-height:1.6">
-        Add <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1)">?policy=<i>name</i></span> to the verify URL. GateKeeper returns <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1)">403</span> if the user is not in that policy. Create and manage policies in <a href="/admin/policies" style="color:var(--ac)">Policies</a>.
+        Add <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1)">?policy=<i>name</i></span> to the verify URL. GateKeeper returns <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-1)">403</span> if the user is not in that policy. Create and manage policies in <a href="{{$.AdminBase}}/policies" style="color:var(--ac)">Policies</a>.
       </div>
 
       <div class="int-panel" data-panel="pol-traefik">

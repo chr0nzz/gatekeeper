@@ -40,10 +40,10 @@
       <td>{{.MemberCount}}</td>
       <td>
         <div class="row-actions">
-          <a href="/admin/groups/{{.ID}}" class="btn btn-ghost btn-xs">
+          <a href="{{$.AdminBase}}/groups/{{.ID}}" class="btn btn-ghost btn-xs">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
-          <form method="POST" action="/admin/groups/{{.ID}}/delete" style="display:inline">
+          <form method="POST" action="{{$.AdminBase}}/groups/{{.ID}}/delete" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete group {{.Name}}?')">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -76,7 +76,7 @@
     <h2>New group</h2>
     <p>Groups are included as a <code>groups</code> claim in OIDC tokens. Use them for role mapping in Grafana, Jellyfin, and other apps.</p>
   </div>
-  <form method="POST" action="/admin/groups">
+  <form method="POST" action="{{$.AdminBase}}/groups">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">

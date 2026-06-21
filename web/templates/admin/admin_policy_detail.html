@@ -1,6 +1,6 @@
 {{template "admin_base" .}}
 {{define "title"}}{{.Policy.Name}} - Policies - GateKeeper Admin{{end}}
-{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/policies">Policies</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.Policy.Name}}</b>{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="{{$.AdminBase}}/policies">Policies</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.Policy.Name}}</b>{{end}}
 {{define "content"}}
 <div class="page-head">
   <div>
@@ -8,7 +8,7 @@
     {{if .Policy.Description}}<p class="sub">{{.Policy.Description}}</p>{{end}}
   </div>
   <div class="head-actions">
-    <form method="POST" action="/admin/policies/{{.Policy.ID}}/delete">
+    <form method="POST" action="{{$.AdminBase}}/policies/{{.Policy.ID}}/delete">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-quiet btn-sm" style="color:var(--danger)" onclick="return confirm('Delete policy {{.Policy.Name}}? This cannot be undone.')">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -41,7 +41,7 @@
             {{if .DisplayName}}<div style="font-size:11px;color:var(--tx-3)">{{.Email}}</div>{{end}}
           </td>
           <td style="width:80px">
-            <form method="POST" action="/admin/policies/{{$.Policy.ID}}/members/{{.ID}}/remove">
+            <form method="POST" action="{{$.AdminBase}}/policies/{{$.Policy.ID}}/members/{{.ID}}/remove">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">Remove</button>
             </form>
@@ -62,7 +62,7 @@
       <div style="padding:16px 18px;border-bottom:1px solid var(--bd-0)">
         <div style="font-weight:600;font-size:13px">Add user</div>
       </div>
-      <form method="POST" action="/admin/policies/{{.Policy.ID}}/members" style="padding:16px 18px;display:flex;gap:8px;align-items:center">
+      <form method="POST" action="{{$.AdminBase}}/policies/{{.Policy.ID}}/members" style="padding:16px 18px;display:flex;gap:8px;align-items:center">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <select class="input" name="user_id" style="flex:1">
           <option value="">Select a user...</option>
@@ -106,7 +106,7 @@
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg>
           </button>
         </div>
-        <p style="font-size:12px;color:var(--tx-2);margin:12px 0 0">See the <a href="/admin/integrations" style="color:var(--ac)">Integrations</a> page for Traefik, Nginx, and Caddy config examples.</p>
+        <p style="font-size:12px;color:var(--tx-2);margin:12px 0 0">See the <a href="{{$.AdminBase}}/integrations" style="color:var(--ac)">Integrations</a> page for Traefik, Nginx, and Caddy config examples.</p>
       </div>
     </div>
 
@@ -121,13 +121,13 @@
         <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--bd-0);border-radius:6px;margin-bottom:12px">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ok)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg>
           <span style="font-size:12px;color:var(--tx-1)">Injecting as <span style="font-family:var(--font-mono);font-weight:600">{{.InjectUsername}}</span></span>
-          <form method="POST" action="/admin/policies/{{.Policy.ID}}/inject/clear" style="margin-left:auto">
+          <form method="POST" action="{{$.AdminBase}}/policies/{{.Policy.ID}}/inject/clear" style="margin-left:auto">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">Clear</button>
           </form>
         </div>
         {{end}}
-        <form method="POST" action="/admin/policies/{{.Policy.ID}}/inject">
+        <form method="POST" action="{{$.AdminBase}}/policies/{{.Policy.ID}}/inject">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
             <input class="input" type="text" name="inject_username" placeholder="Username" value="{{.InjectUsername}}" autocomplete="off">

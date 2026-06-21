@@ -65,7 +65,7 @@
       <td>
         {{if not .IsUsed}}
         <div class="row-actions">
-          <form method="POST" action="/admin/invites/{{.ID}}/revoke">
+          <form method="POST" action="{{$.AdminBase}}/invites/{{.ID}}/revoke">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Revoke this invite?')">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -101,7 +101,7 @@
     <h2>New invite</h2>
     <p>The link is single-use and expires after the chosen period. Email is optional - leave blank to allow any address.</p>
   </div>
-  <form method="POST" action="/admin/invites">
+  <form method="POST" action="{{$.AdminBase}}/invites">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">

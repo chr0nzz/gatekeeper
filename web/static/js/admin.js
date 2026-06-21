@@ -90,32 +90,33 @@ var GK = (function () {
 })();
 
 (function () {
+  var ADMIN_BASE = window.GK_ADMIN_BASE || '';
   var open = false;
   var sel = 0;
   var allItems = [];
   var debounceTimer = null;
 
   var navCommands = [
-    { group: 'Navigate', icon: 'dashboard',      label: 'Dashboard',       href: '/admin' },
-    { group: 'Navigate', icon: 'users',           label: 'Users',           href: '/admin/users' },
-    { group: 'Navigate', icon: 'clients',         label: 'OIDC Clients',    href: '/admin/clients' },
-    { group: 'Navigate', icon: 'policies',        label: 'Policies',        href: '/admin/policies' },
-    { group: 'Navigate', icon: 'groups',          label: 'Groups',          href: '/admin/groups' },
-    { group: 'Navigate', icon: 'invites',         label: 'Invites',         href: '/admin/invites' },
-    { group: 'Navigate', icon: 'audit',           label: 'Audit Log',       href: '/admin/audit' },
-    { group: 'Navigate', icon: 'integrations',    label: 'Integrations',    href: '/admin/integrations' },
-    { group: 'Navigate', icon: 'social',          label: 'Social login',    href: '/admin/social' },
-    { group: 'Navigate', icon: 'webhooks',        label: 'Webhooks',        href: '/admin/webhooks' },
-    { group: 'Navigate', icon: 'notifications',   label: 'Notifications',   href: '/admin/notifications' },
-    { group: 'Navigate', icon: 'backups',         label: 'Backups',         href: '/admin/backups' },
-    { group: 'Navigate', icon: 'admins',          label: 'Admins',          href: '/admin/admins' },
-    { group: 'Navigate', icon: 'profile',         label: 'My account',      href: '/admin/profile' },
-    { group: 'Navigate', icon: 'settings',        label: 'Settings',        href: '/admin/settings' },
-    { group: 'Actions',  icon: 'plus',            label: 'New user',        href: '/admin/users/new' },
-    { group: 'Actions',  icon: 'plus',            label: 'New OIDC client', href: '/admin/clients' },
-    { group: 'Actions',  icon: 'plus',            label: 'New policy',      href: '/admin/policies' },
-    { group: 'Actions',  icon: 'plus',            label: 'New group',       href: '/admin/groups' },
-    { group: 'Actions',  icon: 'plus',            label: 'New invite',      href: '/admin/invites' },
+    { group: 'Navigate', icon: 'dashboard',      label: 'Dashboard',       href: ADMIN_BASE + '/' },
+    { group: 'Navigate', icon: 'users',           label: 'Users',           href: ADMIN_BASE + '/users' },
+    { group: 'Navigate', icon: 'clients',         label: 'OIDC Clients',    href: ADMIN_BASE + '/clients' },
+    { group: 'Navigate', icon: 'policies',        label: 'Policies',        href: ADMIN_BASE + '/policies' },
+    { group: 'Navigate', icon: 'groups',          label: 'Groups',          href: ADMIN_BASE + '/groups' },
+    { group: 'Navigate', icon: 'invites',         label: 'Invites',         href: ADMIN_BASE + '/invites' },
+    { group: 'Navigate', icon: 'audit',           label: 'Audit Log',       href: ADMIN_BASE + '/audit' },
+    { group: 'Navigate', icon: 'integrations',    label: 'Integrations',    href: ADMIN_BASE + '/integrations' },
+    { group: 'Navigate', icon: 'social',          label: 'Social login',    href: ADMIN_BASE + '/social' },
+    { group: 'Navigate', icon: 'webhooks',        label: 'Webhooks',        href: ADMIN_BASE + '/webhooks' },
+    { group: 'Navigate', icon: 'notifications',   label: 'Notifications',   href: ADMIN_BASE + '/notifications' },
+    { group: 'Navigate', icon: 'backups',         label: 'Backups',         href: ADMIN_BASE + '/backups' },
+    { group: 'Navigate', icon: 'admins',          label: 'Admins',          href: ADMIN_BASE + '/admins' },
+    { group: 'Navigate', icon: 'profile',         label: 'My account',      href: ADMIN_BASE + '/profile' },
+    { group: 'Navigate', icon: 'settings',        label: 'Settings',        href: ADMIN_BASE + '/settings' },
+    { group: 'Actions',  icon: 'plus',            label: 'New user',        href: ADMIN_BASE + '/users/new' },
+    { group: 'Actions',  icon: 'plus',            label: 'New OIDC client', href: ADMIN_BASE + '/clients' },
+    { group: 'Actions',  icon: 'plus',            label: 'New policy',      href: ADMIN_BASE + '/policies' },
+    { group: 'Actions',  icon: 'plus',            label: 'New group',       href: ADMIN_BASE + '/groups' },
+    { group: 'Actions',  icon: 'plus',            label: 'New invite',      href: ADMIN_BASE + '/invites' },
   ];
 
   var iconPaths = {
@@ -197,7 +198,7 @@ var GK = (function () {
     setLoading();
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(function () {
-      fetch('/admin/api/search?q=' + encodeURIComponent(q))
+      fetch(ADMIN_BASE + '/api/search?q=' + encodeURIComponent(q))
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var serverResults = (data || []).map(function (r) {
@@ -270,7 +271,7 @@ var GK = (function () {
       gSeq += e.key;
       clearTimeout(gTimer);
       gTimer = setTimeout(function () { gSeq = ''; }, 700);
-      var navMap = { 'gd': '/admin', 'gu': '/admin/users', 'gc': '/admin/clients', 'ga': '/admin/audit', 'gs': '/admin/settings', 'gp': '/admin/profile' };
+      var navMap = { 'gd': ADMIN_BASE + '/', 'gu': ADMIN_BASE + '/users', 'gc': ADMIN_BASE + '/clients', 'ga': ADMIN_BASE + '/audit', 'gs': ADMIN_BASE + '/settings', 'gp': ADMIN_BASE + '/profile' };
       if (navMap[gSeq]) { window.location.href = navMap[gSeq]; gSeq = ''; }
     });
   });

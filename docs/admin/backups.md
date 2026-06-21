@@ -65,23 +65,24 @@ Click **Back up now** from the Backups page to create an immediate snapshot. The
 
 ## Restoring a backup
 
-Click **Restore** on any backup in the history table. GateKeeper will:
+There are two ways to restore: from a backup already in storage, or from a backup file you upload.
 
-1. Download the encrypted backup from storage.
-2. Decrypt it using your `SECRET_KEY`.
-3. Write the decrypted database to `<db-path>.restore` (e.g. `/data/gatekeeper.db.restore`).
+### From the history table
 
-To complete the restore:
+Click **Restore** on any backup in the history table. GateKeeper downloads the encrypted backup, decrypts it with your `SECRET_KEY`, and stages it at `<db-path>.restore`.
 
-1. Stop GateKeeper.
-2. Rename `/data/gatekeeper.db` to `/data/gatekeeper.db.bak` (keep it as a safety copy).
-3. Rename `/data/gatekeeper.db.restore` to `/data/gatekeeper.db`.
-4. Start GateKeeper.
+### From an uploaded file
+
+If the backup is not in storage (for example, you saved a downloaded `.gkbackup` file elsewhere), click **Upload backup** at the top of the Backups page, choose the file, and submit. GateKeeper decrypts it with your `SECRET_KEY`, verifies it is a valid database, and stages it the same way.
+
+### Completing the restore
+
+After staging, **restart GateKeeper**. On startup it detects the staged file, replaces the live database with it, and clears stale write-ahead-log files automatically. No manual file renaming is needed.
 
 All active sessions from the backup are restored. Sessions created after the backup was taken are lost.
 
 :::warning
-You must use the same `SECRET_KEY` that was active when the backup was created. A different key cannot decrypt the backup.
+You must use the same `SECRET_KEY` that was active when the backup was created. A different key cannot decrypt the backup, and the upload will be rejected.
 :::
 
 ## Downloading a backup

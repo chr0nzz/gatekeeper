@@ -3,6 +3,30 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.0
+
+### Split public and admin ports
+
+The admin panel now runs on a dedicated port (`ADMIN_PORT`, default `8283`) separate from the public login and OIDC endpoints (`PORT`, default `8282`). Point your reverse proxy at port `8283` for the admin panel and restrict that route to your private network. The public port handles login, OIDC, ForwardAuth, and user-facing pages.
+
+The admin panel is now served at the root of its port, so you can give it its own domain (e.g. `admin.auth.example.com`) with no `/admin` path prefix. Set `ADMIN_URL` to that domain so admin passkeys work. To keep a path prefix, set `ADMIN_BASE_PATH=/admin`.
+
+### Admin passkeys on a subdomain
+
+The admin panel can use passkeys when it runs on its own subdomain (e.g. `admin.auth.example.com`). Set `ADMIN_URL` and GateKeeper adds that origin to the WebAuthn allowed origins so registration and login work. The admin subdomain must sit under the same registrable domain as `BASE_URL`. See [Passkeys - Admin on a subdomain](/auth/passkeys#admin-on-a-subdomain).
+
+### Backup restore and upload
+
+- **One-step restore** - Restoring a backup now completes automatically on the next restart. GateKeeper detects the staged database on startup, swaps it in, and clears stale write-ahead-log files. The old flow that required manually renaming files inside the container is gone.
+- **Upload a backup** - A new **Upload backup** button on the Backups page restores from a backup file you downloaded earlier, even if it is no longer in storage. The file is decrypted with your `SECRET_KEY` and validated before staging. See [Backups - Restoring a backup](/admin/backups#restoring-a-backup).
+
+### Bug fixes
+
+- **QR sign-in into proxied apps** - Signing in with a QR code now correctly returns you to a ForwardAuth-protected app on another domain. The QR flow now performs the same cross-domain session handoff as password login, instead of dropping you on your profile page.
+- **Admin panel icons and avatars** - OIDC client icons and user avatars now load on the admin panel when it runs on its own port or domain. Their routes were previously only registered on the public port.
+
+---
+
 ## v0.8.0
 
 ### QR code sign-in

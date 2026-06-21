@@ -1,6 +1,6 @@
 {{template "admin_base" .}}
 {{define "title"}}{{.Group.Name}} - Groups - GateKeeper Admin{{end}}
-{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/groups">Groups</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.Group.Name}}</b>{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="{{$.AdminBase}}/groups">Groups</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.Group.Name}}</b>{{end}}
 {{define "content"}}
 <div class="page-head">
   <div>
@@ -8,7 +8,7 @@
     {{if .Group.Description}}<p class="sub">{{.Group.Description}}</p>{{end}}
   </div>
   <div class="head-actions">
-    <form method="POST" action="/admin/groups/{{.Group.ID}}/delete">
+    <form method="POST" action="{{$.AdminBase}}/groups/{{.Group.ID}}/delete">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-quiet btn-sm" style="color:var(--danger)" onclick="return confirm('Delete group {{.Group.Name}}? This cannot be undone.')">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
@@ -41,7 +41,7 @@
             {{if .DisplayName}}<div style="font-size:11px;color:var(--tx-3)">{{.Email}}</div>{{end}}
           </td>
           <td style="width:80px">
-            <form method="POST" action="/admin/groups/{{$.Group.ID}}/members/{{.ID}}/remove">
+            <form method="POST" action="{{$.AdminBase}}/groups/{{$.Group.ID}}/members/{{.ID}}/remove">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">Remove</button>
             </form>
@@ -62,7 +62,7 @@
       <div style="padding:16px 18px;border-bottom:1px solid var(--bd-0)">
         <div style="font-weight:600;font-size:13px">Add user</div>
       </div>
-      <form method="POST" action="/admin/groups/{{.Group.ID}}/members" style="padding:16px 18px;display:flex;gap:8px;align-items:center">
+      <form method="POST" action="{{$.AdminBase}}/groups/{{.Group.ID}}/members" style="padding:16px 18px;display:flex;gap:8px;align-items:center">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <select class="input" name="user_id" style="flex:1">
           <option value="">Select a user...</option>

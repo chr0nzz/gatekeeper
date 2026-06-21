@@ -177,7 +177,7 @@
         <dt>Failures (24h)</dt><dd style="font-weight:600;color:{{if gt .Failed24h 0}}var(--warn){{else}}var(--tx-0){{end}}">{{.Failed24h}}</dd>
       </dl>
       <div style="margin-top:12px">
-        <a href="/admin/audit" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">
+        <a href="{{$.AdminBase}}/audit" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">
           View full log
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
@@ -195,7 +195,7 @@
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h9l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm8 0v5h5M9 13h7M9 17h5"/></svg>
       <h3>Recent events</h3>
       <div class="head-actions">
-        <a href="/admin/audit" class="btn btn-quiet btn-xs">
+        <a href="{{$.AdminBase}}/audit" class="btn btn-quiet btn-xs">
           View all
           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
@@ -234,7 +234,7 @@
           <div style="font-weight:600;color:var(--tx-0)">{{.LockedUsers}} user{{if gt .LockedUsers 1}}s{{end}} locked out</div>
           <div style="color:var(--tx-2);margin-top:1px">Too many failed OTP attempts.</div>
         </div>
-        <a href="/admin/users" class="btn btn-ghost btn-xs">Review</a>
+        <a href="{{$.AdminBase}}/users" class="btn btn-ghost btn-xs">Review</a>
       </div>
       {{end}}
       {{if gt .No2FAUsers 0}}
@@ -246,7 +246,7 @@
           <div style="font-weight:600;color:var(--tx-0)">{{.No2FAUsers}} user{{if gt .No2FAUsers 1}}s have{{else}} has{{end}} no 2FA</div>
           <div style="color:var(--tx-2);margin-top:1px">Password and email OTP only.</div>
         </div>
-        <a href="/admin/users" class="btn btn-ghost btn-xs">Review</a>
+        <a href="{{$.AdminBase}}/users" class="btn btn-ghost btn-xs">Review</a>
       </div>
       {{end}}
       {{if and (eq .LockedUsers 0) (eq .No2FAUsers 0)}}
@@ -280,7 +280,7 @@
   var currentRange = '24h';
 
   function fetchAndDraw(range) {
-    fetch('/admin/api/activity?range=' + range)
+    fetch('{{$.AdminBase}}/api/activity?range=' + range)
       .then(function(r) { return r.json(); })
       .then(function(data) { draw(data, range); })
       .catch(function() { draw([], range); });
@@ -391,7 +391,7 @@
   }
 
   function fetchAuthMethods(range) {
-    fetch('/admin/api/auth-methods?range=' + range)
+    fetch('{{$.AdminBase}}/api/auth-methods?range=' + range)
       .then(function(r) { return r.json(); })
       .then(renderAuthMethods)
       .catch(function() { renderAuthMethods([]); });
@@ -408,7 +408,7 @@
   fetchAuthMethods('24h');
 
   function refreshStats() {
-    fetch('/admin/api/dashboard-stats')
+    fetch('{{$.AdminBase}}/api/dashboard-stats')
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var s = document.getElementById('stat-signins');
@@ -453,7 +453,7 @@
     <h2>New user</h2>
     <p>Create an account with a password or email-code-only sign in.</p>
   </div>
-  <form method="POST" action="/admin/users">
+  <form method="POST" action="{{$.AdminBase}}/users">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">
@@ -496,7 +496,7 @@
     <h2>Register new OIDC client</h2>
     <p>Configures an application to authenticate users via GateKeeper.</p>
   </div>
-  <form method="POST" action="/admin/clients">
+  <form method="POST" action="{{$.AdminBase}}/clients">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">
@@ -555,7 +555,7 @@
     <h2>New group</h2>
     <p>Groups are included as a <code>groups</code> claim in OIDC tokens. Use them for role mapping in Grafana, Jellyfin, and other apps.</p>
   </div>
-  <form method="POST" action="/admin/groups">
+  <form method="POST" action="{{$.AdminBase}}/groups">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">
@@ -580,7 +580,7 @@
     <h2>New policy</h2>
     <p>A policy is a named list of users. Attach it to an OIDC client or ForwardAuth route to restrict access.</p>
   </div>
-  <form method="POST" action="/admin/policies">
+  <form method="POST" action="{{$.AdminBase}}/policies">
     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
     <div class="modal-body">
       <label class="field">

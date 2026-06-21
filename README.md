@@ -29,7 +29,8 @@ services:
     volumes:
       - gatekeeper_data:/data
     ports:
-      - "8080:8080"
+      - "8282:8282"
+      - "8283:8283"
 
 volumes:
   gatekeeper_data:
@@ -41,7 +42,9 @@ Generate a secret key:
 openssl rand -hex 32
 ```
 
-Visit `https://auth.example.com/admin` on first run - you'll be prompted to create your admin account. Everything else (SMTP, session TTL, allowed domains, social login) is configured from the admin UI.
+Port `8282` serves the public login, OIDC, and ForwardAuth endpoints. Port `8283` serves the admin panel only - route it through a private reverse proxy and keep it off the public internet.
+
+On first run, visit your admin URL (`ADMIN_URL`) to create your admin account. Everything else (SMTP, session TTL, allowed domains, social login) is configured from the admin UI.
 
 ## Sign-in methods
 
@@ -58,7 +61,7 @@ Trusted device tokens skip 2FA for 30 days after first verification on a device.
 
 ## OIDC provider
 
-Register clients at `/admin/clients`. Point your app at the discovery endpoint:
+Register clients from the admin panel. Point your app at the discovery endpoint:
 
 | Endpoint | URL |
 |---|---|
@@ -108,7 +111,10 @@ To restrict a route to a specific access policy, append `?policy=<name>` to the 
 |---|---|---|---|
 | `BASE_URL` | Yes | - | Public URL. Used as OIDC issuer and WebAuthn origin. |
 | `SECRET_KEY` | Yes | - | 32+ character secret. Signs sessions and encrypts TOTP secrets. |
-| `PORT` | No | `8080` | HTTP port to listen on. |
+| `PORT` | No | `8282` | Public HTTP port (login, OIDC, ForwardAuth). |
+| `ADMIN_PORT` | No | `8283` | Admin-only HTTP port. Never expose publicly - route via a private reverse proxy. |
+| `ADMIN_URL` | No | - | Full URL of the admin panel (e.g. `https://admin.auth.example.com`). Required when admin runs on a different domain - enables passkeys on the admin panel. |
+| `ADMIN_BASE_PATH` | No | - | Serve the admin under a path prefix (e.g. `/admin`) instead of the root. Leave empty when admin has its own domain. |
 | `DB_PATH` | No | `/data/gatekeeper.db` | SQLite database path. |
 | `COOKIE_DOMAIN` | No | - | Cookie domain for cross-subdomain sharing, e.g. `.example.com`. |
 | `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn`, or `error`. |
@@ -136,22 +142,26 @@ The following can also be set as env vars and serve as fallback defaults - the a
 
 ## Admin UI
 
+The admin panel runs on its own dedicated port (`ADMIN_PORT`, default `8283`), completely separate from the public login endpoint. Route a private domain (e.g. `admin.auth.example.com`) to that port and the panel is served at the root - no `/admin` path prefix. The paths below are relative to the admin domain.
+
 | Page | Purpose |
 |---|---|
-| `/admin` | Dashboard - live stats, activity chart, auth methods breakdown |
-| `/admin/users` | Create and manage users, approve pending registrations |
-| `/admin/groups` | Create groups and manage membership |
-| `/admin/clients` | Register and edit OIDC clients, custom claims, client credentials |
-| `/admin/policies` | Create access policies and assign users to them |
-| `/admin/invites` | Generate single-use invite links with configurable expiry |
-| `/admin/audit` | Filterable audit log of all auth and admin events |
-| `/admin/webhooks` | Configure webhook delivery channels and event subscriptions |
-| `/admin/integrations` | Reverse proxy configuration snippets (Traefik, Nginx, Caddy) |
-| `/admin/social` | Enable and configure GitHub, Google, and Discord social login |
-| `/admin/admins` | Create and manage admin accounts |
-| `/admin/backups` | Encrypted database backups to local storage or S3-compatible object stores |
-| `/admin/profile` | Admin display name, password, TOTP, passkeys, session revocation |
-| `/admin/settings` | SMTP, session timeout, allowed domains, registration mode, email branding, audit log retention |
+| `/` | Dashboard - live stats, activity chart, auth methods breakdown |
+| `/users` | Create and manage users, approve pending registrations |
+| `/groups` | Create groups and manage membership |
+| `/clients` | Register and edit OIDC clients, custom claims, client credentials |
+| `/policies` | Create access policies and assign users to them |
+| `/invites` | Generate single-use invite links with configurable expiry |
+| `/audit` | Filterable audit log of all auth and admin events |
+| `/webhooks` | Configure webhook delivery channels and event subscriptions |
+| `/integrations` | Reverse proxy configuration snippets (Traefik, Nginx, Caddy) |
+| `/social` | Enable and configure GitHub, Google, and Discord social login |
+| `/admins` | Create and manage admin accounts |
+| `/backups` | Encrypted database backups to local storage or S3-compatible object stores |
+| `/profile` | Admin display name, password, TOTP, passkeys, API key, session revocation |
+| `/settings` | SMTP, session timeout, allowed domains, registration mode, email branding, audit log retention |
+
+To serve the admin under a subpath instead of the root (e.g. `example.com/admin`), set `ADMIN_BASE_PATH=/admin`.
 
 Keyboard shortcuts: `⌘K` / `/` command palette, `g d/u/c/a/s/p` navigate sections.
 
@@ -184,7 +194,7 @@ go build -o gatekeeper ./cmd/gatekeeper
 ## Docker
 
 ```bash
-docker build --build-arg VERSION=v0.8.0 -t gatekeeper:v0.8.0 .
+docker build --build-arg VERSION=v0.9.0 -t gatekeeper:v0.9.0 .
 ```
 
 ## Project layout

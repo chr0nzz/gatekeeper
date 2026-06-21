@@ -46,7 +46,7 @@ These can be set as defaults via env vars, but any value saved in the admin UI t
 
 ## Settings managed in the admin UI
 
-Go to `/admin/settings` to configure:
+Go to `/settings` on your admin panel to configure:
 
 - **Allowed email domains** - restrict which email addresses can log in. Leave blank to allow all.
 - **Session timeout** - how many hours before an idle session expires.

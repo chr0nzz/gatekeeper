@@ -7,8 +7,12 @@
     <h1>Backups</h1>
     <p class="sub">Encrypted database snapshots. Each backup is AES-256-GCM encrypted with your SECRET_KEY before upload.</p>
   </div>
-  <div class="head-actions">
-    <form method="POST" action="/admin/backups/now" style="display:inline">
+  <div class="head-actions" style="display:flex;gap:8px">
+    <button type="button" class="btn btn-ghost btn-sm" data-open-dialog="upload-backup-dialog">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12m0 0l-3 3m3-3l3 3M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"/></svg>
+      Upload backup
+    </button>
+    <form method="POST" action="{{$.AdminBase}}/backups/now" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-primary btn-sm">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10m0 0l-3-3m3 3l3-3M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/></svg>
@@ -18,10 +22,34 @@
   </div>
 </div>
 
+<dialog id="upload-backup-dialog">
+  <div class="modal-head">
+    <h2>Upload backup</h2>
+    <p>Restore from a backup file you downloaded earlier. It must have been encrypted with the same <code>SECRET_KEY</code> this instance uses.</p>
+  </div>
+  <form method="POST" action="{{$.AdminBase}}/backups/upload" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="modal-body">
+      <label class="field">
+        <span class="field-label">Backup file</span>
+        <input class="input" type="file" name="backup" required>
+      </label>
+      <div class="alert alert-err" style="margin-top:8px">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 9v3M12 17v.5"/></svg>
+        <div>This replaces your current database after you restart GateKeeper. Back up current data first if needed.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
+      <button type="submit" class="btn btn-danger">Upload and stage restore</button>
+    </div>
+  </form>
+</dialog>
+
 {{if .Error}}<div class="alert alert-err" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg><div><b>{{.Error}}</b></div></div>{{end}}
 {{if .Success}}<div class="alert alert-ok" style="margin-bottom:14px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14l-4-4 1.5-1.5L11 13l5-5L17.5 9.5z"/></svg><div>{{.Success}}</div></div>{{end}}
 
-<form method="POST" action="/admin/backups/settings">
+<form method="POST" action="{{$.AdminBase}}/backups/settings">
   <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -155,7 +183,7 @@
         <td>{{formatBackupTime .CreatedAt}}</td>
         <td>
           <div style="display:flex;gap:4px">
-            <a href="/admin/backups/{{.ID}}/download" class="btn btn-ghost btn-xs">
+            <a href="{{$.AdminBase}}/backups/{{.ID}}/download" class="btn btn-ghost btn-xs">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1M7 10l5 5 5-5M12 15V3"/></svg>
               Download
             </a>
@@ -195,7 +223,7 @@
       <div>This action cannot be undone. Back up current data first if needed.</div>
     </div>
   </div>
-  <form method="POST" action="/admin/backups/{{.ID}}/restore">
+  <form method="POST" action="{{$.AdminBase}}/backups/{{.ID}}/restore">
     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
@@ -212,7 +240,7 @@
   <div class="modal-body">
     <p style="font-size:13px;color:var(--tx-2)" class="mono">{{.Name}}</p>
   </div>
-  <form method="POST" action="/admin/backups/{{.ID}}/delete">
+  <form method="POST" action="{{$.AdminBase}}/backups/{{.ID}}/delete">
     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" data-close-dialog>Cancel</button>
@@ -232,7 +260,7 @@
   window.updateStorageFields = updateStorageFields;
   updateStorageFields();
 
-  var form = document.querySelector('form[action="/admin/backups/settings"]');
+  var form = document.querySelector('form[action="{{$.AdminBase}}/backups/settings"]');
   var bar = document.getElementById('save-bar');
   var dirty = false;
   function markDirty() { if (!dirty) { dirty = true; bar.style.display = 'flex'; } }

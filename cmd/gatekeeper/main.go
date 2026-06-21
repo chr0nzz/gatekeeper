@@ -30,7 +30,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
-var version = "0.7.0"
+var version = "0.9.0"
 
 func main() {
 	cfg, err := config.Load()
@@ -137,7 +137,11 @@ func main() {
 		os.Exit(1)
 	}
 	rpID := parsedBase.Hostname()
-	passkeyStore, err := auth.NewPasskeyStore(database, rpID, "GateKeeper", cfg.BaseURL)
+	var waOrigins []string
+	if cfg.AdminURL != "" {
+		waOrigins = append(waOrigins, cfg.AdminURL)
+	}
+	passkeyStore, err := auth.NewPasskeyStore(database, rpID, "GateKeeper", cfg.BaseURL, waOrigins)
 	if err != nil {
 		slog.Error("passkey store error", "err", err)
 		os.Exit(1)
@@ -162,7 +166,7 @@ func main() {
 	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
 
 	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore, qrTokenStore)
-	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, version, cfg.DBPath, cfg.SecretKey, envSMTP,
+	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, cfg.AdminBasePath, version, cfg.DBPath, cfg.SecretKey, envSMTP,
 		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains, GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret, DiscordClientID: cfg.DiscordClientID, DiscordClientSecret: cfg.DiscordClientSecret}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService, backupStore)
 
 	secretKey := [32]byte{}
@@ -180,15 +184,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	r := chi.NewRouter()
-	r.Use(chimiddleware.RealIP)
-	r.Use(chimiddleware.Recoverer)
-	r.Use(gkmiddleware.SecureHeaders)
-	r.Use(gkmiddleware.CSRF)
-
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
-
-	r.Get("/sw.js", func(w http.ResponseWriter, r *http.Request) {
+	swHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, err := gatekeeper.Assets.ReadFile("web/static/sw.js")
 		if err != nil {
 			http.NotFound(w, r)
@@ -211,34 +207,64 @@ func main() {
 			w.Write(data)
 		}
 	}
-	r.Get("/manifest.json", serveManifest("manifest.json"))
-	r.Get("/manifest-admin.json", serveManifest("manifest-admin.json"))
+	attachBase := func(r chi.Router) {
+		r.Use(chimiddleware.RealIP)
+		r.Use(chimiddleware.Recoverer)
+		r.Use(gkmiddleware.SecureHeaders)
+		r.Use(gkmiddleware.CSRF)
+		r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
+		r.Get("/sw.js", swHandler)
+	}
 
-	r.Get("/auth/verify", fwAuth.Verify)
-	r.Get("/oidc/icon/{id}", func(w http.ResponseWriter, r *http.Request) {
+	pub := chi.NewRouter()
+	attachBase(pub)
+	pub.Get("/manifest.json", serveManifest("manifest.json"))
+	pub.Get("/auth/verify", fwAuth.Verify)
+	pub.Get("/oidc/icon/{id}", func(w http.ResponseWriter, r *http.Request) {
 		oidcStorage.ServeIcon(w, r, chi.URLParam(r, "id"))
 	})
-
 	oidc := func(w http.ResponseWriter, r *http.Request) { oidcProvider.ServeHTTP(w, r) }
-	r.Get("/.well-known/openid-configuration", oidc)
-	r.Get("/.well-known/jwks.json", oidc)
-	r.Get("/end_session", uiHandlers.EndSession)
-	r.Post("/end_session", uiHandlers.EndSession)
+	pub.Get("/.well-known/openid-configuration", oidc)
+	pub.Get("/.well-known/jwks.json", oidc)
+	pub.Get("/end_session", uiHandlers.EndSession)
+	pub.Post("/end_session", uiHandlers.EndSession)
 	for _, p := range []string{"/authorize", "/authorize/callback", "/userinfo", "/revoke", "/device_authorization", "/keys"} {
-		r.Get(p, oidc)
-		r.Post(p, oidc)
+		pub.Get(p, oidc)
+		pub.Post(p, oidc)
 	}
-	r.Post("/oauth/token", oidc)
-	r.Post("/oauth/introspect", oidc)
-	r.Handle("/oauth/*", http.HandlerFunc(oidc))
-
-	r.Group(func(r chi.Router) {
+	pub.Post("/oauth/token", oidc)
+	pub.Post("/oauth/introspect", oidc)
+	pub.Handle("/oauth/*", http.HandlerFunc(oidc))
+	pub.Group(func(r chi.Router) {
 		uiHandlers.Mount(r)
 	})
 
-	r.Route("/admin", func(r chi.Router) {
-		adminHandlers.Mount(r)
+	adm := chi.NewRouter()
+	attachBase(adm)
+	adm.Get("/manifest-admin.json", serveManifest("manifest-admin.json"))
+	adm.Get("/oidc/icon/{id}", func(w http.ResponseWriter, r *http.Request) {
+		oidcStorage.ServeIcon(w, r, chi.URLParam(r, "id"))
 	})
+	adm.Get("/avatar/{id}", func(w http.ResponseWriter, r *http.Request) {
+		data, mime := userStore.GetAvatar(r.Context(), chi.URLParam(r, "id"))
+		if len(data) == 0 {
+			http.NotFound(w, r)
+			return
+		}
+		if mime == "" {
+			mime = "image/jpeg"
+		}
+		w.Header().Set("Content-Type", mime)
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Write(data)
+	})
+	if cfg.AdminBasePath != "" {
+		adm.Route(cfg.AdminBasePath, func(r chi.Router) {
+			adminHandlers.Mount(r)
+		})
+	} else {
+		adminHandlers.Mount(adm)
+	}
 
 	go func() {
 		ticker := time.NewTicker(15 * time.Minute)
@@ -284,9 +310,18 @@ func main() {
 	)
 	defer backupScheduler.Stop()
 
-	addr := fmt.Sprintf(":%d", cfg.Port)
-	slog.Info("gatekeeper starting", "addr", addr, "base_url", cfg.BaseURL, "version", version)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	go func() {
+		adminAddr := fmt.Sprintf(":%d", cfg.AdminPort)
+		slog.Info("admin server starting", "addr", adminAddr, "admin_url", cfg.AdminURL)
+		if err := http.ListenAndServe(adminAddr, adm); err != nil {
+			slog.Error("admin server error", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	pubAddr := fmt.Sprintf(":%d", cfg.Port)
+	slog.Info("gatekeeper starting", "addr", pubAddr, "base_url", cfg.BaseURL, "version", version)
+	if err := http.ListenAndServe(pubAddr, pub); err != nil {
 		slog.Error("server error", "err", err)
 		os.Exit(1)
 	}

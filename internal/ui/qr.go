@@ -44,7 +44,7 @@ func (h *Handlers) GetQRPoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sessData := auth.SessionData{UserID: tok.UserID, OIDCRequestID: tok.OIDCRequest, RedirectURI: tok.RedirectURI}
-	_, err = h.sessions.Create(w, r, sessData)
+	sessID, err := h.sessions.Create(w, r, sessData)
 	if err != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
@@ -56,7 +56,7 @@ func (h *Handlers) GetQRPoll(w http.ResponseWriter, r *http.Request) {
 			redirect = "/authorize/callback?id=" + tok.OIDCRequest
 		}
 	} else if tok.RedirectURI != "" {
-		redirect = tok.RedirectURI
+		redirect = h.redirectURL(sessID, tok.RedirectURI)
 	}
 	json.NewEncoder(w).Encode(map[string]string{"status": "approved", "redirect": redirect})
 }

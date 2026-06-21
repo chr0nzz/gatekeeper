@@ -44,11 +44,11 @@ docker compose up -d
 
 ## 3. Create your admin account
 
-Visit `https://auth.example.com/admin`. GateKeeper redirects to `/admin/setup` on first run - enter your email and a password to create the admin account. This page only appears once.
+Visit your admin URL (the value of `ADMIN_URL`, e.g. `https://admin.auth.example.com`). The admin panel runs on its own port (`ADMIN_PORT`, default `8283`) and is served at the root - there is no `/admin` path prefix. GateKeeper redirects to `/setup` on first run - enter your email and a password to create the admin account. This page only appears once.
 
 ## 4. Configure SMTP
 
-Go to `/admin/settings` and fill in your mail server details. GateKeeper needs this to send one-time login codes and password reset emails.
+Go to `/settings` on your admin panel and fill in your mail server details. GateKeeper needs this to send one-time login codes and password reset emails.
 
 ## Updating
 
@@ -62,5 +62,5 @@ Schema migrations run automatically on startup.
 ## Next steps
 
 - **Protect apps** - use [Traefik ForwardAuth](/integrations/traefik-forwardauth) to require login for any service, or connect apps via [OIDC](/oidc/provider)
-- **Add users** - go to `/admin/users` → New user
-- **Connect apps** - register OIDC clients at `/admin/clients`
+- **Add users** - go to `/users` → New user
+- **Connect apps** - register OIDC clients at `/clients`

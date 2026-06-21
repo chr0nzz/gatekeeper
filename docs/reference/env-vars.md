@@ -20,14 +20,17 @@ openssl rand -hex 32
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8080` | HTTP port to listen on |
+| `PORT` | `8282` | Public HTTP port - login, OIDC, and ForwardAuth. |
+| `ADMIN_PORT` | `8283` | Admin-only HTTP port. Never expose this publicly - route it only through a private reverse proxy. |
+| `ADMIN_URL` | _(empty)_ | Full public URL of the admin panel, e.g. `https://admin.auth.example.com`. Set this when the admin runs on its own subdomain so that admin passkeys work - GateKeeper adds this origin to the WebAuthn allowed origins list. The admin subdomain must be under the same registrable domain as `BASE_URL`. |
+| `ADMIN_BASE_PATH` | _(empty)_ | Serve the admin panel under a path prefix instead of the root. Leave empty (default) when the admin has its own domain - the panel is then served at `/`. Set to `/admin` only if you route the admin port under a `/admin` subpath without stripping the prefix. |
 | `DB_PATH` | `/data/gatekeeper.db` | SQLite database path. Mount a volume at `/data`. |
-| `COOKIE_DOMAIN` | _(empty)_ | Cookie domain for cross-subdomain session sharing, e.g. `.example.com`. Leave empty if all apps are on the same domain. |
-| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error` |
+| `COOKIE_DOMAIN` | _(empty)_ | Cookie domain for cross-subdomain session sharing, e.g. `.example.com`. Leave empty if all apps share the same domain. |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error`. |
 
 ## SMTP defaults (overridden by admin UI)
 
-These pre-seed the SMTP settings form. If you save values in `/admin/settings`, those take precedence.
+These pre-seed the SMTP settings form. If you save values in the admin settings, those take precedence.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -44,8 +47,8 @@ These pre-seed the SMTP settings form. If you save values in `/admin/settings`, 
 |---|---|---|
 | `SESSION_TTL_HOURS` | `8` | Session lifetime in hours |
 | `ALLOWED_EMAIL_DOMAINS` | _(empty)_ | Comma-separated allowed domains. Empty = all. |
-| `REGISTRATION_MODE` | `disabled` | Initial registration mode: `disabled`, `invite_only`, `open`, or `approval`. Overridable in Settings. |
-| `REGISTRATION_ALLOWED_DOMAINS` | _(empty)_ | Comma-separated domains allowed to self-register. Empty = any. Overridable in Settings. |
+| `REGISTRATION_MODE` | `disabled` | Initial registration mode: `disabled`, `invite_only`, `open`, or `approval`. |
+| `REGISTRATION_ALLOWED_DOMAINS` | _(empty)_ | Comma-separated domains allowed to self-register. Empty = any. |
 | `GITHUB_CLIENT_ID` | _(empty)_ | GitHub OAuth App client ID. Seeded into Settings on first startup. |
 | `GITHUB_CLIENT_SECRET` | _(empty)_ | GitHub OAuth App client secret. Seeded into Settings on first startup. |
 | `GOOGLE_CLIENT_ID` | _(empty)_ | Google OAuth2 client ID. Seeded into Settings on first startup. |
@@ -62,13 +65,19 @@ services:
     restart: unless-stopped
     environment:
       BASE_URL: "https://auth.example.com"
+      ADMIN_URL: "https://admin.auth.example.com"
       SECRET_KEY: "your-64-char-hex-secret"
     volumes:
       - gatekeeper_data:/data
+    ports:
+      - "8282:8282"
+      - "8283:8283"
 
 volumes:
   gatekeeper_data:
 ```
+
+Route `auth.example.com` to port `8282` and `admin.auth.example.com` to port `8283` in your reverse proxy. Restrict `8283` to your private network.
 
 ## Cross-domain sessions
 

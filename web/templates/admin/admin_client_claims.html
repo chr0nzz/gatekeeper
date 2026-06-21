@@ -1,19 +1,19 @@
 {{template "admin_base" .}}
 {{define "title"}}Custom Claims - {{.ClientName}} - GateKeeper Admin{{end}}
-{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="/admin/clients">OIDC Clients</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.ClientName}} - Claims</b>{{end}}
+{{define "crumbs"}}<span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <a href="{{$.AdminBase}}/clients">OIDC Clients</a> <span class="sep"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span> <b>{{.ClientName}} - Claims</b>{{end}}
 {{define "content"}}
 <div class="page-head">
   <div>
     <h1>Custom claims</h1>
     <p class="sub">Extra claims injected into tokens issued for <b>{{.ClientName}}</b>.</p>
   </div>
-  <a href="/admin/clients" class="btn btn-ghost btn-sm">Back to clients</a>
+  <a href="{{$.AdminBase}}/clients" class="btn btn-ghost btn-sm">Back to clients</a>
 </div>
 
 <div class="card" style="margin-bottom:20px">
   <div class="card-head"><h3>Add claim</h3></div>
   <div style="padding:16px 20px">
-    <form method="POST" action="/admin/clients/{{.ClientID}}/claims" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <form method="POST" action="{{$.AdminBase}}/clients/{{.ClientID}}/claims" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label class="field" style="flex:1;min-width:140px;margin:0">
         <span class="field-label">Claim key</span>
@@ -60,7 +60,7 @@
         {{end}}
       </td>
       <td>
-        <form method="POST" action="/admin/clients/{{$.ClientID}}/claims/{{.ID}}/delete">
+        <form method="POST" action="{{$.AdminBase}}/clients/{{$.ClientID}}/claims/{{.ID}}/delete">
           <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
           <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>

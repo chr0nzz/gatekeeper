@@ -5,7 +5,9 @@ description: Create your admin account and configure GateKeeper for the first ti
 
 ## Step 1 - visit the admin panel
 
-After starting GateKeeper for the first time, go to `/admin` in your browser. Since no admin account exists yet, GateKeeper redirects you to `/admin/setup`.
+After starting GateKeeper for the first time, open your admin URL (the value of `ADMIN_URL`, e.g. `https://admin.auth.example.com`) in your browser. Since no admin account exists yet, GateKeeper redirects you to `/setup`.
+
+The admin panel runs on its own port and domain, served at the root - there is no `/admin` path prefix. The admin paths below are relative to your admin URL.
 
 ## Step 2 - create your admin account
 
@@ -17,18 +19,18 @@ This page only appears once. Once an admin account exists, the setup page redire
 
 Without SMTP, GateKeeper cannot send one-time login codes or password reset emails.
 
-Go to `/admin/settings` and fill in your SMTP details, then click **Save changes**. The change takes effect immediately - no restart needed.
+Go to `/settings` and fill in your SMTP details, then click **Save changes**. The change takes effect immediately - no restart needed.
 
 ## Step 4 - secure your admin account
 
-Go to `/admin/profile` and:
+Go to `/profile` and:
 
 - Enroll an **authenticator app** (TOTP) for a second factor on admin login
 - Register a **passkey** if your device supports it (Touch ID, Face ID, or a hardware key)
 
 ## Step 5 - create users
 
-Go to `/admin/users` and click **New user**. Choose:
+Go to `/users` and click **New user**. Choose:
 
 - **Email + Password** - standard account with a temporary password. The user is required to change it on first login.
 - **Email Only** - passwordless account. The user signs in with just their email and a one-time code sent to it.
