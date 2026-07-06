@@ -3,6 +3,7 @@ package middleware
 import (
 	"database/sql"
 	"encoding/base64"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -39,6 +40,13 @@ func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey,
 func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	forwardedURI := r.Header.Get("X-Forwarded-Uri")
 
+	slog.Debug("forwardauth verify",
+		"x_forwarded_host", r.Header.Get("X-Forwarded-Host"),
+		"x_forwarded_proto", r.Header.Get("X-Forwarded-Proto"),
+		"x_forwarded_uri", forwardedURI,
+		"policy", r.URL.Query().Get("policy"),
+	)
+
 	// Cross-domain callback: /_gk/auth?token=XXX&redirect=YYY
 	if strings.HasPrefix(forwardedURI, "/_gk/auth") {
 		f.handleCallback(w, r, forwardedURI)
@@ -48,7 +56,9 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	// Normal session check.
 	data, _, err := f.sessions.Get(r)
 	if err != nil || data == nil || data.UserID == "" || data.PendingOTP || data.PendingTOTP {
-		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
+		login := f.loginURL(r)
+		slog.Debug("forwardauth no session, redirecting to login", "login_url", login)
+		http.Redirect(w, r, login, http.StatusFound)
 		return
 	}
 

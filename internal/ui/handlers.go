@@ -528,7 +528,9 @@ func (h *Handlers) redirectURL(sessID, target string) string {
 	if target == "" {
 		target = "/"
 	}
-	if h.needsCrossDomain(target) {
+	cross := h.needsCrossDomain(target)
+	slog.Debug("login redirect", "target", target, "cross_domain", cross, "cookie_domain", h.cookieDomain)
+	if cross {
 		u, err := url.Parse(target)
 		if err != nil {
 			return "/"

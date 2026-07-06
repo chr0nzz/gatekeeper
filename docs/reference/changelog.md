@@ -3,6 +3,18 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.1
+
+### Security
+
+- **Documentation build dependency** - Bumped `vite` to `6.4.3` to resolve two advisories flagged by Dependabot: a `server.fs.deny` bypass on Windows alternate paths (high) and an NTLMv2 hash disclosure via `launch-editor` on Windows (medium). This only affects the documentation site's build tooling, not the GateKeeper server.
+
+### ForwardAuth debugging
+
+- **Debug logging** - Set `LOG_LEVEL=debug` to log the `X-Forwarded-Host`, proto, and URI each ForwardAuth verify receives, plus the target each login redirect resolves to. This pinpoints reverse-proxy header issues, such as a middleware `address` routed through the auth domain that rewrites `X-Forwarded-Host`. See [Traefik ForwardAuth - Troubleshooting](/integrations/traefik-forwardauth#troubleshooting-login-redirects-back-to-the-auth-domain).
+
+---
+
 ## v0.9.0
 
 ### Split public and admin ports

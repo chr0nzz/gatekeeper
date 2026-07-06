@@ -30,7 +30,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
-var version = "0.9.0"
+var version = "0.9.1"
 
 func main() {
 	cfg, err := config.Load()

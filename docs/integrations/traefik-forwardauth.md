@@ -120,3 +120,23 @@ Add a logout link in your app that posts to GateKeeper's logout endpoint:
 ## Protecting GateKeeper itself
 
 Do not apply the `gk-auth` middleware to GateKeeper's own route. Doing so creates a loop where the auth server requires authentication to serve the login page.
+
+## Troubleshooting: login redirects back to the auth domain
+
+If, after signing in, you land on the GateKeeper profile page instead of the app you were trying to reach, the ForwardAuth request is being routed through the `auth.example.com` router, which rewrites the `X-Forwarded-Host` header. GateKeeper then builds the post-login redirect back to itself.
+
+The fix is to point the middleware `address` directly at the GateKeeper container (`http://gatekeeper:8282/auth/verify`), never at the public `BASE_URL`.
+
+To confirm this is the cause, set `LOG_LEVEL=debug` on GateKeeper and watch the logs while you reproduce it:
+
+```bash
+docker compose logs -f gatekeeper | grep forwardauth
+```
+
+Each verify request logs the headers it received:
+
+```json
+{"msg":"forwardauth verify","x_forwarded_host":"auth.example.com","x_forwarded_uri":""}
+```
+
+If `x_forwarded_host` shows your **auth** domain (and `x_forwarded_uri` is empty) instead of the **app's** host, the request is going through the wrong route - switch the middleware `address` to the direct container address. When it is correct, `x_forwarded_host` shows the app's hostname. Set `LOG_LEVEL` back to `info` when you are done.
