@@ -52,10 +52,19 @@
           <input class="input" type="text" name="allowed_email_domains" value="{{.AllowedDomains}}" placeholder="example.com, company.org">
           <span class="field-hint">Comma-separated. Leave blank to allow any email address.</span>
         </label>
-        <label class="field" style="margin-bottom:0">
+        <label class="field">
           <span class="field-label">Session timeout (hours)</span>
           <input class="input" type="number" name="session_ttl_hours" value="{{.SessionTTL}}" min="1" max="720" placeholder="8" style="max-width:120px">
           <span class="field-hint">Default 8. Maximum 720 (30 days).</span>
+        </label>
+        <label class="field" style="margin-bottom:0">
+          <span class="field-label">Protected app domains</span>
+          <textarea class="input mono" name="redirect_allowed_hosts" rows="3" placeholder=".example.net&#10;app.example.org" style="resize:vertical;line-height:1.5">{{.RedirectAllowedHosts}}</textarea>
+          <span class="field-hint">
+            Domains users may be returned to after signing in. Needed for ForwardAuth apps on a different domain than this server. One per line or comma-separated.
+            Each entry covers that domain and all of its subdomains, so <code>example.net</code> allows <code>app.example.net</code> and <code>other.example.net</code>.
+            Your own domain and anything under the session cookie domain are always allowed.
+          </span>
         </label>
       </div>
     </div>

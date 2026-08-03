@@ -197,7 +197,7 @@ go build -o gatekeeper ./cmd/gatekeeper
 ## Docker
 
 ```bash
-docker build --build-arg VERSION=v0.9.0 -t gatekeeper:v0.9.0 .
+docker build --build-arg VERSION=v0.9.3 -t gatekeeper:v0.9.3 .
 ```
 
 ## Project layout

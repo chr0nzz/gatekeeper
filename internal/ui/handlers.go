@@ -18,9 +18,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-webauthn/webauthn/protocol"
-	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"github.com/chr0nzz/gatekeeper/internal/auth/social"
@@ -29,8 +26,10 @@ import (
 	gkmiddleware "github.com/chr0nzz/gatekeeper/internal/middleware"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
 	gktemplates "github.com/chr0nzz/gatekeeper/internal/templates"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-webauthn/webauthn/protocol"
+	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 )
-
 
 const (
 	loginMaxFails  = 20
@@ -676,8 +675,6 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(target))
 }
-
-
 
 func (h *Handlers) brand(r *http.Request) map[string]interface{} {
 	return map[string]interface{}{

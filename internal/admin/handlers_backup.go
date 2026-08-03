@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	gkbackup "github.com/chr0nzz/gatekeeper/internal/backup"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handlers) GetBackups(w http.ResponseWriter, r *http.Request) {
@@ -18,19 +18,19 @@ func (h *Handlers) GetBackups(w http.ResponseWriter, r *http.Request) {
 	get := func(k, def string) string { return h.settings.Get(r.Context(), k, def) }
 
 	h.render(w, r, "admin_backups.html", map[string]interface{}{
-		"Backups":          backups,
-		"StorageType":      get("backup_storage", ""),
-		"LocalPath":        get("backup_local_path", ""),
-		"S3Endpoint":       get("backup_s3_endpoint", ""),
-		"S3Bucket":         get("backup_s3_bucket", ""),
-		"S3AccessKey":      get("backup_s3_access_key", ""),
-		"S3Region":         get("backup_s3_region", "us-east-1"),
-		"S3Prefix":         get("backup_s3_prefix", "gatekeeper/"),
-		"S3PathStyle":      get("backup_s3_path_style", "false"),
-		"Schedule":         get("backup_schedule", "manual"),
-		"Retention":        get("backup_retention", "10"),
-		"Error":            r.URL.Query().Get("err"),
-		"Success":          r.URL.Query().Get("ok"),
+		"Backups":     backups,
+		"StorageType": get("backup_storage", ""),
+		"LocalPath":   get("backup_local_path", ""),
+		"S3Endpoint":  get("backup_s3_endpoint", ""),
+		"S3Bucket":    get("backup_s3_bucket", ""),
+		"S3AccessKey": get("backup_s3_access_key", ""),
+		"S3Region":    get("backup_s3_region", "us-east-1"),
+		"S3Prefix":    get("backup_s3_prefix", "gatekeeper/"),
+		"S3PathStyle": get("backup_s3_path_style", "false"),
+		"Schedule":    get("backup_schedule", "manual"),
+		"Retention":   get("backup_retention", "10"),
+		"Error":       r.URL.Query().Get("err"),
+		"Success":     r.URL.Query().Get("ok"),
 	})
 }
 
@@ -56,7 +56,7 @@ func (h *Handlers) PostBackupSettings(w http.ResponseWriter, r *http.Request) {
 	set("backup_schedule", r.FormValue("backup_schedule"))
 	set("backup_retention", r.FormValue("backup_retention"))
 
-	http.Redirect(w, r, h.adminBase + "/backups?ok=Settings+saved", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/backups?ok=Settings+saved", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostBackupNow(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +67,7 @@ func (h *Handlers) PostBackupNow(w http.ResponseWriter, r *http.Request) {
 
 	storage := gkbackup.BuildStorage(h.settings)
 	if storage == nil {
-		http.Redirect(w, r, h.adminBase + "/backups?err=Configure+storage+before+running+a+backup", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/backups?err=Configure+storage+before+running+a+backup", http.StatusSeeOther)
 		return
 	}
 
@@ -78,12 +78,12 @@ func (h *Handlers) PostBackupNow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := gkbackup.RunBackup(r.Context(), h.db, h.dbPath, []byte(h.secretKey), storage, h.backups, retention); err != nil {
-		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg(err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg(err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	h.auditLog.Log(r.Context(), "backup.created", "", h.adminIDFromRequest(r), r.RemoteAddr, "manual")
-	http.Redirect(w, r, h.adminBase + "/backups?ok=Backup+completed+successfully", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/backups?ok=Backup+completed+successfully", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetBackupDownload(w http.ResponseWriter, r *http.Request) {
@@ -127,31 +127,31 @@ func (h *Handlers) PostBackupRestore(w http.ResponseWriter, r *http.Request) {
 
 	storage := gkbackup.BuildStorage(h.settings)
 	if storage == nil {
-		http.Redirect(w, r, h.adminBase + "/backups?err=Storage+not+configured", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/backups?err=Storage+not+configured", http.StatusSeeOther)
 		return
 	}
 
 	encrypted, err := storage.Download(r.Context(), rec.Name)
 	if err != nil {
-		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg("Download failed: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Download failed: "+err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	plain, err := gkbackup.Decrypt(encrypted, []byte(h.secretKey))
 	if err != nil {
-		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg("Decrypt failed - wrong SECRET_KEY or corrupt backup"), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Decrypt failed - wrong SECRET_KEY or corrupt backup"), http.StatusSeeOther)
 		return
 	}
 
 	restorePath := h.dbPath + ".restore"
 	if err := os.WriteFile(restorePath, plain, 0600); err != nil {
-		http.Redirect(w, r, h.adminBase + "/backups?err="+encodeMsg("Write failed: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/backups?err="+encodeMsg("Write failed: "+err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	h.auditLog.Log(r.Context(), "backup.restored", "", h.adminIDFromRequest(r), r.RemoteAddr, rec.Name)
 
-	http.Redirect(w, r, h.adminBase + "/backups?ok="+encodeMsg(
+	http.Redirect(w, r, h.adminBase+"/backups?ok="+encodeMsg(
 		"Restore staged. Restart GateKeeper now to complete the restore - the backup is applied automatically on startup. All sessions will be reset.",
 	), http.StatusSeeOther)
 }
@@ -222,7 +222,7 @@ func (h *Handlers) PostBackupDelete(w http.ResponseWriter, r *http.Request) {
 
 	h.backups.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), "backup.deleted", "", h.adminIDFromRequest(r), r.RemoteAddr, rec.Name)
-	http.Redirect(w, r, h.adminBase + "/backups?ok=Backup+deleted", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/backups?ok=Backup+deleted", http.StatusSeeOther)
 }
 
 func encodeMsg(s string) string {

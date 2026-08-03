@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	otpTTL             = 10 * time.Minute
-	otpMaxFails        = 5
-	otpLockTime        = 10 * time.Minute
+	otpTTL               = 10 * time.Minute
+	otpMaxFails          = 5
+	otpLockTime          = 10 * time.Minute
 	otpMaxIssuePerWindow = 3
 )
 

@@ -34,9 +34,9 @@ func TestIsLocalPath(t *testing.T) {
 func TestPathOnlyStripsQuery(t *testing.T) {
 	cases := map[string]string{
 		"/_gk/auth?token=SECRETVALUE&redirect=%2F": "/_gk/auth",
-		"/dashboard?a=b":                           "/dashboard",
-		"/plain":                                   "/plain",
-		"":                                         "",
+		"/dashboard?a=b": "/dashboard",
+		"/plain":         "/plain",
+		"":               "",
 	}
 	for in, want := range cases {
 		if got := pathOnly(in); got != want {

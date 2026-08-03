@@ -14,7 +14,7 @@ import (
 // Settings holds the SMTP configuration used for one send operation.
 type Settings struct {
 	Host, Username, Password, From, TLS string
-	Port                                 int
+	Port                                int
 }
 
 // Branding holds the visual customization applied to outgoing emails.

@@ -45,9 +45,9 @@ type WAUser struct {
 	Credentials []webauthn.Credential
 }
 
-func (u *WAUser) WebAuthnID() []byte        { return []byte(u.ID) }
-func (u *WAUser) WebAuthnName() string      { return u.Email }
-func (u *WAUser) WebAuthnDisplayName() string { return u.Email }
+func (u *WAUser) WebAuthnID() []byte                         { return []byte(u.ID) }
+func (u *WAUser) WebAuthnName() string                       { return u.Email }
+func (u *WAUser) WebAuthnDisplayName() string                { return u.Email }
 func (u *WAUser) WebAuthnCredentials() []webauthn.Credential { return u.Credentials }
 
 // LoadUser retrieves a WAUser with their credentials.

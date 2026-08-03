@@ -17,7 +17,24 @@ example.com, contractor.org
 
 Leave blank to allow any email address. When a domain list is set, attempts from other domains fail with an "invalid credentials" error (indistinguishable from a wrong password, to avoid revealing whether an account exists).
 
-### Session timeout
+### Protected app domains
+
+Applies to apps protected with ForwardAuth that live on a different domain than GateKeeper itself.
+
+After signing in, GateKeeper only returns a user to a destination it trusts. Anything else is refused and the user lands on the GateKeeper home page instead. List your protected apps here so the return trip is allowed:
+
+```
+jellyfin.example.net
+.example.org
+```
+
+One per line or comma-separated. Each entry covers that domain **and all of its subdomains**, so `example.org` allows `app.example.org` and `media.example.org`. Writing it as `.example.org`, `*.example.org`, or pasting a full URL all mean the same thing.
+
+You do not need an entry for your own GateKeeper domain, your admin domain, or anything under the session cookie domain. Those are always allowed.
+
+Changes take effect immediately, with no restart.
+
+## Session timeout
 
 How many hours a session stays alive after the last authenticated request. Resets on every request, so active users are never logged out. Default is 8 hours, maximum is 720 (30 days).
 

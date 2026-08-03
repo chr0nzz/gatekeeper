@@ -20,15 +20,25 @@ GateKeeper solves this with a single-use handoff token.
 
 ## Configuration
 
-Set `COOKIE_DOMAIN` for apps that share a domain, and list any app on a different domain in `REDIRECT_ALLOWED_HOSTS`. Redirect targets that match neither are refused, and the user is sent to the GateKeeper home page instead.
+Apps on a different domain than GateKeeper must be listed as allowed redirect destinations, otherwise sign-in returns the user to the GateKeeper home page instead of the app.
+
+Add them in the admin panel under **Settings - Access control - Protected app domains**. Changes apply immediately, with no restart:
+
+```
+jellyfin.otherdomain.io
+.third.net
+```
+
+Entries are one per line or comma-separated, and each one covers that domain and all of its subdomains. Listing `otherdomain.io` allows `jellyfin.otherdomain.io` and every other host under it. The forms `.otherdomain.io`, `*.otherdomain.io`, and a pasted URL are all equivalent.
+
+Two groups of hosts are always allowed and never need an entry: your `BASE_URL` and `ADMIN_URL` hosts, and anything under `COOKIE_DOMAIN`.
 
 ```bash
 BASE_URL=https://auth.example.com
-COOKIE_DOMAIN=.example.com                              # covers *.example.com
-REDIRECT_ALLOWED_HOSTS=.otherdomain.io,app.third.net    # different domains
+COOKIE_DOMAIN=.example.com   # covers *.example.com without any extra setting
 ```
 
-Entries are either an exact hostname (`app.otherdomain.io`) or a domain suffix (`.otherdomain.io`, which also matches subdomains).
+The same list can also be pre-seeded with the `REDIRECT_ALLOWED_HOSTS` environment variable, which is useful for automated deployments. Entries from both sources are combined.
 
 ## Token security
 

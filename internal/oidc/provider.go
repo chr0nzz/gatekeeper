@@ -3,8 +3,8 @@ package oidc
 import (
 	"context"
 	"crypto/rand"
-	"crypto/subtle"
 	"crypto/rsa"
+	"crypto/subtle"
 	"crypto/x509"
 	"database/sql"
 	"encoding/hex"
@@ -391,11 +391,14 @@ func (s *Storage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc.UserI
 		return err
 	}
 	userinfo.Subject = subject
+	// Claims are limited to the granted scopes only when those scopes are known.
+	// A token whose scopes cannot be resolved still receives the standard claims,
+	// otherwise relying parties get a response they cannot identify a user from.
 	scopes := s.tokenScopes(ctx, tokenID)
-	if hasScope(scopes, oidc.ScopeEmail) {
+	if len(scopes) == 0 || hasScope(scopes, oidc.ScopeEmail) {
 		userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(verified == 1)}
 	}
-	if hasScope(scopes, oidc.ScopeProfile) {
+	if len(scopes) == 0 || hasScope(scopes, oidc.ScopeProfile) {
 		userinfo.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
 	}
 	userinfo.Claims = s.userGroupClaims(ctx, subject)
@@ -672,7 +675,9 @@ func (c *OIDCClient) RedirectURIs() []string {
 func (c *OIDCClient) PostLogoutRedirectURIs() []string    { return nil }
 func (c *OIDCClient) ApplicationType() op.ApplicationType { return op.ApplicationTypeWeb }
 func (c *OIDCClient) AuthMethod() oidc.AuthMethod         { return oidc.AuthMethodBasic }
-func (c *OIDCClient) ResponseTypes() []oidc.ResponseType  { return []oidc.ResponseType{oidc.ResponseTypeCode} }
+func (c *OIDCClient) ResponseTypes() []oidc.ResponseType {
+	return []oidc.ResponseType{oidc.ResponseTypeCode}
+}
 func (c *OIDCClient) GrantTypes() []oidc.GrantType {
 	grants := []oidc.GrantType{oidc.GrantTypeCode, oidc.GrantTypeRefreshToken}
 	if c.credentialsScopes != "" {
@@ -722,9 +727,9 @@ type authRequest struct {
 	done                bool
 }
 
-func (r *authRequest) GetID() string    { return r.id }
-func (r *authRequest) GetACR() string   { return "" }
-func (r *authRequest) GetAMR() []string { return nil }
+func (r *authRequest) GetID() string       { return r.id }
+func (r *authRequest) GetACR() string      { return "" }
+func (r *authRequest) GetAMR() []string    { return nil }
 func (r *authRequest) GetClientID() string { return r.clientID }
 func (r *authRequest) GetCodeChallenge() *oidc.CodeChallenge {
 	if r.codeChallenge == "" {
@@ -732,19 +737,19 @@ func (r *authRequest) GetCodeChallenge() *oidc.CodeChallenge {
 	}
 	return &oidc.CodeChallenge{Challenge: r.codeChallenge, Method: oidc.CodeChallengeMethod(r.codeChallengeMethod)}
 }
-func (r *authRequest) GetNonce() string                    { return r.nonce }
-func (r *authRequest) GetRedirectURI() string              { return r.redirectURI }
-func (r *authRequest) GetResponseType() oidc.ResponseType  { return oidc.ResponseType(r.responseType) }
-func (r *authRequest) GetResponseMode() oidc.ResponseMode  { return "" }
-func (r *authRequest) GetScopes() []string                 { return r.scopes }
-func (r *authRequest) GetState() string                    { return r.state }
-func (r *authRequest) GetSubject() string                  { return r.userID }
-func (r *authRequest) Done() bool                          { return r.done }
-func (r *authRequest) GetAudience() []string               { return []string{r.clientID} }
-func (r *authRequest) GetAuthTime() time.Time              { return time.Now() }
-func (r *authRequest) GetClientSecret() string             { return "" }
-func (r *authRequest) SetCurrentScopes(scopes []string)    { r.scopes = scopes }
-func (r *authRequest) GetCurrentScopes() []string          { return r.scopes }
+func (r *authRequest) GetNonce() string                   { return r.nonce }
+func (r *authRequest) GetRedirectURI() string             { return r.redirectURI }
+func (r *authRequest) GetResponseType() oidc.ResponseType { return oidc.ResponseType(r.responseType) }
+func (r *authRequest) GetResponseMode() oidc.ResponseMode { return "" }
+func (r *authRequest) GetScopes() []string                { return r.scopes }
+func (r *authRequest) GetState() string                   { return r.state }
+func (r *authRequest) GetSubject() string                 { return r.userID }
+func (r *authRequest) Done() bool                         { return r.done }
+func (r *authRequest) GetAudience() []string              { return []string{r.clientID} }
+func (r *authRequest) GetAuthTime() time.Time             { return time.Now() }
+func (r *authRequest) GetClientSecret() string            { return "" }
+func (r *authRequest) SetCurrentScopes(scopes []string)   { r.scopes = scopes }
+func (r *authRequest) GetCurrentScopes() []string         { return r.scopes }
 
 // -- signingKey implements both op.SigningKey and op.Key --
 
@@ -753,11 +758,11 @@ type signingKey struct {
 	key *rsa.PrivateKey
 }
 
-func (k *signingKey) ID() string                               { return k.id }
+func (k *signingKey) ID() string                                  { return k.id }
 func (k *signingKey) SignatureAlgorithm() jose.SignatureAlgorithm { return jose.RS256 }
-func (k *signingKey) Algorithm() jose.SignatureAlgorithm       { return jose.RS256 }
-func (k *signingKey) Use() string                              { return "sig" }
-func (k *signingKey) Key() any                                 { return k.key }
+func (k *signingKey) Algorithm() jose.SignatureAlgorithm          { return jose.RS256 }
+func (k *signingKey) Use() string                                 { return "sig" }
+func (k *signingKey) Key() any                                    { return k.key }
 
 // -- ClientRecord for admin display --
 

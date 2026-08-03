@@ -11,6 +11,27 @@ type RedirectPolicy struct {
 	hosts        map[string]bool
 	suffixes     []string
 	cookieDomain string
+	extraHosts   func() []string
+}
+
+// SetExtraHosts installs a loader for operator-managed allowed hosts. It is
+// called on every check so hosts added in the admin UI apply without a restart.
+func (p *RedirectPolicy) SetExtraHosts(fn func() []string) {
+	p.extraHosts = fn
+}
+
+// ParseHostList splits a comma or newline separated list of hosts into entries.
+func ParseHostList(raw string) []string {
+	fields := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == '\n' || r == '\r' || r == ' ' || r == '\t'
+	})
+	out := make([]string, 0, len(fields))
+	for _, f := range fields {
+		if f != "" {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // NewRedirectPolicy builds a policy from the deployment's own URLs plus an
@@ -27,18 +48,26 @@ func NewRedirectPolicy(baseURL, adminURL, cookieDomain string, allowed []string)
 		p.cookieDomain = strings.ToLower(strings.TrimPrefix(cookieDomain, "."))
 	}
 	for _, entry := range allowed {
-		entry = strings.ToLower(strings.TrimSpace(entry))
-		if entry == "" {
-			continue
+		if s := normalizeEntry(entry); s != "" {
+			p.suffixes = append(p.suffixes, s)
 		}
-		entry = strings.TrimPrefix(entry, "*")
-		if strings.HasPrefix(entry, ".") {
-			p.suffixes = append(p.suffixes, strings.TrimPrefix(entry, "."))
-			continue
-		}
-		p.hosts[entry] = true
 	}
 	return p
+}
+
+// normalizeEntry reduces an allowlist entry to a bare domain. Entries may be
+// written as "example.net", ".example.net", "*.example.net", or a full URL, and
+// all of them cover that domain and its subdomains.
+func normalizeEntry(entry string) string {
+	entry = strings.ToLower(strings.TrimSpace(entry))
+	if entry == "" {
+		return ""
+	}
+	if strings.Contains(entry, "://") {
+		entry = hostOf(entry)
+	}
+	entry = strings.TrimPrefix(entry, "*")
+	return strings.TrimPrefix(entry, ".")
 }
 
 // Allowed reports whether target is a permitted redirect destination. Relative
@@ -84,7 +113,22 @@ func (p *RedirectPolicy) hostAllowed(host string) bool {
 			return true
 		}
 	}
+	if p.extraHosts != nil {
+		for _, entry := range p.extraHosts() {
+			if matchesEntry(host, entry) {
+				return true
+			}
+		}
+	}
 	return false
+}
+
+// matchesEntry reports whether host is covered by a single allowlist entry.
+// An entry always covers the domain itself and its subdomains, so "example.net"
+// and ".example.net" behave the same and neither silently misses an app.
+func matchesEntry(host, entry string) bool {
+	s := normalizeEntry(entry)
+	return s != "" && matchesSuffix(host, s)
 }
 
 func matchesSuffix(host, suffix string) bool {

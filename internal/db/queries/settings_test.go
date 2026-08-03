@@ -17,10 +17,10 @@ func TestSecretSettingsEncryptedAtRest(t *testing.T) {
 	store.SetCipher(auth.NewSettingsCipher([]byte("a-test-secret-key-that-is-long-enough")))
 
 	secrets := map[string]string{
-		"smtp_password":           "hunter2-smtp",
-		"backup_s3_secret_key":    "s3-secret-value",
+		"smtp_password":               "hunter2-smtp",
+		"backup_s3_secret_key":        "s3-secret-value",
 		"social_github_client_secret": "github-oauth-secret",
-		"webhook_telegram_token":  "telegram-bot-token",
+		"webhook_telegram_token":      "telegram-bot-token",
 	}
 	for key, value := range secrets {
 		if err := store.Set(ctx, key, value); err != nil {

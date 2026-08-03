@@ -11,14 +11,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	gatekeeper "github.com/chr0nzz/gatekeeper"
 	"github.com/chr0nzz/gatekeeper/internal/admin"
-	gkbackup "github.com/chr0nzz/gatekeeper/internal/backup"
-	gktemplates "github.com/chr0nzz/gatekeeper/internal/templates"
 	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
+	gkbackup "github.com/chr0nzz/gatekeeper/internal/backup"
 	"github.com/chr0nzz/gatekeeper/internal/config"
 	"github.com/chr0nzz/gatekeeper/internal/db"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
@@ -26,11 +23,14 @@ import (
 	gkmiddleware "github.com/chr0nzz/gatekeeper/internal/middleware"
 	"github.com/chr0nzz/gatekeeper/internal/notify"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
+	gktemplates "github.com/chr0nzz/gatekeeper/internal/templates"
 	"github.com/chr0nzz/gatekeeper/internal/ui"
+	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
-var version = "0.9.2"
+var version = "0.9.3"
 
 func main() {
 	cfg, err := config.Load()
@@ -151,6 +151,9 @@ func main() {
 	policyStore := queries.NewPolicyStore(database)
 	handoffStore := auth.NewHandoffStore(database)
 	redirectPolicy := auth.NewRedirectPolicy(cfg.BaseURL, cfg.AdminURL, cfg.CookieDomain, cfg.RedirectAllowedHosts)
+	redirectPolicy.SetExtraHosts(func() []string {
+		return auth.ParseHostList(settingsStore.Get(context.Background(), "redirect_allowed_hosts", ""))
+	})
 
 	oidcStorage := oidcstore.NewStorage(database, cfg.BaseURL)
 	if err := oidcStorage.EnsureSigningKey(context.Background()); err != nil {
@@ -330,4 +333,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-

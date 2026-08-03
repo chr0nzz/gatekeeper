@@ -13,9 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-webauthn/webauthn/protocol"
-	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
@@ -24,6 +21,9 @@ import (
 	"github.com/chr0nzz/gatekeeper/internal/notify"
 	oidcstore "github.com/chr0nzz/gatekeeper/internal/oidc"
 	"github.com/chr0nzz/gatekeeper/internal/templates"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-webauthn/webauthn/protocol"
+	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 )
 
 const adminCookieName = "gk_admin"
@@ -121,7 +121,7 @@ func New(
 		db: db, users: users, admins: admins, adminSess: adminSess,
 		sessions: sessions, totp: totp, passkeys: passkeys,
 		trustedDevices: trustedDevices,
-		oidcStorage: oidcStorage, mailer: m, resetStore: resetStore,
+		oidcStorage:    oidcStorage, mailer: m, resetStore: resetStore,
 		settings: settings, auditLog: auditLog, renderer: renderer,
 		policies: policies, groups: groups, invites: invites, webhooks: webhooks, claims: claims, notifier: notifier,
 		backups: backups,
@@ -146,11 +146,11 @@ func (h *Handlers) adminIDFromRequest(r *http.Request) string {
 func (h *Handlers) requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !h.admins.Exists(r.Context()) {
-			http.Redirect(w, r, h.adminBase + "/setup", http.StatusFound)
+			http.Redirect(w, r, h.adminBase+"/setup", http.StatusFound)
 			return
 		}
 		if h.adminIDFromRequest(r) == "" {
-			http.Redirect(w, r, h.adminBase + "/login", http.StatusFound)
+			http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -333,7 +333,7 @@ func (h *Handlers) Mount(r chi.Router) {
 
 func (h *Handlers) GetSetup(w http.ResponseWriter, r *http.Request) {
 	if h.admins.Exists(r.Context()) {
-		http.Redirect(w, r, h.adminBase + "/login", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
 		return
 	}
 	h.render(w, r, "admin_setup.html", nil)
@@ -341,7 +341,7 @@ func (h *Handlers) GetSetup(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) PostSetup(w http.ResponseWriter, r *http.Request) {
 	if h.admins.Exists(r.Context()) {
-		http.Redirect(w, r, h.adminBase + "/login", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
 		return
 	}
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
@@ -360,12 +360,12 @@ func (h *Handlers) PostSetup(w http.ResponseWriter, r *http.Request) {
 		h.render(w, r, "admin_setup.html", map[string]interface{}{"Error": "Could not create admin: " + err.Error()})
 		return
 	}
-	http.Redirect(w, r, h.adminBase + "/login", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
 }
 
 func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	if !h.admins.Exists(r.Context()) {
-		http.Redirect(w, r, h.adminBase + "/setup", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/setup", http.StatusFound)
 		return
 	}
 	h.render(w, r, "admin_login.html", nil)
@@ -407,7 +407,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 	h.auditLog.Log(r.Context(), audit.EventAdminLogin, admin.ID, "", r.RemoteAddr, "password")
-	http.Redirect(w, r, h.adminBase + "/", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/", http.StatusFound)
 }
 
 func adminRemoteIP(r *http.Request) string {
@@ -482,7 +482,7 @@ func (h *Handlers) PostLoginPasskeyFinish(w http.ResponseWriter, r *http.Request
 		SameSite: http.SameSiteLaxMode,
 	})
 	h.auditLog.Log(r.Context(), audit.EventAdminLoginPasskey, adminID, "", r.RemoteAddr, "")
-	w.Header().Set("X-Redirect", h.adminBase + "/")
+	w.Header().Set("X-Redirect", h.adminBase+"/")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -496,7 +496,7 @@ func (h *Handlers) PostLogout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.SetCookie(w, &http.Cookie{Name: adminCookieName, Value: "", MaxAge: -1, Path: h.adminBase + "/"})
-	http.Redirect(w, r, h.adminBase + "/login", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
 }
 
 func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
@@ -602,33 +602,33 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, r, "admin_dashboard.html", map[string]interface{}{
-		"TotalUsers":       totalUsers,
-		"ActiveUsers":      activeUsers,
-		"DisabledUsers":    disabledUsers,
-		"LockedUsers":      lockedUsers,
-		"No2FAUsers":       no2faUsers,
-		"OIDCClientCount":  oidcClientCount,
-		"SignIns24h":       signIns24h,
-		"Failed24h":        failed24h,
-		"OIDCTokens24h":    oidcTokens24h,
-		"SuccessRate":      successRate,
-		"ActiveSessions":   activeSessions,
-		"TrustedDevices":   trustedDevices,
-		"TotalAuditEvents": totalAuditEvents,
+		"TotalUsers":        totalUsers,
+		"ActiveUsers":       activeUsers,
+		"DisabledUsers":     disabledUsers,
+		"LockedUsers":       lockedUsers,
+		"No2FAUsers":        no2faUsers,
+		"OIDCClientCount":   oidcClientCount,
+		"SignIns24h":        signIns24h,
+		"Failed24h":         failed24h,
+		"OIDCTokens24h":     oidcTokens24h,
+		"SuccessRate":       successRate,
+		"ActiveSessions":    activeSessions,
+		"TrustedDevices":    trustedDevices,
+		"TotalAuditEvents":  totalAuditEvents,
 		"UsersWithPasskeys": usersWithPasskeys,
-		"UsersWithTOTP":    usersWithTOTP,
-		"UsersNoFactor":    usersNoFactor,
-		"PctPasskeys":      pctOf(usersWithPasskeys),
-		"PctTOTP":          pctOf(usersWithTOTP),
-		"PctNoFactor":      pctOf(usersNoFactor),
-		"RecentEvents":     recentEvents,
-		"AuthMethods":      authMethods,
-		"HasAuthData":      totalMethods > 0,
-		"SparkSignIns":     sparkSignIns,
-		"SparkFailed":      sparkFailed,
-		"SparkOIDC":        sparkOIDC,
-		"OIDCClients":      clients,
-		"Policies":         func() interface{} { p, _ := h.policies.List(ctx); return p }(),
+		"UsersWithTOTP":     usersWithTOTP,
+		"UsersNoFactor":     usersNoFactor,
+		"PctPasskeys":       pctOf(usersWithPasskeys),
+		"PctTOTP":           pctOf(usersWithTOTP),
+		"PctNoFactor":       pctOf(usersNoFactor),
+		"RecentEvents":      recentEvents,
+		"AuthMethods":       authMethods,
+		"HasAuthData":       totalMethods > 0,
+		"SparkSignIns":      sparkSignIns,
+		"SparkFailed":       sparkFailed,
+		"SparkOIDC":         sparkOIDC,
+		"OIDCClients":       clients,
+		"Policies":          func() interface{} { p, _ := h.policies.List(ctx); return p }(),
 	})
 }
 
@@ -679,11 +679,11 @@ func (h *Handlers) GetDashboardStats(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]int{
-		"sign_ins_24h":   signIns24h,
-		"failed_24h":     failed24h,
+		"sign_ins_24h":    signIns24h,
+		"failed_24h":      failed24h,
 		"oidc_tokens_24h": oidcTokens24h,
-		"success_rate":   successRate,
-		"locked_users":   lockedUsers,
+		"success_rate":    successRate,
+		"locked_users":    lockedUsers,
 	})
 }
 
@@ -991,14 +991,14 @@ func (h *Handlers) GetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.render(w, r, "admin_users.html", map[string]interface{}{
-		"Users":       normalRows,
+		"Users":        normalRows,
 		"PendingUsers": pendingRows,
-		"Total":       len(normalRows),
-		"Active":      active,
-		"Locked":      locked,
-		"Disabled":    disabled,
-		"Pending":     pending,
-		"No2FA":       no2fa,
+		"Total":        len(normalRows),
+		"Active":       active,
+		"Locked":       locked,
+		"Disabled":     disabled,
+		"Pending":      pending,
+		"No2FA":        no2fa,
 	})
 }
 
@@ -1035,7 +1035,7 @@ func (h *Handlers) PostCreateUser(w http.ResponseWriter, r *http.Request) {
 		h.users.SetPasswordless(r.Context(), id, true)
 	}
 	h.auditLog.Log(r.Context(), audit.EventUserCreated, id, adminID, r.RemoteAddr, email)
-	http.Redirect(w, r, h.adminBase + "/users", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
 func (h *Handlers) renderUserListWithError(w http.ResponseWriter, r *http.Request, msg string) {
@@ -1133,7 +1133,7 @@ func (h *Handlers) PostSetPassword(w http.ResponseWriter, r *http.Request) {
 	h.auditLog.Log(r.Context(), audit.EventAdminPasswordSet, id, adminID, r.RemoteAddr, "")
 	h.sessions.RevokeAll(r.Context(), id)
 	h.trustedDevices.RevokeAll(r.Context(), id)
-	http.Redirect(w, r, h.adminBase + "/users/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostSendReset(w http.ResponseWriter, r *http.Request) {
@@ -1154,7 +1154,7 @@ func (h *Handlers) PostSendReset(w http.ResponseWriter, r *http.Request) {
 		adminID := h.adminIDFromRequest(r)
 		h.auditLog.Log(r.Context(), audit.EventPasswordResetReq, id, adminID, r.RemoteAddr, "admin-triggered")
 	}
-	http.Redirect(w, r, h.adminBase + "/users/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostDisableUser(w http.ResponseWriter, r *http.Request) {
@@ -1168,7 +1168,7 @@ func (h *Handlers) PostDisableUser(w http.ResponseWriter, r *http.Request) {
 	h.trustedDevices.RevokeAll(r.Context(), id)
 	adminID := h.adminIDFromRequest(r)
 	h.auditLog.Log(r.Context(), audit.EventUserDisabled, id, adminID, r.RemoteAddr, "")
-	http.Redirect(w, r, h.adminBase + "/users", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
 func (h *Handlers) PostEnableUser(w http.ResponseWriter, r *http.Request) {
@@ -1180,7 +1180,7 @@ func (h *Handlers) PostEnableUser(w http.ResponseWriter, r *http.Request) {
 	h.users.SetDisabled(r.Context(), id, false)
 	adminID := h.adminIDFromRequest(r)
 	h.auditLog.Log(r.Context(), audit.EventUserEnabled, id, adminID, r.RemoteAddr, "")
-	http.Redirect(w, r, h.adminBase + "/users", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
 func (h *Handlers) PostDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -1194,7 +1194,7 @@ func (h *Handlers) PostDeleteUser(w http.ResponseWriter, r *http.Request) {
 	h.trustedDevices.RevokeAll(r.Context(), id)
 	h.users.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), audit.EventUserDeleted, id, adminID, r.RemoteAddr, "")
-	http.Redirect(w, r, h.adminBase + "/users", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
 func (h *Handlers) PostApproveUser(w http.ResponseWriter, r *http.Request) {
@@ -1206,7 +1206,7 @@ func (h *Handlers) PostApproveUser(w http.ResponseWriter, r *http.Request) {
 	adminID := h.adminIDFromRequest(r)
 	h.users.Approve(r.Context(), id)
 	h.auditLog.Log(r.Context(), "user.approved", id, adminID, r.RemoteAddr, "")
-	http.Redirect(w, r, h.adminBase + "/users", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
 func (h *Handlers) PostRejectUser(w http.ResponseWriter, r *http.Request) {
@@ -1218,7 +1218,7 @@ func (h *Handlers) PostRejectUser(w http.ResponseWriter, r *http.Request) {
 	adminID := h.adminIDFromRequest(r)
 	h.users.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), "user.rejected", id, adminID, r.RemoteAddr, "")
-	http.Redirect(w, r, h.adminBase + "/users", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
 func (h *Handlers) PostRevokeSessions(w http.ResponseWriter, r *http.Request) {
@@ -1231,7 +1231,7 @@ func (h *Handlers) PostRevokeSessions(w http.ResponseWriter, r *http.Request) {
 	h.trustedDevices.RevokeAll(r.Context(), id)
 	adminID := h.adminIDFromRequest(r)
 	h.auditLog.Log(r.Context(), audit.EventSessionRevoked, id, adminID, r.RemoteAddr, "admin-all")
-	http.Redirect(w, r, h.adminBase + "/users/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostRevokeTOTP(w http.ResponseWriter, r *http.Request) {
@@ -1243,7 +1243,7 @@ func (h *Handlers) PostRevokeTOTP(w http.ResponseWriter, r *http.Request) {
 	h.totp.Revoke(r.Context(), id)
 	adminID := h.adminIDFromRequest(r)
 	h.auditLog.Log(r.Context(), audit.EventTOTPRevoked, id, adminID, r.RemoteAddr, "admin")
-	http.Redirect(w, r, h.adminBase + "/users/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostTogglePasswordless(w http.ResponseWriter, r *http.Request) {
@@ -1254,7 +1254,7 @@ func (h *Handlers) PostTogglePasswordless(w http.ResponseWriter, r *http.Request
 	id := chi.URLParam(r, "id")
 	enabled := r.FormValue("enabled") == "1"
 	h.users.SetPasswordless(r.Context(), id, enabled)
-	http.Redirect(w, r, h.adminBase + "/users/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+id, http.StatusFound)
 }
 
 func (h *Handlers) GetClients(w http.ResponseWriter, r *http.Request) {
@@ -1323,7 +1323,7 @@ func (h *Handlers) PostCreateClient(w http.ResponseWriter, r *http.Request) {
 	if policyID != "" {
 		h.db.ExecContext(r.Context(), `UPDATE oidc_clients SET policy_id=? WHERE client_id=?`, policyID, clientID)
 	}
-	http.Redirect(w, r, h.adminBase + "/clients", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/clients", http.StatusFound)
 }
 
 func (h *Handlers) GetClientIcon(w http.ResponseWriter, r *http.Request) {
@@ -1337,7 +1337,7 @@ func (h *Handlers) PostDeleteClient(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	h.oidcStorage.DeleteClient(r.Context(), id)
-	http.Redirect(w, r, h.adminBase + "/clients", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/clients", http.StatusFound)
 }
 
 func (h *Handlers) PostEditClient(w http.ResponseWriter, r *http.Request) {
@@ -1360,7 +1360,7 @@ func (h *Handlers) PostEditClient(w http.ResponseWriter, r *http.Request) {
 	}
 	h.oidcStorage.UpdateClient(r.Context(), id, name, iconURL, newSecret, credentialsScopes, uris)
 	h.db.ExecContext(r.Context(), `UPDATE oidc_clients SET policy_id=? WHERE client_id=?`, policyID, id)
-	http.Redirect(w, r, h.adminBase + "/clients", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/clients", http.StatusFound)
 }
 
 var reservedClaims = map[string]bool{
@@ -1466,7 +1466,7 @@ func (h *Handlers) PostCreateClaim(w http.ResponseWriter, r *http.Request) {
 	sourceType := r.FormValue("value_source")
 	literal := strings.TrimSpace(r.FormValue("literal_value"))
 	if key == "" || reservedClaims[key] {
-		http.Redirect(w, r, h.adminBase + "/clients/"+id+"/claims", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/clients/"+id+"/claims", http.StatusFound)
 		return
 	}
 	valueSource := sourceType
@@ -1475,7 +1475,7 @@ func (h *Handlers) PostCreateClaim(w http.ResponseWriter, r *http.Request) {
 	}
 	h.claims.Create(r.Context(), id, key, valueSource)
 	h.auditLog.Log(r.Context(), "client.claim_added", "", "", r.RemoteAddr, id+"/"+key)
-	http.Redirect(w, r, h.adminBase + "/clients/"+id+"/claims", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/clients/"+id+"/claims", http.StatusFound)
 }
 
 func (h *Handlers) PostDeleteClaim(w http.ResponseWriter, r *http.Request) {
@@ -1487,7 +1487,7 @@ func (h *Handlers) PostDeleteClaim(w http.ResponseWriter, r *http.Request) {
 	claimID := chi.URLParam(r, "claimID")
 	h.claims.Delete(r.Context(), claimID)
 	h.auditLog.Log(r.Context(), "client.claim_removed", "", "", r.RemoteAddr, id+"/"+claimID)
-	http.Redirect(w, r, h.adminBase + "/clients/"+id+"/claims", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/clients/"+id+"/claims", http.StatusFound)
 }
 
 func (h *Handlers) GetIntegrations(w http.ResponseWriter, r *http.Request) {
@@ -1681,6 +1681,7 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		"AuditRetentionDays":         get("audit_retention_days", "90"),
 		"RegistrationMode":           get("registration_mode", h.envDefaults.RegistrationMode),
 		"RegistrationAllowedDomains": get("registration_allowed_domains", h.envDefaults.RegistrationAllowedDomains),
+		"RedirectAllowedHosts":       get("redirect_allowed_hosts", ""),
 		"PasswordMinLength":          get("password_min_length", "12"),
 		"PasswordRequireUppercase":   get("password_require_uppercase", "0") == "1",
 		"PasswordRequireNumber":      get("password_require_number", "0") == "1",
@@ -1711,6 +1712,7 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 	set("session_ttl_hours", r.FormValue("session_ttl_hours"))
 	set("registration_mode", r.FormValue("registration_mode"))
 	set("registration_allowed_domains", r.FormValue("registration_allowed_domains"))
+	set("redirect_allowed_hosts", r.FormValue("redirect_allowed_hosts"))
 	if ml := strings.TrimSpace(r.FormValue("password_min_length")); ml != "" {
 		if n, err := strconv.Atoi(ml); err == nil && n >= 8 && n <= 128 {
 			h.settings.Set(r.Context(), "password_min_length", ml)
@@ -1754,7 +1756,7 @@ func (h *Handlers) PostSettings(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	http.Redirect(w, r, h.adminBase + "/settings?saved=1", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/settings?saved=1", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetAdmins(w http.ResponseWriter, r *http.Request) {
@@ -1798,24 +1800,24 @@ func (h *Handlers) PostCreateAdmin(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	confirm := r.FormValue("confirm")
 	if email == "" || password == "" {
-		http.Redirect(w, r, h.adminBase + "/admins?err=missing", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins?err=missing", http.StatusSeeOther)
 		return
 	}
 	if password != confirm {
-		http.Redirect(w, r, h.adminBase + "/admins?err=mismatch", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins?err=mismatch", http.StatusSeeOther)
 		return
 	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		http.Redirect(w, r, h.adminBase + "/admins?err=server", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins?err=server", http.StatusSeeOther)
 		return
 	}
 	if err := h.admins.Create(r.Context(), email, hash, displayName); err != nil {
-		http.Redirect(w, r, h.adminBase + "/admins?err=exists", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins?err=exists", http.StatusSeeOther)
 		return
 	}
 	h.auditLog.Log(r.Context(), "admin.admin_created", "", h.adminIDFromRequest(r), r.RemoteAddr, email)
-	http.Redirect(w, r, h.adminBase + "/admins", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/admins", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostDeleteAdmin(w http.ResponseWriter, r *http.Request) {
@@ -1826,21 +1828,21 @@ func (h *Handlers) PostDeleteAdmin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	currentID := h.adminIDFromRequest(r)
 	if id == currentID {
-		http.Redirect(w, r, h.adminBase + "/admins?err=self", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins?err=self", http.StatusSeeOther)
 		return
 	}
 	if h.admins.Count(r.Context()) <= 1 {
-		http.Redirect(w, r, h.adminBase + "/admins?err=last", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins?err=last", http.StatusSeeOther)
 		return
 	}
 	target, _ := h.admins.GetByID(r.Context(), id)
 	if target == nil {
-		http.Redirect(w, r, h.adminBase + "/admins", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/admins", http.StatusSeeOther)
 		return
 	}
 	h.admins.Delete(r.Context(), id)
 	h.auditLog.Log(r.Context(), "admin.admin_deleted", "", currentID, r.RemoteAddr, target.Email)
-	http.Redirect(w, r, h.adminBase + "/admins", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/admins", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostMakeUserAdmin(w http.ResponseWriter, r *http.Request) {
@@ -1857,21 +1859,21 @@ func (h *Handlers) PostMakeUserAdmin(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	confirm := r.FormValue("confirm")
 	if password == "" {
-		http.Redirect(w, r, h.adminBase + "/users/"+userID+"?err=admin_missing", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err=admin_missing", http.StatusSeeOther)
 		return
 	}
 	if password != confirm {
-		http.Redirect(w, r, h.adminBase + "/users/"+userID+"?err=admin_mismatch", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err=admin_mismatch", http.StatusSeeOther)
 		return
 	}
 	existing, _ := h.admins.GetByEmail(r.Context(), user.Email)
 	if existing != nil {
-		http.Redirect(w, r, h.adminBase + "/users/"+userID+"?err=admin_exists", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err=admin_exists", http.StatusSeeOther)
 		return
 	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		http.Redirect(w, r, h.adminBase + "/users/"+userID+"?err=admin_server", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err=admin_server", http.StatusSeeOther)
 		return
 	}
 	displayName := user.DisplayName
@@ -1879,11 +1881,11 @@ func (h *Handlers) PostMakeUserAdmin(w http.ResponseWriter, r *http.Request) {
 		displayName = user.Email
 	}
 	if err := h.admins.Create(r.Context(), user.Email, hash, displayName); err != nil {
-		http.Redirect(w, r, h.adminBase + "/users/"+userID+"?err=admin_server", http.StatusSeeOther)
+		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err=admin_server", http.StatusSeeOther)
 		return
 	}
 	h.auditLog.Log(r.Context(), "admin.admin_created", userID, h.adminIDFromRequest(r), r.RemoteAddr, user.Email)
-	http.Redirect(w, r, h.adminBase + "/users/"+userID+"?success=admin_promoted", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/users/"+userID+"?success=admin_promoted", http.StatusSeeOther)
 }
 
 func (h *Handlers) profilePageData(r *http.Request) map[string]interface{} {
@@ -1928,7 +1930,7 @@ func (h *Handlers) PostProfileDisplayName(w http.ResponseWriter, r *http.Request
 	adminID := h.adminIDFromRequest(r)
 	name := strings.TrimSpace(r.FormValue("display_name"))
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET display_name=? WHERE id=?`, name, adminID)
-	http.Redirect(w, r, h.adminBase + "/profile?success=display_name", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/profile?success=display_name", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfileAPIKeyRotate(w http.ResponseWriter, r *http.Request) {
@@ -1946,7 +1948,7 @@ func (h *Handlers) PostProfileAPIKeyRotate(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "failed to save key", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, h.adminBase + "/profile?success=api_key_rotated", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/profile?success=api_key_rotated", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfileRevokeSessions(w http.ResponseWriter, r *http.Request) {
@@ -1961,7 +1963,7 @@ func (h *Handlers) PostProfileRevokeSessions(w http.ResponseWriter, r *http.Requ
 		currentSessID = cookie.Value
 	}
 	h.adminSess.DestroyAllExcept(r.Context(), adminID, currentSessID)
-	http.Redirect(w, r, h.adminBase + "/profile?success=sessions_revoked", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/profile?success=sessions_revoked", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfilePassword(w http.ResponseWriter, r *http.Request) {
@@ -1972,7 +1974,7 @@ func (h *Handlers) PostProfilePassword(w http.ResponseWriter, r *http.Request) {
 	adminID := h.adminIDFromRequest(r)
 	admin, err := h.admins.GetByID(r.Context(), adminID)
 	if err != nil || admin == nil {
-		http.Redirect(w, r, h.adminBase + "/login", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
 		return
 	}
 	current := r.FormValue("current_password")
@@ -1998,7 +2000,7 @@ func (h *Handlers) PostProfilePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET password_hash=? WHERE id=?`, hash, adminID)
-	http.Redirect(w, r, h.adminBase + "/profile?success=password", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/profile?success=password", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetProfileTOTPEnroll(w http.ResponseWriter, r *http.Request) {
@@ -2043,7 +2045,7 @@ func (h *Handlers) PostProfileTOTPEnroll(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET totp_enabled=1 WHERE id=?`, adminID)
-	http.Redirect(w, r, h.adminBase + "/profile?success=totp_enrolled", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/profile?success=totp_enrolled", http.StatusSeeOther)
 }
 
 func (h *Handlers) PostProfileTOTPDisable(w http.ResponseWriter, r *http.Request) {
@@ -2061,7 +2063,7 @@ func (h *Handlers) PostProfileTOTPDisable(w http.ResponseWriter, r *http.Request
 	}
 	h.totp.Revoke(r.Context(), "admin:"+adminID)
 	h.db.ExecContext(r.Context(), `UPDATE admin_users SET totp_enabled=0 WHERE id=?`, adminID)
-	http.Redirect(w, r, h.adminBase + "/profile?success=totp_removed", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/profile?success=totp_removed", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetProfilePasskey(w http.ResponseWriter, r *http.Request) {
@@ -2142,7 +2144,7 @@ func (h *Handlers) PostProfilePasskeyDelete(w http.ResponseWriter, r *http.Reque
 	id := chi.URLParam(r, "id")
 	h.passkeys.DeleteCredential(r.Context(), "admin:"+adminID, id)
 	h.auditLog.Log(r.Context(), audit.EventPasskeyRevoked, adminID, "", r.RemoteAddr, "")
-	http.Redirect(w, r, h.adminBase + "/profile", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/profile", http.StatusFound)
 }
 
 func (h *Handlers) GetPolicies(w http.ResponseWriter, r *http.Request) {
@@ -2180,7 +2182,7 @@ func (h *Handlers) PostCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := strings.TrimSpace(r.FormValue("description"))
 	if name == "" {
-		http.Redirect(w, r, h.adminBase + "/policies", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/policies", http.StatusFound)
 		return
 	}
 	if err := h.policies.Create(r.Context(), name, description); err != nil {
@@ -2189,10 +2191,10 @@ func (h *Handlers) PostCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	pol, _ := h.policies.GetByName(r.Context(), name)
 	if pol != nil {
-		http.Redirect(w, r, h.adminBase + "/policies/"+pol.ID, http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/policies/"+pol.ID, http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, h.adminBase + "/policies", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/policies", http.StatusFound)
 }
 
 func (h *Handlers) GetPolicy(w http.ResponseWriter, r *http.Request) {
@@ -2227,12 +2229,12 @@ func (h *Handlers) GetPolicy(w http.ResponseWriter, r *http.Request) {
 	var injectUsername string
 	h.db.QueryRowContext(r.Context(), `SELECT inject_username FROM policies WHERE id=?`, id).Scan(&injectUsername)
 	h.render(w, r, "admin_policy_detail.html", map[string]interface{}{
-		"Policy":          pol,
-		"Members":         members,
-		"NonMembers":      nonMembers,
-		"Clients":         clientNames,
-		"BaseURL":         h.baseURL,
-		"InjectUsername":  injectUsername,
+		"Policy":         pol,
+		"Members":        members,
+		"NonMembers":     nonMembers,
+		"Clients":        clientNames,
+		"BaseURL":        h.baseURL,
+		"InjectUsername": injectUsername,
 	})
 }
 
@@ -2243,7 +2245,7 @@ func (h *Handlers) PostDeletePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	h.policies.Delete(r.Context(), id)
-	http.Redirect(w, r, h.adminBase + "/policies", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/policies", http.StatusFound)
 }
 
 func (h *Handlers) PostAddPolicyMember(w http.ResponseWriter, r *http.Request) {
@@ -2256,7 +2258,7 @@ func (h *Handlers) PostAddPolicyMember(w http.ResponseWriter, r *http.Request) {
 	if userID != "" {
 		h.policies.AddMember(r.Context(), id, userID)
 	}
-	http.Redirect(w, r, h.adminBase + "/policies/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/policies/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostRemovePolicyMember(w http.ResponseWriter, r *http.Request) {
@@ -2267,7 +2269,7 @@ func (h *Handlers) PostRemovePolicyMember(w http.ResponseWriter, r *http.Request
 	id := chi.URLParam(r, "id")
 	userID := chi.URLParam(r, "userID")
 	h.policies.RemoveMember(r.Context(), id, userID)
-	http.Redirect(w, r, h.adminBase + "/policies/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/policies/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostPolicyInject(w http.ResponseWriter, r *http.Request) {
@@ -2280,7 +2282,7 @@ func (h *Handlers) PostPolicyInject(w http.ResponseWriter, r *http.Request) {
 	password := strings.TrimSpace(r.FormValue("inject_password"))
 	if username == "" {
 		h.db.ExecContext(r.Context(), `UPDATE policies SET inject_username='', inject_password='' WHERE id=?`, id)
-		http.Redirect(w, r, h.adminBase + "/policies/"+id, http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/policies/"+id, http.StatusFound)
 		return
 	}
 	var encPass string
@@ -2295,7 +2297,7 @@ func (h *Handlers) PostPolicyInject(w http.ResponseWriter, r *http.Request) {
 		h.db.QueryRowContext(r.Context(), `SELECT inject_password FROM policies WHERE id=?`, id).Scan(&encPass)
 	}
 	h.db.ExecContext(r.Context(), `UPDATE policies SET inject_username=?, inject_password=? WHERE id=?`, username, encPass, id)
-	http.Redirect(w, r, h.adminBase + "/policies/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/policies/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostPolicyInjectClear(w http.ResponseWriter, r *http.Request) {
@@ -2305,7 +2307,7 @@ func (h *Handlers) PostPolicyInjectClear(w http.ResponseWriter, r *http.Request)
 	}
 	id := chi.URLParam(r, "id")
 	h.db.ExecContext(r.Context(), `UPDATE policies SET inject_username='', inject_password='' WHERE id=?`, id)
-	http.Redirect(w, r, h.adminBase + "/policies/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/policies/"+id, http.StatusFound)
 }
 
 func (h *Handlers) GetInvites(w http.ResponseWriter, r *http.Request) {
@@ -2338,9 +2340,9 @@ func (h *Handlers) PostCreateInvite(w http.ResponseWriter, r *http.Request) {
 	h.auditLog.Log(r.Context(), "invite.created", "", adminID, r.RemoteAddr, email)
 	inviteURL := h.baseURL + "/register?invite=" + token
 	h.render(w, r, "admin_invites.html", map[string]interface{}{
-		"Invites":   func() []queries.Invite { inv, _ := h.invites.List(r.Context()); return inv }(),
-		"NewLink":   inviteURL,
-		"BaseURL":   h.baseURL,
+		"Invites": func() []queries.Invite { inv, _ := h.invites.List(r.Context()); return inv }(),
+		"NewLink": inviteURL,
+		"BaseURL": h.baseURL,
 	})
 }
 
@@ -2352,7 +2354,7 @@ func (h *Handlers) PostRevokeInvite(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	h.invites.Revoke(r.Context(), id)
 	h.auditLog.Log(r.Context(), "invite.revoked", "", "", r.RemoteAddr, id)
-	http.Redirect(w, r, h.adminBase + "/invites", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/invites", http.StatusFound)
 }
 
 func (h *Handlers) GetGroups(w http.ResponseWriter, r *http.Request) {
@@ -2372,7 +2374,7 @@ func (h *Handlers) PostCreateGroup(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := strings.TrimSpace(r.FormValue("description"))
 	if name == "" {
-		http.Redirect(w, r, h.adminBase + "/groups", http.StatusFound)
+		http.Redirect(w, r, h.adminBase+"/groups", http.StatusFound)
 		return
 	}
 	if err := h.groups.Create(r.Context(), name, description); err != nil {
@@ -2380,7 +2382,7 @@ func (h *Handlers) PostCreateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.auditLog.Log(r.Context(), "group.created", "", "", r.RemoteAddr, name)
-	http.Redirect(w, r, h.adminBase + "/groups", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/groups", http.StatusFound)
 }
 
 func (h *Handlers) GetGroup(w http.ResponseWriter, r *http.Request) {
@@ -2410,7 +2412,7 @@ func (h *Handlers) PostDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	if gr != nil {
 		h.auditLog.Log(r.Context(), "group.deleted", "", "", r.RemoteAddr, gr.Name)
 	}
-	http.Redirect(w, r, h.adminBase + "/groups", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/groups", http.StatusFound)
 }
 
 func (h *Handlers) PostAddGroupMember(w http.ResponseWriter, r *http.Request) {
@@ -2424,7 +2426,7 @@ func (h *Handlers) PostAddGroupMember(w http.ResponseWriter, r *http.Request) {
 		h.groups.AddMember(r.Context(), id, userID)
 		h.auditLog.Log(r.Context(), "group.member_added", userID, "", r.RemoteAddr, id)
 	}
-	http.Redirect(w, r, h.adminBase + "/groups/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/groups/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostRemoveGroupMember(w http.ResponseWriter, r *http.Request) {
@@ -2436,7 +2438,7 @@ func (h *Handlers) PostRemoveGroupMember(w http.ResponseWriter, r *http.Request)
 	userID := chi.URLParam(r, "userID")
 	h.groups.RemoveMember(r.Context(), id, userID)
 	h.auditLog.Log(r.Context(), "group.member_removed", userID, "", r.RemoteAddr, id)
-	http.Redirect(w, r, h.adminBase + "/groups/"+id, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/groups/"+id, http.StatusFound)
 }
 
 func (h *Handlers) PostAddUserToGroup(w http.ResponseWriter, r *http.Request) {
@@ -2448,7 +2450,7 @@ func (h *Handlers) PostAddUserToGroup(w http.ResponseWriter, r *http.Request) {
 	groupID := chi.URLParam(r, "groupID")
 	h.groups.AddMember(r.Context(), groupID, userID)
 	h.auditLog.Log(r.Context(), "group.member_added", userID, "", r.RemoteAddr, groupID)
-	http.Redirect(w, r, h.adminBase + "/users/"+userID, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+userID, http.StatusFound)
 }
 
 func (h *Handlers) PostRemoveUserFromGroup(w http.ResponseWriter, r *http.Request) {
@@ -2460,7 +2462,7 @@ func (h *Handlers) PostRemoveUserFromGroup(w http.ResponseWriter, r *http.Reques
 	groupID := chi.URLParam(r, "groupID")
 	h.groups.RemoveMember(r.Context(), groupID, userID)
 	h.auditLog.Log(r.Context(), "group.member_removed", userID, "", r.RemoteAddr, groupID)
-	http.Redirect(w, r, h.adminBase + "/users/"+userID, http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/users/"+userID, http.StatusFound)
 }
 
 // GetWebhooks renders the webhooks management page.
@@ -2495,7 +2497,7 @@ func (h *Handlers) PostCreateWebhook(w http.ResponseWriter, r *http.Request) {
 		wh.Events = "all"
 	}
 	h.webhooks.CreateWebhook(r.Context(), wh)
-	http.Redirect(w, r, h.adminBase + "/webhooks", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/webhooks", http.StatusFound)
 }
 
 // PostEditWebhook updates an existing webhook.
@@ -2527,7 +2529,7 @@ func (h *Handlers) PostEditWebhook(w http.ResponseWriter, r *http.Request) {
 		Events:   events,
 	}
 	h.webhooks.UpdateWebhook(r.Context(), wh)
-	http.Redirect(w, r, h.adminBase + "/webhooks", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/webhooks", http.StatusFound)
 }
 
 // PostDeleteWebhook removes a webhook.
@@ -2537,7 +2539,7 @@ func (h *Handlers) PostDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.webhooks.DeleteWebhook(r.Context(), chi.URLParam(r, "id"))
-	http.Redirect(w, r, h.adminBase + "/webhooks", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/webhooks", http.StatusFound)
 }
 
 // PostToggleWebhook toggles the enabled state of a webhook.
@@ -2551,7 +2553,7 @@ func (h *Handlers) PostToggleWebhook(w http.ResponseWriter, r *http.Request) {
 	if wh != nil {
 		h.webhooks.SetEnabled(r.Context(), id, !wh.Enabled)
 	}
-	http.Redirect(w, r, h.adminBase + "/webhooks", http.StatusFound)
+	http.Redirect(w, r, h.adminBase+"/webhooks", http.StatusFound)
 }
 
 // PostTestWebhook sends a test notification to a webhook.
@@ -2613,12 +2615,12 @@ func (h *Handlers) GetSocialSettings(w http.ResponseWriter, r *http.Request) {
 		return h.settings.Get(r.Context(), key, fallback)
 	}
 	data := map[string]interface{}{
-		"BaseURL":        h.baseURL,
-		"GitHubEnabled":  get("social_github_enabled", "0"),
-		"GitHubClientID": get("social_github_client_id", h.envDefaults.GitHubClientID),
-		"GoogleEnabled":  get("social_google_enabled", "0"),
-		"GoogleClientID": get("social_google_client_id", h.envDefaults.GoogleClientID),
-		"DiscordEnabled": get("social_discord_enabled", "0"),
+		"BaseURL":         h.baseURL,
+		"GitHubEnabled":   get("social_github_enabled", "0"),
+		"GitHubClientID":  get("social_github_client_id", h.envDefaults.GitHubClientID),
+		"GoogleEnabled":   get("social_google_enabled", "0"),
+		"GoogleClientID":  get("social_google_client_id", h.envDefaults.GoogleClientID),
+		"DiscordEnabled":  get("social_discord_enabled", "0"),
 		"DiscordClientID": get("social_discord_client_id", h.envDefaults.DiscordClientID),
 	}
 	if r.URL.Query().Get("saved") == "1" {
@@ -2656,7 +2658,7 @@ func (h *Handlers) PostSocialSettings(w http.ResponseWriter, r *http.Request) {
 	if v := r.FormValue("social_discord_client_secret"); v != "" {
 		set("social_discord_client_secret", v)
 	}
-	http.Redirect(w, r, h.adminBase + "/social?saved=1", http.StatusSeeOther)
+	http.Redirect(w, r, h.adminBase+"/social?saved=1", http.StatusSeeOther)
 }
 
 func (h *Handlers) GetNotificationsAPI(w http.ResponseWriter, r *http.Request) {
@@ -2753,4 +2755,3 @@ func intStr(n int) string {
 	}
 	return s
 }
-

@@ -20,6 +20,18 @@ func testDB(t *testing.T) *sql.DB {
 	return conn
 }
 
+// insertUser adds a minimal user row for tests that need one.
+func insertUser(t *testing.T, conn *sql.DB, id, email string) {
+	t.Helper()
+	_, err := conn.Exec(
+		`INSERT INTO users (id, email, password_hash, created_at, updated_at) VALUES (?,?,'',0,0)`,
+		id, email,
+	)
+	if err != nil {
+		t.Fatalf("insert user %s: %v", id, err)
+	}
+}
+
 // CRITICAL-1: the handoff token replaces the old scheme that base64-encoded a live
 // session ID into the URL. It must be single-use and bound to one host.
 func TestHandoffTokenIsSingleUse(t *testing.T) {

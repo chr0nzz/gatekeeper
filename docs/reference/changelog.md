@@ -3,15 +3,28 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
-## v0.9.1
+## v0.9.3
 
-### Security
+Fixes an OIDC regression introduced in v0.9.2 and moves cross-domain ForwardAuth configuration into the admin UI. Upgrade from v0.9.2 is recommended.
 
-- **Documentation build dependency** - Bumped `vite` to `6.4.3` to resolve two advisories flagged by Dependabot: a `server.fs.deny` bypass on Windows alternate paths (high) and an NTLMv2 hash disclosure via `launch-editor` on Windows (medium). This only affects the documentation site's build tooling, not the GateKeeper server.
+### Bug fixes
 
-### ForwardAuth debugging
+- **OIDC sign-in works again (regression in v0.9.2)** - The `/userinfo` response stopped including the `email` claim, so apps could not identify the user and returned them to their own login page, appearing as though nothing happened. v0.9.2 limited claims to a token's recorded scopes, but tokens do not always have their scopes recorded, and those tokens then received no claims at all. Claims are now limited only when the granted scopes are actually known. Anyone running v0.9.2 with OIDC applications should upgrade.
+- **TOTP recovery codes no longer hang** - Redeeming a recovery code wrote to the database while a query cursor was still open. GateKeeper uses a single database connection, so the write waited on a connection that could never be released and the request hung until it timed out. This affected all previous versions.
 
-- **Debug logging** - Set `LOG_LEVEL=debug` to log the `X-Forwarded-Host`, proto, and URI each ForwardAuth verify receives, plus the target each login redirect resolves to. This pinpoints reverse-proxy header issues, such as a middleware `address` routed through the auth domain that rewrites `X-Forwarded-Host`. See [Traefik ForwardAuth - Troubleshooting](/integrations/traefik-forwardauth#troubleshooting-login-redirects-back-to-the-auth-domain).
+### Protected app domains moved into Settings
+
+Cross-domain ForwardAuth apps need their domain on an allowlist before GateKeeper will return a user to them after signing in. This previously required the `REDIRECT_ALLOWED_HOSTS` environment variable and a restart.
+
+- **Configurable in the admin UI** - Set them under **Settings - Access control - Protected app domains**. Changes apply immediately, with no restart.
+- **One consistent entry format** - Each entry covers the domain and all of its subdomains, so `example.net` allows `app.example.net`. Writing `.example.net`, `*.example.net`, or pasting a full URL all mean the same thing. Previously a domain written without a leading dot matched only that exact hostname, which silently failed to cover the app subdomains it was meant to allow.
+- The environment variable still works for automated deployments, and entries from both sources are combined.
+
+### Tests and CI
+
+- **Tests run on every push and pull request** - A GitHub Actions workflow builds, vets, checks formatting, and runs the suite with race detection and coverage.
+- **Coverage extended across the application** - The suite now also covers password and OTP handling, TOTP enrollment, validation, lockout and recovery codes, backup encryption, configuration validation, database migrations and restore, CSRF, template parsing, and the OIDC claim and redirect rules. Two of the bugs fixed above were found by these tests.
+- Template tests guard against regressions that are otherwise invisible until a page breaks: page-scoped variables used inside a range block, inline scripts missing a CSP nonce, and inline event handlers that a nonce-based policy blocks.
 
 ---
 
@@ -22,7 +35,7 @@ A security release. An independent audit of the codebase produced 14 findings, a
 ### Cross-domain sign-in hardened (critical)
 
 - **Handoff tokens no longer carry a session** - When signing in to an app on a different domain, GateKeeper previously put a signed copy of the session identifier in the redirect URL. Anyone who saw that URL, in a server log or browser history, could reuse the session. The handoff is now a random one-time token stored server-side. It can be redeemed exactly once, only by the host it was issued for, and it expires after two minutes. The receiving app gets a brand new session of its own.
-- **Redirect targets are checked against an allowlist** - `redirect_uri` was previously followed wherever it pointed, so a crafted login link could send an authenticated user, and their handoff token, to an attacker's site. Relative paths are always allowed. Absolute URLs must match your `BASE_URL`, `ADMIN_URL`, `COOKIE_DOMAIN`, or the new `REDIRECT_ALLOWED_HOSTS` setting. Anything else falls back to the home page.
+- **Redirect targets are checked against an allowlist** - `redirect_uri` was previously followed wherever it pointed, so a crafted login link could send an authenticated user, and their handoff token, to an attacker's site. Relative paths are always allowed. Absolute URLs must match your `BASE_URL`, `ADMIN_URL`, `COOKIE_DOMAIN`, or the new **Protected app domains** list in Settings (also settable with `REDIRECT_ALLOWED_HOSTS`). Anything else falls back to the home page.
 - **Handoff tokens are kept out of logs** - The ForwardAuth debug line now records only the request path, never the query string that carries the token.
 
 ### QR sign-in hardened (high)
@@ -48,23 +61,36 @@ A security release. An independent audit of the codebase produced 14 findings, a
 - **Requests to internal addresses are blocked** - Client icon URLs and webhook endpoints could be pointed at loopback, private, or cloud metadata addresses. Both now resolve and check the destination on every connection and redirect.
 - **Icons are served as images only** - Fetched icon data is sniffed and rejected unless it is really an image, so the public icon endpoint cannot return arbitrary fetched content.
 - **`end_session` validates its redirect** - `post_logout_redirect_uri` must now match a registered client redirect URI or a trusted host.
-- **Claims follow granted scopes** - `email` and `profile` claims are only returned when those scopes were granted, and `email_verified` reflects whether the address was actually confirmed rather than always being true.
+- **`email_verified` reflects reality** - The claim previously always reported true. It now reports whether the user actually confirmed their address by completing an email code. Where the granted scopes are recorded on a token, `email` and `profile` claims are limited to those scopes; tokens without recorded scopes still receive the standard claims so existing integrations keep working.
 - **Client secrets compare in constant time.**
+
+### Bug fixes
+
+- **TOTP recovery codes no longer hang** - Redeeming a recovery code wrote to the database while a query cursor was still open. GateKeeper uses a single database connection, so the write waited on a connection that could never be released and the request hung until it timed out. Found by the new test suite.
 
 ### Tests
 
-- The repository now has a Go test suite covering these changes: single-use and host-bound handoff tokens, redirect allowlisting, QR single-use and browser binding (including a concurrent-claim race), token hashing, rate limiting, settings encryption, CSP nonce handling, and the internal-address blocklist. Run it with `go test ./internal/...`.
+- The repository now has a Go test suite covering these changes: single-use and host-bound handoff tokens, redirect allowlisting, QR single-use and browser binding (including a concurrent-claim race), token hashing, rate limiting, settings encryption, CSP nonce handling, and the internal-address blocklist. It also covers password and OTP handling, TOTP enrollment and recovery, backup encryption, configuration validation, migrations and restore, template parsing, and the OIDC claim and redirect rules. Run it with `go test ./...`.
+- Tests run automatically on every push and pull request via GitHub Actions, with race detection, vet, and formatting checks.
 
 ### Upgrade notes
 
 - **Everyone is signed out once.** Session and trusted-device tokens are now hashed, so tokens issued before the upgrade no longer match. Sign in again.
-- **Cross-domain ForwardAuth needs configuration.** If a protected app is on a different domain than `COOKIE_DOMAIN`, list it in `REDIRECT_ALLOWED_HOSTS` or sign-in will return to the GateKeeper home page instead of the app:
-
-  ```yaml
-  REDIRECT_ALLOWED_HOSTS: ".example.com,.example.net"
-  ```
+- **Cross-domain ForwardAuth needs configuration.** If a protected app is on a different domain than `COOKIE_DOMAIN`, sign-in returns the user to the GateKeeper home page instead of the app until that domain is allowed. v0.9.3 adds a **Protected app domains** field in Settings for this; on v0.9.2 it is set with the `REDIRECT_ALLOWED_HOSTS` environment variable.
 
 - **Users on very old TOTP enrollments must re-enroll.** Only affects secrets created before v0.4.0. They sign in with an email code and set up their authenticator again.
+
+---
+
+## v0.9.1
+
+### Security
+
+- **Documentation build dependency** - Bumped `vite` to `6.4.3` to resolve two advisories flagged by Dependabot: a `server.fs.deny` bypass on Windows alternate paths (high) and an NTLMv2 hash disclosure via `launch-editor` on Windows (medium). This only affects the documentation site's build tooling, not the GateKeeper server.
+
+### ForwardAuth debugging
+
+- **Debug logging** - Set `LOG_LEVEL=debug` to log the `X-Forwarded-Host`, proto, and URI each ForwardAuth verify receives, plus the target each login redirect resolves to. This pinpoints reverse-proxy header issues, such as a middleware `address` routed through the auth domain that rewrites `X-Forwarded-Host`. See [Traefik ForwardAuth - Troubleshooting](/integrations/traefik-forwardauth#troubleshooting-login-redirects-back-to-the-auth-domain).
 
 ---
 

@@ -188,17 +188,24 @@ func (t *TOTPStore) UseRecoveryCode(ctx context.Context, userID, code string) er
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-
+	type candidate struct{ id, hash string }
+	var candidates []candidate
 	for rows.Next() {
-		var id, hash string
-		if err := rows.Scan(&id, &hash); err != nil {
+		var c candidate
+		if err := rows.Scan(&c.id, &c.hash); err != nil {
 			continue
 		}
-		if VerifyPassword(code, hash) == nil {
+		candidates = append(candidates, c)
+	}
+	rows.Close()
+
+	// The cursor is closed before writing. The database is limited to a single
+	// connection, so updating while rows are still open would deadlock.
+	for _, c := range candidates {
+		if VerifyPassword(code, c.hash) == nil {
 			_, err = t.db.ExecContext(ctx,
 				`UPDATE totp_recovery_codes SET used=1, used_at=? WHERE id=?`,
-				time.Now().Unix(), id,
+				time.Now().Unix(), c.id,
 			)
 			return err
 		}
