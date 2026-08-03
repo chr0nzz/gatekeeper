@@ -1,20 +1,36 @@
+<div align="center">
+
+<img src="web/static/icons/icon-192.png" alt="GateKeeper" width="96" height="96">
+
 # GateKeeper
 
-A lightweight, self-hosted authentication server. Single Docker container, SQLite database, configured entirely through the admin UI.
+**A lightweight, self-hosted authentication server.**<br>
+Single Docker container, SQLite database, configured entirely through the admin UI.
+
+[![Tests](https://github.com/chr0nzz/gatekeeper/actions/workflows/test.yml/badge.svg)](https://github.com/chr0nzz/gatekeeper/actions/workflows/test.yml)
+[![Build and push](https://github.com/chr0nzz/gatekeeper/actions/workflows/docker.yml/badge.svg)](https://github.com/chr0nzz/gatekeeper/actions/workflows/docker.yml)
+[![Release](https://img.shields.io/github/v/release/chr0nzz/gatekeeper?color=4338ca)](https://github.com/chr0nzz/gatekeeper/releases)
+[![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-gatekeeper.xyzlab.dev-4338ca)](https://gatekeeper.xyzlab.dev)
+
+[Documentation](https://gatekeeper.xyzlab.dev) &nbsp;·&nbsp;
+[Installation](https://gatekeeper.xyzlab.dev/getting-started/installation) &nbsp;·&nbsp;
+[Configuration](https://gatekeeper.xyzlab.dev/reference/env-vars) &nbsp;·&nbsp;
+[Changelog](https://gatekeeper.xyzlab.dev/reference/changelog)
+
+</div>
 
 ## What it does
 
-- **OIDC identity provider** - any app that supports OpenID Connect can delegate login to GateKeeper. Users authenticate once; apps receive a verified identity token. Works with Grafana, Jellyfin, Portainer, Traefik Manager, or any standard OIDC client.
-- **ForwardAuth middleware** - protect apps at the reverse proxy level without touching their code. Works with Traefik, Nginx, and Caddy. Credential injection automatically supplies a stored username and password to apps that do not support SSO.
-- **Groups** - create named groups and assign users to them. Group membership is included as a `groups` claim in all OIDC tokens, enabling role mapping in apps like Grafana and Jellyfin.
-- **Access policies** - create named policies, assign users to them, and attach policies to OIDC clients or ForwardAuth routes to restrict which users can access each app.
-- **Social login** - sign in with GitHub, Google, or Discord. Enable providers from the admin UI; GateKeeper auto-links on email match.
-- **Self-registration** - choose between disabled, invite-only, open, and approval-required modes. Invite links are single-use with configurable expiry.
-- **Multiple sign-in methods** - password + email OTP, passwordless email OTP, TOTP (authenticator app), passkeys (WebAuthn), QR code (scan with phone to approve), social OAuth2.
-- **Webhooks** - push notifications to Discord, Slack, Telegram, ntfy, or any HTTP endpoint when auth and admin events occur.
-- **Multiple admin accounts** - create and manage admin accounts from the Admins page. Generate a personal API key per admin for server-side API access using the `X-Api-Key` header.
-- **Backups** - encrypted database snapshots to local storage or any S3-compatible object store (AWS S3, Cloudflare R2, Backblaze B2, MinIO). Schedule automatically, download, and restore from the admin UI.
-- **Admin UI** - manage users, groups, OIDC clients, policies, invites, webhooks, backups, settings, and audit log from a browser. No config files or CLI.
+- **OIDC identity provider** - any app that speaks OpenID Connect can delegate login to GateKeeper. Works with Grafana, Jellyfin, Portainer, and anything else that supports it.
+- **ForwardAuth middleware** - protect apps at the reverse proxy without touching their code. Works with Traefik, Nginx, and Caddy. Credential injection signs users into apps that have no SSO support of their own.
+- **Many ways to sign in** - password with an emailed code, passwordless email codes, authenticator apps, passkeys, QR code scanned from your phone, or GitHub, Google, and Discord.
+- **Users, groups, and policies** - group membership is published as an OIDC claim for role mapping, and policies restrict which users reach which app.
+- **Self-registration** - disabled, invite-only, open, or approval-required, with single-use invite links.
+- **Encrypted backups** - scheduled snapshots to local storage or any S3-compatible object store, restored from the admin UI.
+- **Webhooks and audit log** - an append-only record of every auth and admin event, with notifications to Discord, Slack, Telegram, ntfy, or any HTTP endpoint.
+- **Admin UI for everything** - users, clients, policies, settings, and backups. No config files, no CLI.
 
 ## Quick start
 
@@ -25,6 +41,7 @@ services:
     restart: unless-stopped
     environment:
       BASE_URL: https://auth.example.com
+      ADMIN_URL: https://admin.auth.example.com
       SECRET_KEY: your-64-char-hex-secret
     volumes:
       - gatekeeper_data:/data
@@ -36,192 +53,32 @@ volumes:
   gatekeeper_data:
 ```
 
-Generate a secret key:
+Generate a secret key with `openssl rand -hex 32`.
 
-```bash
-openssl rand -hex 32
-```
+Port `8282` serves login, OIDC, and ForwardAuth. Port `8283` serves the admin panel and should only be reachable from your private network. Visit your admin URL to create the first admin account; everything else is configured from there.
 
-Port `8282` serves the public login, OIDC, and ForwardAuth endpoints. Port `8283` serves the admin panel only - route it through a private reverse proxy and keep it off the public internet.
-
-On first run, visit your admin URL (`ADMIN_URL`) to create your admin account. Everything else (SMTP, session TTL, allowed domains, social login) is configured from the admin UI.
-
-## Sign-in methods
-
-| Method | How it works |
-|---|---|
-| Password + email OTP | Email + password, then a 6-digit code sent to the user's inbox |
-| Passwordless | Email only, then a 6-digit OTP code (enabled per user by admin) |
-| TOTP | Email + password, then a code from an authenticator app |
-| Passkey | Device biometric or hardware key - no password, no code |
-| QR code | Scan with your phone camera - approve on a device already signed in |
-| Social | One-click sign-in via GitHub, Google, or Discord |
-
-Users can tick "Trust this device for 30 days" when entering a two-factor code to skip the second factor on that browser in future. The trust token is tied to that specific browser.
-
-## OIDC provider
-
-Register clients from the admin panel. Point your app at the discovery endpoint:
-
-| Endpoint | URL |
-|---|---|
-| Discovery | `/.well-known/openid-configuration` |
-| Authorization | `/authorize` |
-| Token | `/oauth/token` |
-| Userinfo | `/userinfo` |
-| Introspection | `/oauth/introspect` |
-| JWKS | `/keys` |
-
-Supports authorization code + PKCE and client credentials flows. Scopes: `openid`, `email`, `profile`, `offline_access`. Tokens signed RS256, keys rotate every 30 days.
-
-The `groups` claim is included in all tokens automatically. Custom claims can be added per client - map user ID, email, display name, group membership, or a literal string to any claim key.
-
-Token introspection (RFC 7662) is supported. Client credentials flow is available per client with configurable allowed scopes.
-
-Login page shows the client's name and icon when accessed via OIDC. RP-initiated logout clears the GateKeeper session and honours `post_logout_redirect_uri`.
-
-## ForwardAuth
-
-Every request to a protected app hits `GET /auth/verify` - GateKeeper returns `200` on success, `401` on failure.
-
-```yaml
-# traefik/dynamic/middlewares-gk-auth.yml
-http:
-  middlewares:
-    gk-auth:
-      forwardAuth:
-        address: "http://gatekeeper:8282/auth/verify"
-        authResponseHeaders:
-          - X-Auth-User
-          - X-Auth-Email
-          - X-Auth-Groups
-```
-
-Point `address` directly at the GateKeeper container on its public port (`8282`) - a Docker service name, private IP, or Tailscale address. Do not route it through your public `auth.example.com`, or the ForwardAuth request's `X-Forwarded-Host` gets rewritten and the post-login redirect sends users to their profile instead of the app.
-
-On success, GateKeeper passes `X-Auth-User` (UUID), `X-Auth-Email`, and `X-Auth-Groups` (comma-separated group names) to the upstream app.
-
-Works with Traefik (`forwardAuth`), Nginx (`auth_request`), and Caddy (`forward_auth`). See the Integrations page in the admin UI for full configuration snippets.
-
-To restrict a route to a specific access policy, append `?policy=<name>` to the verify URL.
-
-**Credential injection:** for apps that do not support SSO, store a username and password on the policy. GateKeeper injects `Authorization: Basic` on a successful verify so the app never shows its own login form. Add `Authorization` to `authResponseHeaders` in your Traefik middleware config to enable it.
-
-## Configuration
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `BASE_URL` | Yes | - | Public URL. Used as OIDC issuer and WebAuthn origin. |
-| `SECRET_KEY` | Yes | - | 32+ character secret. Signs sessions and encrypts TOTP secrets. |
-| `PORT` | No | `8282` | Public HTTP port (login, OIDC, ForwardAuth). |
-| `ADMIN_PORT` | No | `8283` | Admin-only HTTP port. Never expose publicly - route via a private reverse proxy. |
-| `ADMIN_URL` | No | - | Full URL of the admin panel (e.g. `https://admin.auth.example.com`). Set when admin runs on its own subdomain - enables admin passkeys. Must be under the same registrable domain as `BASE_URL`. |
-| `ADMIN_BASE_PATH` | No | - | Serve the admin under a path prefix (e.g. `/admin`) instead of the root. Leave empty when admin has its own domain. |
-| `REDIRECT_ALLOWED_HOSTS` | No | - | Comma-separated hosts (or `.domain` suffixes) a user may be redirected to after login. Needed for ForwardAuth apps outside `COOKIE_DOMAIN`. |
-| `DB_PATH` | No | `/data/gatekeeper.db` | SQLite database path. |
-| `COOKIE_DOMAIN` | No | - | Cookie domain for cross-subdomain sharing, e.g. `.example.com`. |
-| `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn`, or `error`. |
-
-The following can also be set as env vars and serve as fallback defaults - the admin UI values take precedence at runtime:
-
-| Variable | Default | Description |
-|---|---|---|
-| `SMTP_HOST` | - | Mail server hostname. |
-| `SMTP_PORT` | `587` | Mail server port. |
-| `SMTP_USERNAME` | - | SMTP username. |
-| `SMTP_PASSWORD` | - | SMTP password. |
-| `SMTP_FROM` | - | From address for outgoing mail. |
-| `SMTP_TLS` | `starttls` | TLS mode: `starttls`, `tls`, or `none`. |
-| `SESSION_TTL_HOURS` | `8` | Session lifetime in hours. |
-| `ALLOWED_EMAIL_DOMAINS` | - | Comma-separated allowed domains. Empty means all domains are allowed. |
-| `REGISTRATION_MODE` | `disabled` | Self-registration mode: `disabled`, `invite_only`, `open`, or `approval`. |
-| `REGISTRATION_ALLOWED_DOMAINS` | - | Comma-separated domains allowed to self-register. Empty means any domain. |
-| `GITHUB_CLIENT_ID` | - | GitHub OAuth2 app client ID for social login. |
-| `GITHUB_CLIENT_SECRET` | - | GitHub OAuth2 app client secret. |
-| `GOOGLE_CLIENT_ID` | - | Google OAuth2 client ID for social login. |
-| `GOOGLE_CLIENT_SECRET` | - | Google OAuth2 client secret. |
-| `DISCORD_CLIENT_ID` | - | Discord OAuth2 application client ID for social login. |
-| `DISCORD_CLIENT_SECRET` | - | Discord OAuth2 application client secret. |
-
-## Admin UI
-
-The admin panel runs on its own dedicated port (`ADMIN_PORT`, default `8283`), completely separate from the public login endpoint. Route a private domain (e.g. `admin.auth.example.com`) to that port and the panel is served at the root - no `/admin` path prefix. The paths below are relative to the admin domain.
-
-| Page | Purpose |
-|---|---|
-| `/` | Dashboard - live stats, activity chart, auth methods breakdown |
-| `/users` | Create and manage users, approve pending registrations |
-| `/groups` | Create groups and manage membership |
-| `/clients` | Register and edit OIDC clients, custom claims, client credentials |
-| `/policies` | Create access policies and assign users to them |
-| `/invites` | Generate single-use invite links with configurable expiry |
-| `/audit` | Filterable audit log of all auth and admin events |
-| `/webhooks` | Configure webhook delivery channels and event subscriptions |
-| `/integrations` | Reverse proxy configuration snippets (Traefik, Nginx, Caddy) |
-| `/social` | Enable and configure GitHub, Google, and Discord social login |
-| `/admins` | Create and manage admin accounts |
-| `/backups` | Encrypted database backups to local storage or S3-compatible object stores |
-| `/profile` | Admin display name, password, TOTP, passkeys, API key, session revocation |
-| `/settings` | SMTP, session timeout, allowed domains, registration mode, email branding, audit log retention |
-
-To serve the admin under a subpath instead of the root (e.g. `example.com/admin`), set `ADMIN_BASE_PATH=/admin`.
-
-Keyboard shortcuts: `⌘K` / `/` command palette, `g d/u/c/a/s/p` navigate sections.
+See [Installation](https://gatekeeper.xyzlab.dev/getting-started/installation) for the full walkthrough and [Environment variables](https://gatekeeper.xyzlab.dev/reference/env-vars) for every option.
 
 ## Security
 
-- Passwords hashed with argon2id (64 MB, 3 iterations, 4 threads)
-- Sessions stored server-side in SQLite; cookie is `HttpOnly`, `Secure`, `SameSite=Lax`
-- OTP and TOTP lockout after 5 failures in 10 minutes
-- Login rate limiting: 20 failed attempts per 15-minute window per IP
-- OTP issuance rate limited to 3 codes per 10-minute window per user
-- Password reset tokens: 32-byte random, argon2id hashed, single-use, 30-minute TTL
-- TOTP secrets and injected app credentials encrypted at rest with AES-256-GCM derived from `SECRET_KEY`
-- Email OTP codes stored as HMAC-SHA256 digests - a database dump without the key cannot reconstruct active codes
-- Recovery codes stored as individual argon2id hashes
-- OIDC client icons fetched and cached server-side - never loaded from external servers by users
-- OIDC tokens signed RS256, keys rotate every 30 days, PKCE required
-- CSRF protection on all POST forms
-- Secure headers: HSTS, X-Frame-Options, X-Content-Type-Options, CSP
+Passwords are hashed with argon2id. Sessions, trusted-device tokens, invites, and password-reset tokens are stored hashed. TOTP secrets, injected credentials, and third-party secrets are encrypted with AES-256-GCM. OIDC tokens are signed RS256 with keys that rotate every 30 days, and PKCE is required.
+
+Full detail in the [security documentation](https://gatekeeper.xyzlab.dev/security/overview). To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Building from source
 
-Requires Go 1.24+. No CGO required.
+Requires Go 1.26 or newer. No CGO.
 
 ```bash
 git clone https://github.com/chr0nzz/gatekeeper
 cd gatekeeper
 go build -o gatekeeper ./cmd/gatekeeper
+go test ./...
 ```
 
-## Docker
+## Contributing
 
-```bash
-docker build --build-arg VERSION=v0.9.3 -t gatekeeper:v0.9.3 .
-```
-
-## Project layout
-
-```
-cmd/gatekeeper/       entry point
-internal/
-  admin/              admin UI handlers
-  auth/               password, OTP, TOTP, passkey, session, trusted devices
-  audit/              audit log
-  backup/             encrypted database backup engine, S3 client, scheduler
-  config/             environment variable loading
-  db/                 SQLite init, migrations, query helpers
-  mailer/             SMTP client
-  middleware/         ForwardAuth, secure headers, CSRF
-  notify/             webhook dispatch
-  oidc/               OIDC provider (zitadel/oidc v3)
-  templates/          template renderer
-  ui/                 user-facing handlers
-web/
-  static/             CSS, JS (embedded)
-  templates/          HTML templates (embedded)
-docs/                 VitePress documentation site
-```
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project conventions, and how changes are reviewed.
 
 ## License
 
