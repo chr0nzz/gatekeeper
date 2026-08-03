@@ -327,6 +327,13 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "login.html", tplData)
 }
 
+func orBlank(s string) string {
+	if s == "" {
+		return "(blank)"
+	}
+	return s
+}
+
 func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	ip := remoteIP(r)
 	redirectURI := r.FormValue("redirect_uri")
@@ -340,25 +347,32 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		h.render(w, "login.html", d)
 	}
 
-	if !h.limiter.allow(ip) {
-		loginErr("Too many login attempts. Please try again later.")
-		return
-	}
-
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")
 	loginMode := r.FormValue("login_mode")
 
+	if !h.limiter.allow(ip) {
+		h.auditLog.Log(r.Context(), audit.EventLoginFailure, "", "", r.RemoteAddr, "rate limited: "+orBlank(email))
+		loginErr("Too many login attempts. Please try again later.")
+		return
+	}
+
 	user, err := h.users.GetByEmail(r.Context(), email)
-	if err != nil || user == nil || user.Disabled {
+	if err != nil || user == nil {
 		h.limiter.record(ip)
-		h.auditLog.Log(r.Context(), audit.EventLoginFailure, "", "", r.RemoteAddr, email)
+		h.auditLog.Log(r.Context(), audit.EventLoginFailure, "", "", r.RemoteAddr, "unknown email: "+orBlank(email))
+		loginErr("Invalid credentials")
+		return
+	}
+	if user.Disabled {
+		h.limiter.record(ip)
+		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, "account disabled")
 		loginErr("Invalid credentials")
 		return
 	}
 	if !h.emailDomainAllowed(r, email) {
 		h.limiter.record(ip)
-		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, "domain not allowed")
+		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, "domain not allowed: "+email)
 		loginErr("Invalid credentials")
 		return
 	}
@@ -370,7 +384,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 
 	if auth.VerifyPassword(password, user.PasswordHash) != nil {
 		h.limiter.record(ip)
-		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, email)
+		h.auditLog.Log(r.Context(), audit.EventLoginFailure, user.ID, "", r.RemoteAddr, "wrong password")
 		loginErr("Invalid credentials")
 		return
 	}
@@ -431,7 +445,7 @@ func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
 
 	code := strings.TrimSpace(r.FormValue("code"))
 	if err := h.otps.Verify(r.Context(), data.UserID, code); err != nil {
-		h.auditLog.Log(r.Context(), audit.EventOTPFailed, data.UserID, "", r.RemoteAddr, "")
+		h.auditLog.Log(r.Context(), audit.EventOTPFailed, data.UserID, "", r.RemoteAddr, "wrong email code")
 		h.render(w, "otp.html", map[string]string{"Error": err.Error()})
 		return
 	}
@@ -454,7 +468,7 @@ func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
 
 	code := strings.TrimSpace(r.FormValue("code"))
 	if err := h.totp.Validate(r.Context(), data.UserID, code); err != nil {
-		h.auditLog.Log(r.Context(), audit.EventTOTPFailed, data.UserID, "", r.RemoteAddr, "")
+		h.auditLog.Log(r.Context(), audit.EventTOTPFailed, data.UserID, "", r.RemoteAddr, "wrong authenticator code")
 		h.render(w, "totp.html", map[string]string{"Error": err.Error()})
 		return
 	}
