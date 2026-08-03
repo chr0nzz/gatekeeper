@@ -62,7 +62,7 @@
       <div class="card-body">
         <label class="field">
           <span class="field-label">Storage type</span>
-          <select class="input select" name="backup_storage" id="backup-storage-select" onchange="updateStorageFields()">
+          <select class="input select" name="backup_storage" id="backup-storage-select" data-storage-select="1">
             <option value="" {{if eq .StorageType ""}}selected{{end}}>Disabled</option>
             <option value="local" {{if eq .StorageType "local"}}selected{{end}}>Local filesystem</option>
             <option value="s3" {{if eq .StorageType "s3"}}selected{{end}}>S3-compatible</option>
@@ -250,7 +250,7 @@
 </dialog>
 {{end}}
 
-<script>
+<script nonce="__CSP_NONCE__">
 (function() {
   function updateStorageFields() {
     var v = document.getElementById('backup-storage-select').value;

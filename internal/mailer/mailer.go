@@ -218,6 +218,21 @@ func (m *Mailer) SendPasswordReset(ctx context.Context, to, resetURL string) err
 }
 
 // SendPasswordChanged notifies a user that their password was changed.
+// SendDuplicateRegistration tells an existing account holder that someone tried
+// to register with their address, so the signup form need not reveal it.
+func (m *Mailer) SendDuplicateRegistration(ctx context.Context, to string) error {
+	b := m.loadBranding(ctx)
+	var buf bytes.Buffer
+	if err := changedTmpl.Execute(&buf, map[string]string{
+		"LogoURL":     b.LogoURL,
+		"SenderName":  b.senderName(),
+		"AccentColor": b.accentColor(),
+	}); err != nil {
+		return err
+	}
+	return m.send(ctx, to, "You already have an account", buf.String())
+}
+
 func (m *Mailer) SendPasswordChanged(ctx context.Context, to string) error {
 	b := m.loadBranding(ctx)
 	var buf bytes.Buffer

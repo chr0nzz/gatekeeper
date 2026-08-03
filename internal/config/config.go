@@ -16,6 +16,11 @@ type Config struct {
 	AdminURL      string `env:"ADMIN_URL"`
 	AdminBasePath string `env:"ADMIN_BASE_PATH"`
 
+	// RedirectAllowedHosts limits where a user may be sent after login. Entries are
+	// exact hostnames or domain suffixes (".example.com"). The BASE_URL host,
+	// ADMIN_URL host, and COOKIE_DOMAIN are always permitted.
+	RedirectAllowedHosts []string `env:"REDIRECT_ALLOWED_HOSTS"`
+
 	SecretKey string `env:"SECRET_KEY,required"`
 
 	DBPath string `env:"DB_PATH" envDefault:"/data/gatekeeper.db"`

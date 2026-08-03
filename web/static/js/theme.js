@@ -88,3 +88,77 @@
     });
   });
 })();
+
+// Delegated handlers replacing inline event attributes, which a nonce-based
+// Content-Security-Policy does not permit.
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-hide-on-error]').forEach(function (el) {
+    el.addEventListener('error', function () { el.style.display = 'none'; });
+  });
+});
+
+document.addEventListener('click', function (e) {
+  var el = e.target.closest('[data-confirm]');
+  if (el && !window.confirm(el.getAttribute('data-confirm'))) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
+
+document.addEventListener('DOMContentLoaded', function () {
+  var iconFallback = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>';
+
+  function bindFallbackIcons(root) {
+    (root || document).querySelectorAll('[data-fallback-icon]').forEach(function (img) {
+      if (img.dataset.fallbackBound) return;
+      img.dataset.fallbackBound = '1';
+      img.addEventListener('error', function () { img.parentNode.innerHTML = iconFallback; });
+    });
+  }
+  bindFallbackIcons(document);
+  new MutationObserver(function () { bindFallbackIcons(document); })
+    .observe(document.body, { childList: true, subtree: true });
+
+  document.querySelectorAll('[data-sync-target]').forEach(function (el) {
+    el.addEventListener('input', function () {
+      var t = document.querySelector(el.getAttribute('data-sync-target'));
+      if (t) t.value = el.value;
+    });
+  });
+
+  document.querySelectorAll('[data-toggle-literal]').forEach(function (el) {
+    el.addEventListener('change', function () {
+      var f = document.getElementById('literal-field');
+      if (f) f.style.display = el.value === 'literal' ? 'flex' : 'none';
+    });
+  });
+
+  document.querySelectorAll('[data-storage-select]').forEach(function (el) {
+    el.addEventListener('change', function () {
+      if (typeof window.updateStorageFields === 'function') window.updateStorageFields();
+    });
+  });
+});
+
+document.addEventListener('click', function (e) {
+  var el;
+
+  if ((el = e.target.closest('[data-toggle-name-form]'))) {
+    var form = document.getElementById('name-form');
+    if (form) form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+    return;
+  }
+  if ((el = e.target.closest('[data-user-method]'))) {
+    var m = el.getAttribute('data-user-method');
+    var fn = window.setMethod || window.setNewUserMethod || window.setDashUserMethod;
+    if (typeof fn === 'function') fn(el, m);
+    return;
+  }
+  if (e.target.closest('[data-open-update-modal]')) {
+    if (typeof window.openUpdateModal === 'function') window.openUpdateModal();
+    return;
+  }
+  if ((el = e.target.closest('[data-copy-invite]'))) {
+    if (typeof window.copyInviteLink === 'function') window.copyInviteLink(el);
+  }
+});

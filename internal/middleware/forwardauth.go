@@ -15,6 +15,7 @@ import (
 // ForwardAuth is the Traefik ForwardAuth middleware handler.
 type ForwardAuth struct {
 	sessions     *auth.SessionStore
+	handoff      *auth.HandoffStore
 	db           *sql.DB
 	baseURL      string
 	secretKey    string
@@ -24,9 +25,10 @@ type ForwardAuth struct {
 }
 
 // NewForwardAuth creates a ForwardAuth handler.
-func NewForwardAuth(sessions *auth.SessionStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore, groups *queries.GroupStore) *ForwardAuth {
+func NewForwardAuth(sessions *auth.SessionStore, handoff *auth.HandoffStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore, groups *queries.GroupStore) *ForwardAuth {
 	return &ForwardAuth{
 		sessions:     sessions,
+		handoff:      handoff,
 		db:           db,
 		baseURL:      baseURL,
 		secretKey:    secretKey,
@@ -43,7 +45,7 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("forwardauth verify",
 		"x_forwarded_host", r.Header.Get("X-Forwarded-Host"),
 		"x_forwarded_proto", r.Header.Get("X-Forwarded-Proto"),
-		"x_forwarded_uri", forwardedURI,
+		"x_forwarded_path", pathOnly(forwardedURI),
 		"policy", r.URL.Query().Get("policy"),
 	)
 
@@ -107,14 +109,8 @@ func (f *ForwardAuth) handleCallback(w http.ResponseWriter, r *http.Request, raw
 
 	token := parsed.Query().Get("token")
 	redirect := parsed.Query().Get("redirect")
-	if redirect == "" {
+	if !isLocalPath(redirect) {
 		redirect = "/"
-	}
-
-	sessID, err := auth.ValidateCrossToken(token, f.secretKey)
-	if err != nil {
-		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
-		return
 	}
 
 	proto := r.Header.Get("X-Forwarded-Proto")
@@ -123,18 +119,35 @@ func (f *ForwardAuth) handleCallback(w http.ResponseWriter, r *http.Request, raw
 		proto = "https"
 	}
 
-	// Set the session cookie scoped to the protected app's host.
-	// No Domain means the browser scopes it to the exact host it received it from.
-	http.SetCookie(w, &http.Cookie{
-		Name:     "gk_session",
-		Value:    sessID,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
+	userID, err := f.handoff.Redeem(r.Context(), token, host)
+	if err != nil {
+		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
+		return
+	}
+
+	// Mint a fresh session scoped to this host only. No session identifier ever
+	// travels in the handoff URL.
+	if _, err := f.sessions.CreateForHost(w, r, auth.SessionData{UserID: userID}); err != nil {
+		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
+		return
+	}
 
 	http.Redirect(w, r, proto+"://"+host+redirect, http.StatusFound)
+}
+
+// isLocalPath reports whether redirect is a same-host path, rejecting absolute
+// and scheme-relative URLs that would leave the protected app.
+func isLocalPath(redirect string) bool {
+	return strings.HasPrefix(redirect, "/") &&
+		!strings.HasPrefix(redirect, "//") &&
+		!strings.HasPrefix(redirect, "/\\")
+}
+
+func pathOnly(uri string) string {
+	if i := strings.IndexByte(uri, '?'); i >= 0 {
+		return uri[:i]
+	}
+	return uri
 }
 
 func (f *ForwardAuth) loginURL(r *http.Request) string {

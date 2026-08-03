@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -50,6 +51,7 @@ type Handlers struct {
 	claims         *queries.ClaimStore
 	notifier       *notify.Service
 	backups        *queries.BackupStore
+	limiter        *auth.Limiter
 	baseURL        string
 	adminBase      string
 	dbPath         string
@@ -123,6 +125,7 @@ func New(
 		settings: settings, auditLog: auditLog, renderer: renderer,
 		policies: policies, groups: groups, invites: invites, webhooks: webhooks, claims: claims, notifier: notifier,
 		backups: backups,
+		limiter: auth.NewLimiter(10, 15*time.Minute),
 		baseURL: baseURL, adminBase: adminBase, version: version, dbPath: dbPath, secretKey: secretKey,
 		envSMTP: envSMTP, envDefaults: envDefaults,
 	}
@@ -371,13 +374,23 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
+	ip := adminRemoteIP(r)
+
+	// Password verification is deliberately expensive, so throttle before it runs.
+	if !h.limiter.Allow(ip) {
+		h.auditLog.Log(r.Context(), audit.EventAdminLoginFailed, "", "", r.RemoteAddr, "rate limited: "+email)
+		h.render(w, r, "admin_login.html", map[string]interface{}{"Error": "Too many attempts. Try again later."})
+		return
+	}
 
 	admin, err := h.admins.GetByEmail(r.Context(), email)
 	if err != nil || admin == nil || auth.VerifyPassword(password, admin.PasswordHash) != nil {
+		h.limiter.Record(ip)
 		h.auditLog.Log(r.Context(), audit.EventAdminLoginFailed, "", "", r.RemoteAddr, email)
 		h.render(w, r, "admin_login.html", map[string]interface{}{"Error": "Invalid credentials"})
 		return
 	}
+	h.limiter.Reset(ip)
 
 	sessID, err := h.adminSess.Create(r.Context(), admin.ID)
 	if err != nil {
@@ -397,7 +410,18 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.adminBase + "/", http.StatusFound)
 }
 
+func adminRemoteIP(r *http.Request) string {
+	if ip, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return ip
+	}
+	return r.RemoteAddr
+}
+
 func (h *Handlers) PostLoginPasskeyBegin(w http.ResponseWriter, r *http.Request) {
+	if !h.limiter.Allow(adminRemoteIP(r)) {
+		http.Error(w, "too many attempts", http.StatusTooManyRequests)
+		return
+	}
 	options, session, err := h.passkeys.WebAuthn().BeginDiscoverableLogin(
 		webauthnlib.WithUserVerification(protocol.VerificationRequired),
 	)

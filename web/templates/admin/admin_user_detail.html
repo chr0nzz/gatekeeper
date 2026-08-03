@@ -275,7 +275,7 @@
       </div>
       <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/delete">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{.User.Email}}? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger btn-sm" data-confirm="Delete {{.User.Email}}? This cannot be undone.">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
           Delete
         </button>

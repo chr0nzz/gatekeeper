@@ -64,7 +64,7 @@
           </button>
           <form method="POST" action="{{$.AdminBase}}/webhooks/{{.ID}}/delete" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete {{.Name}}?')">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" data-confirm="Delete {{.Name}}?">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
             </button>
           </form>
@@ -220,7 +220,7 @@
 .ev-group-label { grid-column:1/-1; font-size:10.5px; font-weight:600; color:var(--tx-3); text-transform:uppercase; letter-spacing:0.06em; margin:8px 0 2px; }
 .ev-cb { display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0; color:var(--tx-2); }
 </style>
-<script>
+<script nonce="__CSP_NONCE__">
 function whToggleFields(form) {
   var t = form.querySelector('.wh-type-sel').value;
   form.querySelectorAll('.wh-f').forEach(function(el) { el.style.display = 'none'; });

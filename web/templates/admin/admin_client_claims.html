@@ -21,7 +21,7 @@
       </label>
       <label class="field" style="flex:1;min-width:160px;margin:0">
         <span class="field-label">Value source</span>
-        <select class="input" name="value_source" id="value-source-select" onchange="document.getElementById('literal-field').style.display=this.value==='literal'?'flex':'none'">
+        <select class="input" name="value_source" id="value-source-select" data-toggle-literal="1">
           <option value="user.id">User ID</option>
           <option value="user.email">Email</option>
           <option value="user.display_name">Display name</option>

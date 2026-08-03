@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chr0nzz/gatekeeper/internal/httpguard"
 	jose "github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
@@ -326,7 +328,7 @@ func (s *Storage) ClientCredentials(ctx context.Context, clientID, clientSecret 
 	if err != nil {
 		return nil, err
 	}
-	if c.secret != clientSecret {
+	if subtle.ConstantTimeCompare([]byte(c.secret), []byte(clientSecret)) != 1 {
 		return nil, errors.New("invalid client secret")
 	}
 	if c.credentialsScopes == "" {
@@ -369,7 +371,7 @@ func (s *Storage) AuthorizeClientIDSecret(ctx context.Context, clientID, clientS
 	if err != nil {
 		return err
 	}
-	if stored != clientSecret {
+	if subtle.ConstantTimeCompare([]byte(stored), []byte(clientSecret)) != 1 {
 		return errors.New("invalid client secret")
 	}
 	return nil
@@ -383,15 +385,50 @@ func (s *Storage) SetUserinfoFromScopes(ctx context.Context, userinfo *oidc.User
 // SetUserinfoFromToken populates userinfo from an access token.
 func (s *Storage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc.UserInfo, tokenID, subject, origin string) error {
 	var email string
-	err := s.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=?`, subject).Scan(&email)
+	var verified int
+	err := s.db.QueryRowContext(ctx, `SELECT email, email_verified FROM users WHERE id=?`, subject).Scan(&email, &verified)
 	if err != nil {
 		return err
 	}
 	userinfo.Subject = subject
-	userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(true)}
-	userinfo.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
+	scopes := s.tokenScopes(ctx, tokenID)
+	if hasScope(scopes, oidc.ScopeEmail) {
+		userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(verified == 1)}
+	}
+	if hasScope(scopes, oidc.ScopeProfile) {
+		userinfo.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
+	}
 	userinfo.Claims = s.userGroupClaims(ctx, subject)
 	return nil
+}
+
+// tokenScopes returns the scopes granted to an issued access token.
+func (s *Storage) tokenScopes(ctx context.Context, tokenID string) []string {
+	var raw string
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT scopes FROM oidc_tokens WHERE id=? OR access_token=?`, tokenID, tokenID,
+	).Scan(&raw); err != nil {
+		return nil
+	}
+	var scopes []string
+	json.Unmarshal([]byte(raw), &scopes)
+	return scopes
+}
+
+// emailVerified reports whether a user has proven control of their email address.
+func (s *Storage) emailVerified(ctx context.Context, userID string) bool {
+	var v int
+	s.db.QueryRowContext(ctx, `SELECT email_verified FROM users WHERE id=?`, userID).Scan(&v)
+	return v == 1
+}
+
+func hasScope(scopes []string, want string) bool {
+	for _, s := range scopes {
+		if s == want {
+			return true
+		}
+	}
+	return false
 }
 
 // SetIntrospectionFromToken implements token introspection.
@@ -567,8 +604,11 @@ func fetchIcon(iconURL string) ([]byte, string) {
 	if iconURL == "" {
 		return nil, ""
 	}
-	resp, err := http.Get(iconURL) //nolint
+	resp, err := httpguard.Get(context.Background(), iconURL, 10*time.Second)
 	if err != nil || resp.StatusCode != 200 {
+		if resp != nil {
+			resp.Body.Close()
+		}
 		return nil, ""
 	}
 	defer resp.Body.Close()
@@ -576,12 +616,14 @@ func fetchIcon(iconURL string) ([]byte, string) {
 	if err != nil || len(data) == 0 {
 		return nil, ""
 	}
-	mime := resp.Header.Get("Content-Type")
+	// Trust the bytes, not the upstream Content-Type, so this endpoint can only
+	// ever serve images back to the browser.
+	mime := http.DetectContentType(data)
 	if idx := strings.Index(mime, ";"); idx > 0 {
 		mime = mime[:idx]
 	}
-	if mime == "" {
-		mime = "image/png"
+	if !strings.HasPrefix(mime, "image/") {
+		return nil, ""
 	}
 	return data, mime
 }
@@ -759,7 +801,7 @@ func (s *Storage) GetUserinfo(ctx context.Context, userID, clientID string, scop
 	for _, scope := range scopes {
 		switch scope {
 		case "email":
-			info.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(true)}
+			info.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(s.emailVerified(ctx, userID))}
 		case "profile":
 			info.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
 		}
@@ -785,4 +827,33 @@ func (s *Storage) userGroupClaims(ctx context.Context, userID string) map[string
 		}
 	}
 	return map[string]any{"groups": groups}
+}
+
+// IsRegisteredRedirect reports whether target exactly matches a redirect URI
+// registered by any OIDC client. Used to validate post-logout redirects.
+func (s *Storage) IsRegisteredRedirect(ctx context.Context, target string) bool {
+	if target == "" {
+		return false
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT redirect_uris FROM oidc_clients`)
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			continue
+		}
+		var uris []string
+		if json.Unmarshal([]byte(raw), &uris) != nil {
+			continue
+		}
+		for _, u := range uris {
+			if u == target {
+				return true
+			}
+		}
+	}
+	return false
 }

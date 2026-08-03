@@ -1,0 +1,1 @@
+ALTER TABLE qr_login_tokens ADD COLUMN binding TEXT NOT NULL DEFAULT '';

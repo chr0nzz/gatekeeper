@@ -57,7 +57,7 @@ On first run, visit your admin URL (`ADMIN_URL`) to create your admin account. E
 | QR code | Scan with your phone camera - approve on a device already signed in |
 | Social | One-click sign-in via GitHub, Google, or Discord |
 
-Trusted device tokens skip 2FA for 30 days after first verification on a device.
+Users can tick "Trust this device for 30 days" when entering a two-factor code to skip the second factor on that browser in future. The trust token is tied to that specific browser.
 
 ## OIDC provider
 
@@ -117,6 +117,7 @@ To restrict a route to a specific access policy, append `?policy=<name>` to the 
 | `ADMIN_PORT` | No | `8283` | Admin-only HTTP port. Never expose publicly - route via a private reverse proxy. |
 | `ADMIN_URL` | No | - | Full URL of the admin panel (e.g. `https://admin.auth.example.com`). Set when admin runs on its own subdomain - enables admin passkeys. Must be under the same registrable domain as `BASE_URL`. |
 | `ADMIN_BASE_PATH` | No | - | Serve the admin under a path prefix (e.g. `/admin`) instead of the root. Leave empty when admin has its own domain. |
+| `REDIRECT_ALLOWED_HOSTS` | No | - | Comma-separated hosts (or `.domain` suffixes) a user may be redirected to after login. Needed for ForwardAuth apps outside `COOKIE_DOMAIN`. |
 | `DB_PATH` | No | `/data/gatekeeper.db` | SQLite database path. |
 | `COOKIE_DOMAIN` | No | - | Cookie domain for cross-subdomain sharing, e.g. `.example.com`. |
 | `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn`, or `error`. |

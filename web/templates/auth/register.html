@@ -4,7 +4,7 @@
 <div class="auth-wrap bg-grid">
   <div class="auth-top" style="justify-content:center">
     {{if .BrandLogoURL}}
-    <img src="{{.BrandLogoURL}}" height="48" style="display:block;max-width:200px;object-fit:contain" onerror="this.style.display='none'">
+    <img src="{{.BrandLogoURL}}" height="48" style="display:block;max-width:200px;object-fit:contain" data-hide-on-error="1">
     {{else}}
     <div class="gk-mark">
       <div class="gk-glyph"><i></i></div>

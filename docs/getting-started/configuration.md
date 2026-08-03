@@ -29,6 +29,7 @@ openssl rand -hex 32
 | `ADMIN_PORT` | `8283` | Admin-only HTTP port, served at the root. Keep it off the public internet. |
 | `ADMIN_URL` | - | Public URL of the admin panel when it runs on its own subdomain, e.g. `https://admin.auth.example.com`. Enables admin passkeys. |
 | `ADMIN_BASE_PATH` | - | Serve the admin under a path prefix (e.g. `/admin`) instead of the root. Leave empty when the admin has its own domain. |
+| `REDIRECT_ALLOWED_HOSTS` | - | Comma-separated hosts (or `.domain` suffixes) users may be redirected to after login, for apps outside `COOKIE_DOMAIN` |
 | `DB_PATH` | `/data/gatekeeper.db` | SQLite database path. Mount a volume here. |
 | `COOKIE_DOMAIN` | - | Cookie domain for cross-subdomain session sharing, e.g. `.example.com` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error` |

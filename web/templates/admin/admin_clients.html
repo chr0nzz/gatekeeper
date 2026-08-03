@@ -80,7 +80,7 @@
           </button>
           <form method="POST" action="{{$.AdminBase}}/clients/{{.ClientID}}/delete">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete client {{.ClientID}}?')">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" data-confirm="Delete client {{.ClientID}}?">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
             </button>
           </form>
@@ -106,7 +106,7 @@
   </table>
 </div>
 
-<script>
+<script nonce="__CSP_NONCE__">
 document.addEventListener('DOMContentLoaded', function() {
   var iconInput = document.getElementById('icon-url-input');
   var iconPreview = document.getElementById('icon-preview');
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
     iconInput.addEventListener('input', function() {
       var url = iconInput.value.trim();
       if (url) {
-        iconPreview.innerHTML = '<img src="' + url + '" width="28" height="28" style="object-fit:contain;border-radius:4px" onerror="this.parentNode.innerHTML=\'<svg viewBox=\\\"0 0 24 24\\\" width=\\\"14\\\" height=\\\"14\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"1.6\\\"><path d=\\\"M4 7h16v10H4zM4 7l8 6 8-6M4 4h16\\\"/></svg>\'">';
+        iconPreview.innerHTML = '<img src="' + url + '" width="28" height="28" style="object-fit:contain;border-radius:4px" data-fallback-icon="1">';
       } else {
         iconPreview.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--tx-3)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>';
       }
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </dialog>
 
-<script>
+<script nonce="__CSP_NONCE__">
 (function() {
   document.querySelectorAll('[data-test-client]').forEach(function(btn) {
     btn.addEventListener('click', function() {

@@ -62,7 +62,7 @@
           </a>
           <form method="POST" action="{{$.AdminBase}}/policies/{{.ID}}/delete" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" onclick="return confirm('Delete policy {{.Name}}?')">
+            <button type="submit" class="btn btn-quiet btn-xs" style="color:var(--danger)" data-confirm="Delete policy {{.Name}}?">
               <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
             </button>
           </form>

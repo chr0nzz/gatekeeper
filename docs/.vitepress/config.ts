@@ -24,7 +24,7 @@ export default defineConfig({
       { text: 'Security', link: '/security/overview' },
       { text: 'Reference', link: '/reference/env-vars' },
       {
-        text: 'v0.9.1',
+        text: 'v0.9.2',
         items: [
           { text: 'Changelog', link: '/reference/changelog' },
           { text: 'GitHub', link: 'https://github.com/chr0nzz/gatekeeper' },

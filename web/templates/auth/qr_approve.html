@@ -16,6 +16,7 @@
     <p class="lede" style="margin-bottom:24px">Someone scanned a QR code to sign in as <strong>{{.Name}}</strong>. Approve only if this was you.</p>
     <form method="POST" action="/login/qr/approve">
       <input type="hidden" name="token" value="{{.Token}}">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-primary" style="width:100%;height:42px;font-size:14px;justify-content:center;margin-bottom:10px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:15px;height:15px" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         Approve sign-in

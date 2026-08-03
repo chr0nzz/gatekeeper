@@ -15,6 +15,59 @@ description: Version history for GateKeeper.
 
 ---
 
+## v0.9.2
+
+A security release. An independent audit of the codebase produced 14 findings, all of which are fixed here. Two of them change behaviour you will notice, so read the upgrade notes at the end.
+
+### Cross-domain sign-in hardened (critical)
+
+- **Handoff tokens no longer carry a session** - When signing in to an app on a different domain, GateKeeper previously put a signed copy of the session identifier in the redirect URL. Anyone who saw that URL, in a server log or browser history, could reuse the session. The handoff is now a random one-time token stored server-side. It can be redeemed exactly once, only by the host it was issued for, and it expires after two minutes. The receiving app gets a brand new session of its own.
+- **Redirect targets are checked against an allowlist** - `redirect_uri` was previously followed wherever it pointed, so a crafted login link could send an authenticated user, and their handoff token, to an attacker's site. Relative paths are always allowed. Absolute URLs must match your `BASE_URL`, `ADMIN_URL`, `COOKIE_DOMAIN`, or the new `REDIRECT_ALLOWED_HOSTS` setting. Anything else falls back to the home page.
+- **Handoff tokens are kept out of logs** - The ForwardAuth debug line now records only the request path, never the query string that carries the token.
+
+### QR sign-in hardened (high)
+
+- **One code, one session** - An approved QR code could previously be polled repeatedly, and each poll issued another session. A code is now claimed atomically and works exactly once.
+- **Bound to the browser that showed it** - Claiming a code requires a cookie set on the device that displayed it, so an approval obtained by sending someone an approval link cannot be collected by the sender. The approval form is also CSRF protected.
+
+### Admin panel and account security
+
+- **Command palette escapes user data (high)** - A display name containing markup was inserted into the admin command palette without escaping, so any user could run script in an admin's browser and escalate privileges. All values are now escaped at the point of insertion.
+- **Content-Security-Policy no longer allows inline script** - `script-src` uses a per-response nonce instead of `'unsafe-inline'`, so injected script is refused by the browser even if it ever reaches a page.
+- **Admin login is rate limited** - Repeated failures from one address are now throttled before the expensive password hash runs, which closes both an online guessing path and a way to exhaust server memory.
+- **Trusted devices are opt-in** - Passing two-factor authentication no longer silently marks the browser trusted for 30 days. There is now a "Trust this device for 30 days" checkbox, and a trust token only works in the browser it was issued to.
+
+### Data at rest
+
+- **Session and trusted-device tokens are hashed** - The database stores only a hash, so a copy of the database no longer yields usable sign-in credentials.
+- **Third-party credentials are encrypted** - SMTP passwords, S3 keys, social login secrets, and webhook tokens are encrypted with AES-256-GCM, matching how injected policy passwords were already handled.
+- **Retired TOTP secrets are re-enrolled** - Secrets still stored in the pre-v0.4.0 format were recoverable from a database read. They are now cleared instead of reused, and the user is asked to set up their authenticator again.
+
+### Outbound requests and OIDC
+
+- **Requests to internal addresses are blocked** - Client icon URLs and webhook endpoints could be pointed at loopback, private, or cloud metadata addresses. Both now resolve and check the destination on every connection and redirect.
+- **Icons are served as images only** - Fetched icon data is sniffed and rejected unless it is really an image, so the public icon endpoint cannot return arbitrary fetched content.
+- **`end_session` validates its redirect** - `post_logout_redirect_uri` must now match a registered client redirect URI or a trusted host.
+- **Claims follow granted scopes** - `email` and `profile` claims are only returned when those scopes were granted, and `email_verified` reflects whether the address was actually confirmed rather than always being true.
+- **Client secrets compare in constant time.**
+
+### Tests
+
+- The repository now has a Go test suite covering these changes: single-use and host-bound handoff tokens, redirect allowlisting, QR single-use and browser binding (including a concurrent-claim race), token hashing, rate limiting, settings encryption, CSP nonce handling, and the internal-address blocklist. Run it with `go test ./internal/...`.
+
+### Upgrade notes
+
+- **Everyone is signed out once.** Session and trusted-device tokens are now hashed, so tokens issued before the upgrade no longer match. Sign in again.
+- **Cross-domain ForwardAuth needs configuration.** If a protected app is on a different domain than `COOKIE_DOMAIN`, list it in `REDIRECT_ALLOWED_HOSTS` or sign-in will return to the GateKeeper home page instead of the app:
+
+  ```yaml
+  REDIRECT_ALLOWED_HOSTS: ".example.com,.example.net"
+  ```
+
+- **Users on very old TOTP enrollments must re-enroll.** Only affects secrets created before v0.4.0. They sign in with an email code and set up their authenticator again.
+
+---
+
 ## v0.9.0
 
 ### Split public and admin ports

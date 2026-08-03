@@ -166,8 +166,8 @@
         <label class="field" style="margin-bottom:0">
           <span class="field-label">Accent color</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="color" name="email_accent_color_picker" value="{{if .EmailAccentColor}}{{.EmailAccentColor}}{{else}}#2563eb{{end}}" style="width:36px;height:34px;padding:2px;border:1px solid var(--bd-1);border-radius:6px;cursor:pointer;background:none" oninput="document.getElementById('email_accent_color').value=this.value">
-            <input class="input mono" type="text" id="email_accent_color" name="email_accent_color" value="{{if .EmailAccentColor}}{{.EmailAccentColor}}{{else}}#2563eb{{end}}" placeholder="#2563eb" style="max-width:110px" oninput="document.querySelector('[name=email_accent_color_picker]').value=this.value">
+            <input type="color" name="email_accent_color_picker" value="{{if .EmailAccentColor}}{{.EmailAccentColor}}{{else}}#2563eb{{end}}" style="width:36px;height:34px;padding:2px;border:1px solid var(--bd-1);border-radius:6px;cursor:pointer;background:none" data-sync-target="#email_accent_color">
+            <input class="input mono" type="text" id="email_accent_color" name="email_accent_color" value="{{if .EmailAccentColor}}{{.EmailAccentColor}}{{else}}#2563eb{{end}}" placeholder="#2563eb" style="max-width:110px" data-sync-target="[name=email_accent_color_picker]">
           </div>
           <span class="field-hint">Used for the email header background and button color.</span>
         </label>
@@ -203,7 +203,7 @@
   </div>
 </form>
 
-<script>
+<script nonce="__CSP_NONCE__">
 (function() {
   var form = document.getElementById('settings-form');
   var bar = document.getElementById('save-bar');

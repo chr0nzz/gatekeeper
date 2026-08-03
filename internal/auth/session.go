@@ -39,12 +39,24 @@ func NewSessionStore(db *sql.DB, getTTL func() time.Duration, cookieDomain strin
 	return &SessionStore{db: db, getTTL: getTTL, cookieDomain: cookieDomain}
 }
 
-// Create creates a new session and sets the session cookie.
+// Create creates a new session and sets the session cookie across the configured
+// cookie domain. It returns the server-side session handle, never the cookie value.
 func (s *SessionStore) Create(w http.ResponseWriter, r *http.Request, data SessionData) (string, error) {
-	id, err := randomToken(32)
+	return s.create(w, r, data, s.cookieDomain)
+}
+
+// CreateForHost creates a session whose cookie is scoped to the requesting host
+// only. Used when handing an identity to an app on a different domain.
+func (s *SessionStore) CreateForHost(w http.ResponseWriter, r *http.Request, data SessionData) (string, error) {
+	return s.create(w, r, data, "")
+}
+
+func (s *SessionStore) create(w http.ResponseWriter, r *http.Request, data SessionData, domain string) (string, error) {
+	token, err := randomToken(32)
 	if err != nil {
 		return "", err
 	}
+	id := hashToken(token)
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return "", err
@@ -62,9 +74,9 @@ func (s *SessionStore) Create(w http.ResponseWriter, r *http.Request, data Sessi
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
-		Value:    id,
+		Value:    token,
 		Path:     "/",
-		Domain:   s.cookieDomain,
+		Domain:   domain,
 		Expires:  expires,
 		HttpOnly: true,
 		Secure:   true,
@@ -79,7 +91,7 @@ func (s *SessionStore) Get(r *http.Request) (*SessionData, string, error) {
 	if err != nil {
 		return nil, "", nil
 	}
-	id := cookie.Value
+	id := hashToken(cookie.Value)
 	now := time.Now()
 	var raw string
 	var expiresAt int64

@@ -382,3 +382,9 @@ func (a *AdminSessionStore) CountByAdmin(ctx context.Context, adminID string) in
 func (a *AdminSessionStore) DestroyAllExcept(ctx context.Context, adminID, exceptID string) {
 	a.db.ExecContext(ctx, `DELETE FROM admin_sessions WHERE admin_id=? AND id!=?`, adminID, exceptID)
 }
+
+// MarkEmailVerified records that a user proved control of their email address.
+func (s *UserStore) MarkEmailVerified(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE users SET email_verified=1 WHERE id=?`, id)
+	return err
+}

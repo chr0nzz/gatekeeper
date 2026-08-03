@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
+
+	"github.com/chr0nzz/gatekeeper/internal/httpguard"
 )
 
 func sendDiscord(url, event, msg string) error {
@@ -52,7 +53,10 @@ func postJSON(url string, payload interface{}) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
+	if err := httpguard.ValidateURL(url); err != nil {
+		return err
+	}
+	resp, err := httpguard.Client(15*time.Second).Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

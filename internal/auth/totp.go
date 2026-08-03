@@ -27,6 +27,10 @@ const (
 	recoveryCodes = 8
 )
 
+// ErrTOTPReenrollRequired is returned when a stored secret used the retired
+// pre-v0.4.0 format. The enrollment is cleared and the user must set up TOTP again.
+var ErrTOTPReenrollRequired = errors.New("your authenticator setup has expired for security reasons, sign in with an email code and enroll again")
+
 // TOTPStore manages TOTP enrollment and validation.
 type TOTPStore struct {
 	db        *sql.DB
@@ -126,11 +130,13 @@ func (t *TOTPStore) Validate(ctx context.Context, userID, code string) error {
 		return err
 	}
 
-	// Migrate legacy XOR-encrypted secrets to AES-GCM on first use.
+	// Secrets stored in the pre-v0.4.0 XOR format are recoverable from a database
+	// read alone, so they are retired rather than re-wrapped. The user must enroll
+	// a fresh secret.
 	if legacy {
-		if newStored, err := t.encryptSecret(raw); err == nil {
-			t.db.ExecContext(ctx, `UPDATE users SET totp_secret=? WHERE id=?`, newStored, userID)
-		}
+		t.db.ExecContext(ctx, `UPDATE users SET totp_secret='', totp_enabled=0 WHERE id=?`, userID)
+		t.db.ExecContext(ctx, `DELETE FROM totp_recovery_codes WHERE user_id=?`, userID)
+		return ErrTOTPReenrollRequired
 	}
 
 	valid := totp.Validate(code, string(raw))
@@ -168,13 +174,9 @@ func (t *TOTPStore) decryptSecret(stored string) ([]byte, bool, error) {
 		pt, err := aesGCMDecrypt(enc, t.secretKey)
 		return pt, false, err
 	}
-	// Legacy XOR format.
-	enc, err := base64.StdEncoding.DecodeString(stored)
-	if err != nil {
-		return nil, false, err
-	}
-	pt, err := xorDecrypt(enc, t.secretKey)
-	return pt, true, err
+	// Legacy XOR format is never decrypted. The caller retires the secret and
+	// requires the user to enroll again.
+	return nil, true, nil
 }
 
 // UseRecoveryCode consumes a recovery code. Returns nil on success.
@@ -308,18 +310,6 @@ func aesGCMDecrypt(ciphertext, key []byte) ([]byte, error) {
 func deriveKey(key []byte) []byte {
 	h := sha256.Sum256(key)
 	return h[:]
-}
-
-// xorDecrypt decrypts legacy XOR-encrypted data. Kept for reading old stored secrets only.
-func xorDecrypt(data, key []byte) ([]byte, error) {
-	if len(key) == 0 {
-		return nil, errors.New("empty key")
-	}
-	out := make([]byte, len(data))
-	for i, b := range data {
-		out[i] = b ^ key[i%len(key)]
-	}
-	return out, nil
 }
 
 const alphanumChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

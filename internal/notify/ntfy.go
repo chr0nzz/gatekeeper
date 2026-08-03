@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/chr0nzz/gatekeeper/internal/httpguard"
 )
 
 func sendNtfy(baseURL, topic, username, password, event, msg string) error {
@@ -22,7 +25,7 @@ func sendNtfy(baseURL, topic, username, password, event, msg string) error {
 	if username != "" && password != "" {
 		req.SetBasicAuth(username, password)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpguard.Client(15 * time.Second).Do(req)
 	if err != nil {
 		return err
 	}

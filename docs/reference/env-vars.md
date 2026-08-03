@@ -24,6 +24,7 @@ openssl rand -hex 32
 | `ADMIN_PORT` | `8283` | Admin-only HTTP port. Never expose this publicly - route it only through a private reverse proxy. |
 | `ADMIN_URL` | _(empty)_ | Full public URL of the admin panel, e.g. `https://admin.auth.example.com`. Set this when the admin runs on its own subdomain so that admin passkeys work - GateKeeper adds this origin to the WebAuthn allowed origins list. The admin subdomain must be under the same registrable domain as `BASE_URL`. |
 | `ADMIN_BASE_PATH` | _(empty)_ | Serve the admin panel under a path prefix instead of the root. Leave empty (default) when the admin has its own domain - the panel is then served at `/`. Set to `/admin` only if you route the admin port under a `/admin` subpath without stripping the prefix. |
+| `REDIRECT_ALLOWED_HOSTS` | _(empty)_ | Comma-separated hosts a user may be redirected to after signing in, for apps outside `COOKIE_DOMAIN`. Entries are an exact hostname (`app.example.com`) or a domain suffix (`.example.com`). The `BASE_URL` host, `ADMIN_URL` host, and `COOKIE_DOMAIN` are always allowed. Required for cross-domain ForwardAuth. |
 | `DB_PATH` | `/data/gatekeeper.db` | SQLite database path. Mount a volume at `/data`. |
 | `COOKIE_DOMAIN` | _(empty)_ | Cookie domain for cross-subdomain session sharing, e.g. `.example.com`. Leave empty if all apps share the same domain. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error`. |
@@ -83,4 +84,6 @@ Route `auth.example.com` to port `8282` and `admin.auth.example.com` to port `82
 
 If you protect apps on multiple subdomains under the same TLD (e.g. `app1.example.com` and `app2.example.com`), set `COOKIE_DOMAIN=.example.com` to share the session cookie.
 
-For apps on completely different domains (different TLDs), GateKeeper uses a short-lived HMAC-signed token to set per-host cookies without needing cookie sharing.
+For apps on completely different domains (different TLDs), GateKeeper hands the identity over using a single-use token that is stored server-side, tied to the destination host, and valid for two minutes. The app then receives its own host-scoped session cookie. No session identifier ever appears in a URL.
+
+List those domains in `REDIRECT_ALLOWED_HOSTS`, otherwise the redirect after login is refused and the user lands on the GateKeeper home page.

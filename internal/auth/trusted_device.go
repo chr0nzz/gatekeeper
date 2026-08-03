@@ -21,48 +21,51 @@ func NewTrustedDeviceStore(db *sql.DB, cookieDomain string) *TrustedDeviceStore 
 	return &TrustedDeviceStore{db: db, cookieDomain: cookieDomain}
 }
 
-// IsTrusted returns true if the request carries a valid trust token for this user.
+// IsTrusted returns true if the request carries a valid trust token issued to
+// this user and to this same browser.
 func (t *TrustedDeviceStore) IsTrusted(r *http.Request, userID string) bool {
 	cookie, err := r.Cookie(trustCookieName)
+	if err != nil || cookie.Value == "" {
+		return false
+	}
+	id := hashToken(cookie.Value)
+	var storedUA string
+	err = t.db.QueryRowContext(r.Context(),
+		`SELECT user_agent FROM trusted_devices WHERE id=? AND user_id=? AND expires_at>?`,
+		id, userID, time.Now().Unix(),
+	).Scan(&storedUA)
 	if err != nil {
 		return false
 	}
-	var count int
-	t.db.QueryRowContext(r.Context(),
-		`SELECT COUNT(*) FROM trusted_devices WHERE id=? AND user_id=? AND expires_at>?`,
-		cookie.Value, userID, time.Now().Unix(),
-	).Scan(&count)
-	if count > 0 {
-		t.db.ExecContext(r.Context(),
-			`UPDATE trusted_devices SET last_seen=? WHERE id=? AND user_id=?`,
-			time.Now().Unix(), cookie.Value, userID,
-		)
+	if storedUA != truncateUA(r.UserAgent()) {
+		return false
 	}
-	return count > 0
+	t.db.ExecContext(r.Context(),
+		`UPDATE trusted_devices SET last_seen=? WHERE id=? AND user_id=?`,
+		time.Now().Unix(), id, userID,
+	)
+	return true
 }
 
 // Trust creates a 30-day trust token for this browser and sets the cookie.
+// Callers must only invoke this when the user explicitly opted in.
 func (t *TrustedDeviceStore) Trust(w http.ResponseWriter, r *http.Request, userID string) error {
-	id, err := randomToken(32)
+	token, err := randomToken(32)
 	if err != nil {
 		return err
 	}
 	now := time.Now()
 	expires := now.Add(trustTTL)
-	ua := r.UserAgent()
-	if len(ua) > 512 {
-		ua = ua[:512]
-	}
 	_, err = t.db.ExecContext(r.Context(),
 		`INSERT INTO trusted_devices (id, user_id, user_agent, created_at, expires_at, last_seen) VALUES (?,?,?,?,?,?)`,
-		id, userID, ua, now.Unix(), expires.Unix(), now.Unix(),
+		hashToken(token), userID, truncateUA(r.UserAgent()), now.Unix(), expires.Unix(), now.Unix(),
 	)
 	if err != nil {
 		return err
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     trustCookieName,
-		Value:    id,
+		Value:    token,
 		Path:     "/",
 		Domain:   t.cookieDomain,
 		Expires:  expires,
@@ -71,6 +74,13 @@ func (t *TrustedDeviceStore) Trust(w http.ResponseWriter, r *http.Request, userI
 		SameSite: http.SameSiteLaxMode,
 	})
 	return nil
+}
+
+func truncateUA(ua string) string {
+	if len(ua) > 512 {
+		return ua[:512]
+	}
+	return ua
 }
 
 // RevokeAll deletes all trust tokens for a user.

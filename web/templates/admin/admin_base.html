@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GateKeeper">
 <link rel="stylesheet" href="/static/css/main.css">
-<script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);if(localStorage.getItem('gk_sidebar')==='1')document.documentElement.classList.add('sidebar-collapsed');})();</script>
+<script nonce="__CSP_NONCE__">(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);if(localStorage.getItem('gk_sidebar')==='1')document.documentElement.classList.add('sidebar-collapsed');})();</script>
 </head>
 <body>
 <div class="shell">
@@ -135,7 +135,7 @@
           <span>Search anything…</span>
           <span class="kbd">⌘K</span>
         </button>
-        {{if .AppVersion}}<button class="version-btn{{if .HasUpdate}} has-update{{end}}" onclick="openUpdateModal()">v{{.AppVersion}}</button>{{end}}
+        {{if .AppVersion}}<button class="version-btn{{if .HasUpdate}} has-update{{end}}" data-open-update-modal="1">v{{.AppVersion}}</button>{{end}}
         <div class="accent-drop" id="accent-drop">
           <button class="accent-trigger" id="accent-trigger" title="Accent color">
             <span class="ac-trigger-dot" id="ac-trigger-dot"></span>
@@ -311,11 +311,11 @@
   </div>
 </dialog>
 
-<script>window.GK_ADMIN_BASE = "{{$.AdminBase}}";</script>
+<script nonce="__CSP_NONCE__">window.GK_ADMIN_BASE = "{{$.AdminBase}}";</script>
 <script src="/static/js/theme.js"></script>
 <script src="/static/js/admin.js"></script>
 <script src="/static/js/admin_search.js"></script>
-<script>
+<script nonce="__CSP_NONCE__">
 (function() {
   var btn = document.getElementById('sidebar-toggle');
   var icon = document.getElementById('sidebar-toggle-icon');
@@ -356,7 +356,7 @@
   }
 })();
 </script>
-<script>
+<script nonce="__CSP_NONCE__">
 (function() {
   var hamburger = document.getElementById('hamburger');
   var overlay = document.getElementById('drawer-overlay');
@@ -386,8 +386,8 @@
   }
 })();
 </script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}</script>
-<script>
+<script nonce="__CSP_NONCE__">if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}</script>
+<script nonce="__CSP_NONCE__">
 (function(){
   function renderMd(s) {
     if (!s) return '';

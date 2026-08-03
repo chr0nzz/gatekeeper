@@ -30,7 +30,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
-var version = "0.9.1"
+var version = "0.9.2"
 
 func main() {
 	cfg, err := config.Load()
@@ -68,6 +68,7 @@ func main() {
 	socialStore := queries.NewSocialStore(database)
 	qrTokenStore := queries.NewQRTokenStore(database)
 	settingsStore := queries.NewSettingsStore(database)
+	settingsStore.SetCipher(auth.NewSettingsCipher([]byte(cfg.SecretKey)))
 	backupStore := queries.NewBackupStore(database)
 	{
 		ctx := context.Background()
@@ -148,6 +149,8 @@ func main() {
 	}
 
 	policyStore := queries.NewPolicyStore(database)
+	handoffStore := auth.NewHandoffStore(database)
+	redirectPolicy := auth.NewRedirectPolicy(cfg.BaseURL, cfg.AdminURL, cfg.CookieDomain, cfg.RedirectAllowedHosts)
 
 	oidcStorage := oidcstore.NewStorage(database, cfg.BaseURL)
 	if err := oidcStorage.EnsureSigningKey(context.Background()); err != nil {
@@ -163,9 +166,9 @@ func main() {
 
 	staticSub, _ := fs.Sub(gatekeeper.Assets, "web/static")
 
-	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
+	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, handoffStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
 
-	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore, qrTokenStore)
+	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore, qrTokenStore, handoffStore, redirectPolicy)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, cfg.AdminBasePath, version, cfg.DBPath, cfg.SecretKey, envSMTP,
 		admin.EnvDefaults{AllowedDomains: cfg.AllowedEmailDomains, SessionTTLHours: cfg.SessionTTLHours, RegistrationMode: cfg.RegistrationMode, RegistrationAllowedDomains: cfg.RegistrationAllowedDomains, GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GoogleClientID: cfg.GoogleClientID, GoogleClientSecret: cfg.GoogleClientSecret, DiscordClientID: cfg.DiscordClientID, DiscordClientSecret: cfg.DiscordClientSecret}, policyStore, groupStore, inviteStore, webhookStore, claimStore, notifyService, backupStore)
 
@@ -270,6 +273,7 @@ func main() {
 		ticker := time.NewTicker(15 * time.Minute)
 		for range ticker.C {
 			sessionStore.CleanExpired(context.Background())
+			handoffStore.CleanExpired(context.Background())
 		}
 	}()
 

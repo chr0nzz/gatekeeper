@@ -108,6 +108,8 @@ type Handlers struct {
 	invites        *queries.InviteStore
 	socialAccounts *queries.SocialStore
 	qrTokens       *queries.QRTokenStore
+	handoff        *auth.HandoffStore
+	redirects      *auth.RedirectPolicy
 	limiter        *loginLimiter
 	baseURL        string
 	issuer         string
@@ -135,6 +137,8 @@ func New(
 	invites *queries.InviteStore,
 	socialAccounts *queries.SocialStore,
 	qrTokens *queries.QRTokenStore,
+	handoff *auth.HandoffStore,
+	redirects *auth.RedirectPolicy,
 ) *Handlers {
 	return &Handlers{
 		db: db, users: users, sessions: sessions, otps: otps, totp: totp,
@@ -142,7 +146,7 @@ func New(
 		trustedDevices: trustedDevices, mailer: m,
 		auditLog: auditLog, renderer: renderer, oidcStorage: oidcStorage,
 		policies: policies, invites: invites, socialAccounts: socialAccounts,
-		qrTokens: qrTokens,
+		qrTokens: qrTokens, handoff: handoff, redirects: redirects,
 		limiter: newLoginLimiter(),
 		baseURL: baseURL, issuer: issuer,
 		secretKey: secretKey, cookieDomain: cookieDomain,
@@ -292,7 +296,7 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 			h.completeLogin(w, r, sessID, data)
 			return
 		} else {
-			h.redirect(w, r, sessID, redirectURI)
+			h.redirect(w, r, data.UserID, redirectURI)
 			return
 		}
 	}
@@ -325,6 +329,13 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 		tplData["Error"] = socialErrMsg(errCode)
 	}
 	h.render(w, "login.html", tplData)
+}
+
+// rememberDevice reports whether the user explicitly asked to skip 2FA on this
+// browser in future logins.
+func rememberDevice(r *http.Request) bool {
+	v := r.FormValue("remember_device")
+	return v == "1" || v == "on" || v == "true"
 }
 
 func orBlank(s string) string {
@@ -450,8 +461,11 @@ func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.users.MarkEmailVerified(r.Context(), data.UserID)
 	h.auditLog.Log(r.Context(), audit.EventOTPVerified, data.UserID, "", r.RemoteAddr, "")
-	h.trustedDevices.Trust(w, r, data.UserID)
+	if rememberDevice(r) {
+		h.trustedDevices.Trust(w, r, data.UserID)
+	}
 	h.completeLogin(w, r, sessID, data)
 }
 
@@ -474,7 +488,9 @@ func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.auditLog.Log(r.Context(), audit.EventTOTPVerified, data.UserID, "", r.RemoteAddr, "")
-	h.trustedDevices.Trust(w, r, data.UserID)
+	if rememberDevice(r) {
+		h.trustedDevices.Trust(w, r, data.UserID)
+	}
 	h.completeLogin(w, r, sessID, data)
 }
 
@@ -494,7 +510,9 @@ func (h *Handlers) PostTOTPRecovery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.auditLog.Log(r.Context(), audit.EventTOTPRecoveryUsed, data.UserID, "", r.RemoteAddr, "")
-	h.trustedDevices.Trust(w, r, data.UserID)
+	if rememberDevice(r) {
+		h.trustedDevices.Trust(w, r, data.UserID)
+	}
 	h.completeLogin(w, r, sessID, data)
 }
 
@@ -533,34 +551,37 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 		}
 	}
 
-	h.redirect(w, r, sessID, data.RedirectURI)
+	h.redirect(w, r, data.UserID, data.RedirectURI)
 }
 
-// redirectURL resolves where a freshly authenticated session should land,
-// using a cross-domain token handoff when the target is outside the shared cookie domain.
-func (h *Handlers) redirectURL(sessID, target string) string {
-	if target == "" {
-		target = "/"
-	}
+// redirectURL resolves where a freshly authenticated user should land. Untrusted
+// targets are discarded, and targets outside the shared cookie domain receive a
+// single-use, host-bound handoff token rather than any session identifier.
+func (h *Handlers) redirectURL(ctx context.Context, userID, target string) string {
+	target = h.redirects.Sanitize(target)
 	cross := h.needsCrossDomain(target)
-	slog.Debug("login redirect", "target", target, "cross_domain", cross, "cookie_domain", h.cookieDomain)
-	if cross {
-		u, err := url.Parse(target)
-		if err != nil {
-			return "/"
-		}
-		token := auth.GenerateCrossToken(sessID, h.secretKey)
-		return u.Scheme + "://" + u.Host + "/_gk/auth" +
-			"?token=" + url.QueryEscape(token) +
-			"&redirect=" + url.QueryEscape(u.RequestURI())
+	slog.Debug("login redirect", "cross_domain", cross, "cookie_domain", h.cookieDomain)
+	if !cross {
+		return target
 	}
-	return target
+	u, err := url.Parse(target)
+	if err != nil {
+		return "/"
+	}
+	token, err := h.handoff.Create(ctx, userID, u.Host)
+	if err != nil {
+		slog.Error("handoff token create failed", "err", err)
+		return "/"
+	}
+	return u.Scheme + "://" + u.Host + "/_gk/auth" +
+		"?token=" + url.QueryEscape(token) +
+		"&redirect=" + url.QueryEscape(u.RequestURI())
 }
 
-// redirect sends the user to target, using cross-domain token handoff when
-// the target is outside the shared cookie domain.
-func (h *Handlers) redirect(w http.ResponseWriter, r *http.Request, sessID, target string) {
-	http.Redirect(w, r, h.redirectURL(sessID, target), http.StatusFound)
+// redirect sends the user to target, using a cross-domain handoff when the
+// target is outside the shared cookie domain.
+func (h *Handlers) redirect(w http.ResponseWriter, r *http.Request, userID, target string) {
+	http.Redirect(w, r, h.redirectURL(r.Context(), userID, target), http.StatusFound)
 }
 
 // needsCrossDomain returns true when the target URL's host is not covered by
@@ -635,8 +656,7 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	oidcRequest := r.URL.Query().Get("oidc_request")
 	sessData := auth.SessionData{UserID: userID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest}
-	newSessID, err2 := h.sessions.Create(w, r, sessData)
-	if err2 != nil {
+	if _, err2 := h.sessions.Create(w, r, sessData); err2 != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
 	}
@@ -651,17 +671,7 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	target := redirectURI
-	if target == "" {
-		target = "/"
-	}
-	if h.needsCrossDomain(target) {
-		token := auth.GenerateCrossToken(newSessID, h.secretKey)
-		u, _ := url.Parse(target)
-		target = u.Scheme + "://" + u.Host + "/_gk/auth" +
-			"?token=" + url.QueryEscape(token) +
-			"&redirect=" + url.QueryEscape(u.RequestURI())
-	}
+	target := h.redirectURL(r.Context(), userID, redirectURI)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(target))
@@ -795,11 +805,11 @@ func (h *Handlers) EndSession(w http.ResponseWriter, r *http.Request) {
 	if target == "" {
 		target = r.URL.Query().Get("post_logout_redirect_uri")
 	}
-	if target != "" {
-		if u, err := url.Parse(target); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
-			http.Redirect(w, r, target, http.StatusFound)
-			return
-		}
+	// Only redirect to a destination registered for an OIDC client, or one the
+	// operator explicitly trusts. Anything else falls back to the login page.
+	if target != "" && (h.oidcStorage.IsRegisteredRedirect(r.Context(), target) || h.redirects.Allowed(target)) {
+		http.Redirect(w, r, target, http.StatusFound)
+		return
 	}
 	http.Redirect(w, r, "/login", http.StatusFound)
 }
@@ -935,7 +945,7 @@ func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
 	h.mailer.SendPasswordChanged(r.Context(), user.Email)
 	redirectURI := r.FormValue("redirect_uri")
 	if redirectURI != "" {
-		h.redirect(w, r, sessID, redirectURI)
+		h.redirect(w, r, user.ID, redirectURI)
 		return
 	}
 	h.render(w, "change_password.html", map[string]interface{}{"Success": "Password changed. All other sessions have been signed out."})
@@ -1239,8 +1249,13 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 		h.render(w, "register.html", errData("Passwords do not match."))
 		return
 	}
+	// Registering an address that already exists returns the same response as a
+	// new signup so the form cannot be used to discover accounts. The owner is
+	// told out of band instead.
 	if existing, _ := h.users.GetByEmail(r.Context(), email); existing != nil {
-		h.render(w, "register.html", errData("An account with that email already exists."))
+		h.auditLog.Log(r.Context(), "user.register_duplicate", existing.ID, "", r.RemoteAddr, email)
+		h.mailer.SendDuplicateRegistration(r.Context(), email)
+		h.render(w, "register.html", map[string]interface{}{"Pending": true})
 		return
 	}
 
@@ -1498,7 +1513,7 @@ func (h *Handlers) GetSocialCallback(w http.ResponseWriter, r *http.Request) {
 	if oidcReq != "" {
 		h.completeLogin(w, r, sessID, &sd)
 	} else {
-		h.redirect(w, r, sessID, "")
+		h.redirect(w, r, userID, "")
 	}
 }
 

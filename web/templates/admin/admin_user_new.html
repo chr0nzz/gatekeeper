@@ -21,11 +21,11 @@
       <label class="field">
         <span class="field-label">Sign-in method</span>
         <div class="seg" style="margin:0">
-          <button type="button" class="on" onclick="setMethod(this,'password')">
+          <button type="button" class="on" data-user-method="password">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
             Email + Password
           </button>
-          <button type="button" onclick="setMethod(this,'passwordless')">
+          <button type="button" data-user-method="passwordless">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
             Email Only
           </button>
@@ -50,7 +50,7 @@
     </form>
   </div>
 </div>
-<script>
+<script nonce="__CSP_NONCE__">
 function setMethod(btn, method) {
   btn.closest('.seg').querySelectorAll('button').forEach(function(b) { b.classList.remove('on'); });
   btn.classList.add('on');

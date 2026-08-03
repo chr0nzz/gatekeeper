@@ -1,53 +1,78 @@
 package auth
 
 import (
-	"crypto/hmac"
+	"context"
 	"crypto/sha256"
-	"encoding/base64"
+	"database/sql"
+	"encoding/hex"
 	"errors"
-	"strconv"
-	"strings"
 	"time"
 )
 
-const crossTokenTTL = 5 * time.Minute
+const handoffTTL = 2 * time.Minute
 
-// GenerateCrossToken creates a short-lived HMAC-signed token carrying a session ID.
-// Used to hand off an authenticated session to a different domain.
-func GenerateCrossToken(sessionID, secretKey string) string {
-	expiry := strconv.FormatInt(time.Now().Add(crossTokenTTL).Unix(), 10)
-	payload := sessionID + ":" + expiry
-	sig := crossSign(payload, secretKey)
-	return base64.RawURLEncoding.EncodeToString([]byte(payload)) + "." + sig
+// ErrHandoffInvalid is returned when a handoff token is unknown, expired, already
+// used, or presented to a host it was not issued for.
+var ErrHandoffInvalid = errors.New("invalid handoff token")
+
+// HandoffStore issues single-use, host-bound tokens that transfer an authenticated
+// identity to another domain without ever exposing a session identifier.
+type HandoffStore struct {
+	db *sql.DB
 }
 
-// ValidateCrossToken verifies the token signature and expiry, returning the session ID.
-func ValidateCrossToken(token, secretKey string) (string, error) {
-	parts := strings.SplitN(token, ".", 2)
-	if len(parts) != 2 {
-		return "", errors.New("invalid token")
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(parts[0])
+// NewHandoffStore creates a HandoffStore.
+func NewHandoffStore(db *sql.DB) *HandoffStore {
+	return &HandoffStore{db: db}
+}
+
+// Create issues a handoff token for userID that only the given host may redeem.
+func (h *HandoffStore) Create(ctx context.Context, userID, targetHost string) (string, error) {
+	raw, err := randomToken(32)
 	if err != nil {
-		return "", errors.New("invalid token encoding")
+		return "", err
 	}
-	payload := string(raw)
-	if !hmac.Equal([]byte(parts[1]), []byte(crossSign(payload, secretKey))) {
-		return "", errors.New("invalid token signature")
+	now := time.Now()
+	_, err = h.db.ExecContext(ctx,
+		`INSERT INTO handoff_tokens (id, user_id, target_host, created_at, expires_at) VALUES (?,?,?,?,?)`,
+		hashToken(raw), userID, targetHost, now.Unix(), now.Add(handoffTTL).Unix(),
+	)
+	if err != nil {
+		return "", err
 	}
-	idx := strings.LastIndex(payload, ":")
-	if idx < 0 {
-		return "", errors.New("malformed token")
-	}
-	expiry, err := strconv.ParseInt(payload[idx+1:], 10, 64)
-	if err != nil || time.Now().Unix() > expiry {
-		return "", errors.New("token expired")
-	}
-	return payload[:idx], nil
+	return raw, nil
 }
 
-func crossSign(payload, key string) string {
-	mac := hmac.New(sha256.New, []byte(key))
-	mac.Write([]byte(payload))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+// Redeem consumes a handoff token exactly once and returns the user it belongs to.
+// The token is rejected unless host matches the host it was issued for.
+func (h *HandoffStore) Redeem(ctx context.Context, raw, host string) (string, error) {
+	id := hashToken(raw)
+	res, err := h.db.ExecContext(ctx,
+		`UPDATE handoff_tokens SET used_at=? WHERE id=? AND used_at IS NULL AND expires_at>? AND target_host=?`,
+		time.Now().Unix(), id, time.Now().Unix(), host,
+	)
+	if err != nil {
+		return "", err
+	}
+	if n, err := res.RowsAffected(); err != nil || n != 1 {
+		return "", ErrHandoffInvalid
+	}
+	var userID string
+	if err := h.db.QueryRowContext(ctx, `SELECT user_id FROM handoff_tokens WHERE id=?`, id).Scan(&userID); err != nil {
+		return "", ErrHandoffInvalid
+	}
+	if userID == "" {
+		return "", ErrHandoffInvalid
+	}
+	return userID, nil
+}
+
+// CleanExpired removes handoff tokens that are expired or already redeemed.
+func (h *HandoffStore) CleanExpired(ctx context.Context) {
+	h.db.ExecContext(ctx, `DELETE FROM handoff_tokens WHERE expires_at<? OR used_at IS NOT NULL`, time.Now().Unix())
+}
+
+func hashToken(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
 }

@@ -273,7 +273,7 @@
 
 
 
-<script>
+<script nonce="__CSP_NONCE__">
 (function() {
   var svg = document.getElementById('activity-chart');
   var tip = document.getElementById('chart-tooltip');
@@ -434,7 +434,7 @@
     var url = this.value.trim();
     var preview = document.getElementById('db-icon-preview');
     if (preview) preview.innerHTML = url
-      ? '<img src="' + url + '" width="22" height="22" style="object-fit:contain;border-radius:4px" onerror="this.parentNode.innerHTML=\'<svg viewBox=\\\"0 0 24 24\\\" width=\\\"14\\\" height=\\\"14\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"1.6\\\"><path d=\\\"M4 7h16v10H4zM4 7l8 6 8-6M4 4h16\\\"/></svg>\'">'
+      ? '<img src="' + url + '" width="22" height="22" style="object-fit:contain;border-radius:4px" data-fallback-icon="1">'
       : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--tx-3)"><path d="M4 7h16v10H4zM4 7l8 6 8-6M4 4h16"/></svg>';
   });
 
@@ -464,11 +464,11 @@
       <label class="field">
         <span class="field-label">Sign-in method</span>
         <div class="seg" style="margin:0">
-          <button type="button" class="on" onclick="setDashUserMethod(this,'password')">
+          <button type="button" class="on" data-user-method="password">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"/></svg>
             Email + Password
           </button>
-          <button type="button" onclick="setDashUserMethod(this,'passwordless')">
+          <button type="button" data-user-method="passwordless">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M3 6h18v12H3zM3 6l9 7 9-7"/></svg>
             Email Only
           </button>
@@ -600,7 +600,7 @@
   </form>
 </dialog>
 
-<script>
+<script nonce="__CSP_NONCE__">
 function setDashUserMethod(btn, method) {
   btn.closest('.seg').querySelectorAll('button').forEach(function(b) { b.classList.remove('on'); });
   btn.classList.add('on');

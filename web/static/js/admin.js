@@ -91,6 +91,12 @@ var GK = (function () {
 
 (function () {
   var ADMIN_BASE = window.GK_ADMIN_BASE || '';
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
   var open = false;
   var sel = 0;
   var allItems = [];
@@ -159,11 +165,11 @@ var GK = (function () {
       else groups.push({ name: c.group || '', items: [{ c: c, i: i }] });
     });
     list.innerHTML = groups.map(function (g) {
-      return (g.name ? '<div class="cmdk-group-label">' + g.name + '</div>' : '') +
+      return (g.name ? '<div class="cmdk-group-label">' + esc(g.name) + '</div>' : '') +
         g.items.map(function (x) {
-          var sub = x.c.sub ? '<span style="color:var(--tx-3);font-size:11px;margin-left:6px;font-family:var(--font-mono)">' + x.c.sub + '</span>' : '';
+          var sub = x.c.sub ? '<span style="color:var(--tx-3);font-size:11px;margin-left:6px;font-family:var(--font-mono)">' + esc(x.c.sub) + '</span>' : '';
           return '<div class="cmdk-item' + (x.i === sel ? ' on' : '') + '" data-idx="' + x.i + '">' +
-            iconSvg(x.c.icon) + '<span>' + x.c.label + '</span>' + sub + '</div>';
+            iconSvg(x.c.icon) + '<span>' + esc(x.c.label) + '</span>' + sub + '</div>';
         }).join('');
     }).join('');
     list.querySelectorAll('.cmdk-item').forEach(function (el) {

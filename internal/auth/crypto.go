@@ -53,3 +53,27 @@ func deriveKeyBytes(key []byte) []byte {
 	h := sha256.Sum256(key)
 	return h[:]
 }
+
+// SettingsCipher adapts the secret encryption helpers to the settings store.
+type SettingsCipher struct {
+	key []byte
+}
+
+// NewSettingsCipher creates a cipher bound to the deployment secret key.
+func NewSettingsCipher(key []byte) *SettingsCipher {
+	return &SettingsCipher{key: key}
+}
+
+// EncryptSecret encrypts a setting value for storage.
+func (c *SettingsCipher) EncryptSecret(plaintext string) (string, error) {
+	return EncryptSecret([]byte(plaintext), c.key)
+}
+
+// DecryptSecret decrypts a stored setting value.
+func (c *SettingsCipher) DecryptSecret(ciphertext string) (string, error) {
+	pt, err := DecryptSecret(ciphertext, c.key)
+	if err != nil {
+		return "", err
+	}
+	return string(pt), nil
+}

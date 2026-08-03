@@ -16,11 +16,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GateKeeper">
 <link rel="stylesheet" href="/static/css/main.css">
-<script>(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);})();</script>
+<script nonce="__CSP_NONCE__">(function(){var p=localStorage.getItem('gk_theme')||'auto';var dark=p==='dark'||(p==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.documentElement.setAttribute('data-theme-pref',p);var a=localStorage.getItem('gk_accent');if(a)document.documentElement.setAttribute('data-accent',a);})();</script>
 </head>
 <body>
 {{block "content" .}}{{end}}
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}</script>
+<script nonce="__CSP_NONCE__">if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});}</script>
 </body>
 </html>
 {{end}}

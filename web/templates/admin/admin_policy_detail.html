@@ -10,7 +10,7 @@
   <div class="head-actions">
     <form method="POST" action="{{$.AdminBase}}/policies/{{.Policy.ID}}/delete">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <button type="submit" class="btn btn-quiet btn-sm" style="color:var(--danger)" onclick="return confirm('Delete policy {{.Policy.Name}}? This cannot be undone.')">
+      <button type="submit" class="btn btn-quiet btn-sm" style="color:var(--danger)" data-confirm="Delete policy {{.Policy.Name}}? This cannot be undone.">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/></svg>
         Delete policy
       </button>
