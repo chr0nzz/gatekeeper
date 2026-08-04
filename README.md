@@ -32,6 +32,29 @@ Single Docker container, SQLite database, configured entirely through the admin 
 - **Webhooks and audit log** - an append-only record of every auth and admin event, with notifications to Discord, Slack, Telegram, ntfy, or any HTTP endpoint.
 - **Admin UI for everything** - users, clients, policies, settings, and backups. No config files, no CLI.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/public/screenshots/admin-dashboard-dark.png" alt="Admin dashboard, dark theme"></td>
+    <td width="50%"><img src="docs/public/screenshots/admin-dashboard-light.png" alt="Admin dashboard, light theme"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Dashboard</b> · dark</sub></td>
+    <td align="center"><sub><b>Dashboard</b> · light</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/public/screenshots/login-dark.png" alt="Sign-in page, dark theme"></td>
+    <td width="50%"><img src="docs/public/screenshots/admin-audit-light.png" alt="Audit log, light theme"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Sign-in</b> · dark</sub></td>
+    <td align="center"><sub><b>Audit log</b> · light</sub></td>
+  </tr>
+</table>
+
+More in the [screenshot gallery](https://gatekeeper.xyzlab.dev/screenshots), including the user portal, OIDC clients, policies, groups, settings, and backups.
+
 ## Quick start
 
 ```yaml

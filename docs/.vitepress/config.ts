@@ -20,6 +20,7 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/' },
+      { text: 'Screenshots', link: '/screenshots' },
       { text: 'Installation', link: '/getting-started/installation' },
       { text: 'Security', link: '/security/overview' },
       { text: 'Reference', link: '/reference/env-vars' },
@@ -37,6 +38,7 @@ export default defineConfig({
         text: 'Getting started',
         items: [
           { text: 'Overview', link: '/' },
+          { text: 'Screenshots', link: '/screenshots' },
           { text: 'Installation', link: '/getting-started/installation' },
           { text: 'Configuration', link: '/getting-started/configuration' },
           { text: 'First login', link: '/getting-started/first-login' },
