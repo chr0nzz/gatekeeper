@@ -77,3 +77,16 @@
 }
 
 .vp-btn:hover { opacity: 0.8; }
+
+/* Screenshots follow the site theme. Each shot ships as a light and a dark
+   variant, and only the one matching the active theme is rendered. */
+html:not(.dark) .dark-only { display: none !important; }
+html.dark .light-only { display: none !important; }
+
+.screenshot {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+  margin: 16px 0 4px;
+  display: block;
+}

@@ -34,26 +34,19 @@ Single Docker container, SQLite database, configured entirely through the admin 
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/public/screenshots/admin-dashboard-dark.png" alt="Admin dashboard, dark theme"></td>
-    <td width="50%"><img src="docs/public/screenshots/admin-dashboard-light.png" alt="Admin dashboard, light theme"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>Dashboard</b> · dark</sub></td>
-    <td align="center"><sub><b>Dashboard</b> · light</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/public/screenshots/login-dark.png" alt="Sign-in page, dark theme"></td>
-    <td width="50%"><img src="docs/public/screenshots/admin-audit-light.png" alt="Audit log, light theme"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>Sign-in</b> · dark</sub></td>
-    <td align="center"><sub><b>Audit log</b> · light</sub></td>
-  </tr>
-</table>
+<div align="center">
 
-More in the [screenshot gallery](https://gatekeeper.xyzlab.dev/screenshots), including the user portal, OIDC clients, policies, groups, settings, and backups.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/public/screenshots/showcase-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="docs/public/screenshots/showcase-light.gif">
+  <img alt="GateKeeper admin panel: dashboard, users, OIDC clients, audit log, settings, and sign-in" src="docs/public/screenshots/showcase-dark.gif" width="100%">
+</picture>
+
+<sub>Dashboard · Users · OIDC clients · Audit log · Settings · Sign-in</sub>
+
+</div>
+
+Every page follows your theme. The full [screenshot gallery](https://gatekeeper.xyzlab.dev/screenshots) covers the user portal, policies, groups, and backups too.
 
 ## Quick start
 
