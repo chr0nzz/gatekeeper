@@ -384,7 +384,7 @@ func (a *AdminSessionStore) DestroyAllExcept(ctx context.Context, adminID, excep
 }
 
 // MarkEmailVerified records that a user proved control of their email address.
-func (s *UserStore) MarkEmailVerified(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE users SET email_verified=1 WHERE id=?`, id)
+func (u *UserStore) MarkEmailVerified(ctx context.Context, id string) error {
+	_, err := u.db.ExecContext(ctx, `UPDATE users SET email_verified=1 WHERE id=?`, id)
 	return err
 }

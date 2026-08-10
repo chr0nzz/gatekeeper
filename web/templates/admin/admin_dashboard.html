@@ -207,10 +207,10 @@
         <span class="pill pill-{{.Kind}}" style="font-family:var(--font-mono);font-size:10px;justify-self:start"><span class="dot"></span>{{.Event}}</span>
         <span style="display:flex;align-items:center;gap:6px;overflow:hidden;min-width:0">
           {{if .UserID}}<span style="width:20px;height:20px;border-radius:50%;overflow:hidden;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-3);border:1px solid var(--bd-0);font-size:8px;font-weight:600;color:var(--tx-2)">{{if .HasAvatar}}<img src="/avatar/{{.UserID}}" width="20" height="20" style="object-fit:cover;display:block">{{else}}{{slice .User 0 1}}{{end}}</span>{{end}}
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500">{{if .User}}{{if .UserName}}{{.UserName}}{{else}}{{.User}}{{end}}{{else}}<span style="color:var(--tx-3)">—</span>{{end}}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500">{{if .User}}{{if .UserName}}{{.UserName}}{{else}}{{.User}}{{end}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</span>
         </span>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--tx-3)">{{if .User}}{{.User}}{{else}}<span style="color:var(--tx-3)">—</span>{{end}}</span>
-        <span>{{if .Method}}<span class="method-badge {{.MethodClass}}">{{.Method}}</span>{{else}}<span style="color:var(--tx-3)">—</span>{{end}}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--tx-3)">{{if .User}}{{.User}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</span>
+        <span>{{if .Method}}<span class="method-badge {{.MethodClass}}">{{.Method}}</span>{{else}}<span style="color:var(--tx-3)">-</span>{{end}}</span>
         <span style="font-family:var(--font-mono);font-size:11px;color:var(--tx-3);text-align:right">{{.Time}}</span>
       </div>
       {{else}}

@@ -1,5 +1,5 @@
 /* ============================================================
-   GateKeeper — combined design system.
+   GateKeeper - combined design system.
    Beacon's design language (Inter + Instrument Serif + indigo)
    with full light & dark themes.
 
@@ -150,8 +150,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ============================================================
-   LOGO mark — two pillars with an accent threshold beam.
-   (Vault's original mark — works on both light and dark.)
+   LOGO mark - two pillars with an accent threshold beam.
+   (Vault's original mark - works on both light and dark.)
    ============================================================ */
 .gk-mark {
   display: inline-flex; align-items: center; gap: 9px;
@@ -193,7 +193,7 @@ a { color: inherit; text-decoration: none; }
 .gk-mark.lg .gk-name span { font-size: 25px; }
 
 /* ============================================================
-   LAYOUT — shell
+   LAYOUT - shell
    ============================================================ */
 .shell { display: grid; grid-template-columns: 244px 1fr; min-height: 100vh; background: var(--bg-0); }
 .shell.signed-out { display: block; }
@@ -328,7 +328,7 @@ a { color: inherit; text-decoration: none; }
 .page-head .head-actions { margin-left: auto; display: flex; gap: 6px; }
 
 /* ============================================================
-   THEME TOGGLE — 3-state segmented control (sun / monitor / moon)
+   THEME TOGGLE - 3-state segmented control (sun / monitor / moon)
    ============================================================ */
 .accent-drop { position: relative; }
 
@@ -933,7 +933,7 @@ dialog::backdrop {
 .method-social   { background:var(--bg-3);color:var(--tx-2);border:1px solid var(--bd-1); }
 
 /* ============================================================
-   TWEAKS — density + display font overrides applied via
+   TWEAKS - density + display font overrides applied via
    [data-density="cozy|dense"] and [data-display-font="serif|sans"]
    set by the host tweaks broadcast.
    ============================================================ */

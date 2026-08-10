@@ -1049,11 +1049,6 @@ func (h *Handlers) PostCreateUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
 }
 
-func (h *Handlers) renderUserListWithError(w http.ResponseWriter, r *http.Request, msg string) {
-	users, _ := h.users.List(r.Context())
-	h.render(w, r, "admin_users.html", map[string]interface{}{"Users": users, "Error": msg})
-}
-
 func (h *Handlers) GetUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	user, err := h.users.GetByID(r.Context(), id)
@@ -1619,7 +1614,7 @@ func (h *Handlers) GetAudit(w http.ResponseWriter, r *http.Request) {
 	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 
 	for _, e := range entries {
-		label := e.Date
+		var label string
 		switch e.Date {
 		case today:
 			label = "Today"
@@ -2502,7 +2497,7 @@ func (h *Handlers) GetWebhooks(w http.ResponseWriter, r *http.Request) {
 // PostCreateWebhook creates a new webhook.
 func (h *Handlers) PostCreateWebhook(w http.ResponseWriter, r *http.Request) {
 	if !h.checkCSRF(r) {
-		http.Error(w, "forbidden", 403)
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	whType := r.FormValue("type")
@@ -2531,7 +2526,7 @@ func (h *Handlers) PostCreateWebhook(w http.ResponseWriter, r *http.Request) {
 // PostEditWebhook updates an existing webhook.
 func (h *Handlers) PostEditWebhook(w http.ResponseWriter, r *http.Request) {
 	if !h.checkCSRF(r) {
-		http.Error(w, "forbidden", 403)
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -2563,7 +2558,7 @@ func (h *Handlers) PostEditWebhook(w http.ResponseWriter, r *http.Request) {
 // PostDeleteWebhook removes a webhook.
 func (h *Handlers) PostDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 	if !h.checkCSRF(r) {
-		http.Error(w, "forbidden", 403)
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	h.webhooks.DeleteWebhook(r.Context(), chi.URLParam(r, "id"))
@@ -2573,7 +2568,7 @@ func (h *Handlers) PostDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 // PostToggleWebhook toggles the enabled state of a webhook.
 func (h *Handlers) PostToggleWebhook(w http.ResponseWriter, r *http.Request) {
 	if !h.checkCSRF(r) {
-		http.Error(w, "forbidden", 403)
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -2587,7 +2582,7 @@ func (h *Handlers) PostToggleWebhook(w http.ResponseWriter, r *http.Request) {
 // PostTestWebhook sends a test notification to a webhook.
 func (h *Handlers) PostTestWebhook(w http.ResponseWriter, r *http.Request) {
 	if !h.checkCSRF(r) {
-		http.Error(w, "forbidden", 403)
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 	id := chi.URLParam(r, "id")
