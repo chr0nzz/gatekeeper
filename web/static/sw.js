@@ -1,4 +1,4 @@
-const CACHE = 'gatekeeper-v1';
+const CACHE = 'gatekeeper-__GK_VERSION__';
 const PRECACHE = [
   '/static/css/main.css',
   '/static/js/theme.js',
@@ -34,15 +34,17 @@ self.addEventListener('fetch', e => {
       url.pathname.startsWith('/authorize') ||
       url.pathname.startsWith('/_gk')) return;
 
-  if (url.pathname.startsWith('/static/')) {
-    e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }))
-    );
-  }
+  if (!url.pathname.startsWith('/static/')) return;
+
+  // Network first so a deployed change is picked up immediately. The cached copy
+  // is only a fallback for when the server cannot be reached.
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (res.ok) {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
+  );
 });

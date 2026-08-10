@@ -1,22 +1,91 @@
+var GKDialog = (function () {
+  var SLIDE_MS = 320;
+  var DOCK_QUERY = '(min-width: 1440px)';
+  var docked = null;
+
+  function isPanel(dialog) {
+    return dialog.classList.contains('panel');
+  }
+
+  function dockFits() {
+    return window.matchMedia(DOCK_QUERY).matches;
+  }
+
+  function flushPendingStyles(el) {
+    return el.getBoundingClientRect().height;
+  }
+
+  function onDockedKeydown(e) {
+    if (e.key === 'Escape' && docked) {
+      e.preventDefault();
+      close(docked);
+    }
+  }
+
+  function open(dialog) {
+    if (!dialog || dialog.open) return;
+    if (docked && docked !== dialog) close(docked);
+    if (isPanel(dialog) && dockFits()) {
+      docked = dialog;
+      dialog.show();
+      document.documentElement.classList.add('gk-panel-docked');
+      document.addEventListener('keydown', onDockedKeydown);
+    } else {
+      dialog.showModal();
+    }
+    if (!isPanel(dialog)) return;
+    flushPendingStyles(dialog);
+    dialog.classList.add('in');
+  }
+
+  function close(dialog) {
+    if (!dialog || !dialog.open) return;
+    if (!isPanel(dialog)) {
+      dialog.close();
+      return;
+    }
+    dialog.classList.remove('in');
+    if (docked === dialog) {
+      document.documentElement.classList.remove('gk-panel-docked');
+      document.removeEventListener('keydown', onDockedKeydown);
+      docked = null;
+    }
+    var finish = function () {
+      dialog.removeEventListener('transitionend', onEnd);
+      if (dialog.open) dialog.close();
+    };
+    var onEnd = function (e) {
+      if (e.target === dialog && e.propertyName === 'transform') finish();
+    };
+    dialog.addEventListener('transitionend', onEnd);
+    setTimeout(finish, SLIDE_MS);
+  }
+
+  return { open: open, close: close };
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-open-dialog]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var id = btn.dataset.openDialog;
-      var dialog = document.getElementById(id);
-      if (dialog) dialog.showModal();
+      GKDialog.open(document.getElementById(btn.dataset.openDialog));
     });
   });
 
   document.querySelectorAll('[data-close-dialog]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var dialog = btn.closest('dialog');
-      if (dialog) dialog.close();
+      GKDialog.close(btn.closest('dialog'));
     });
   });
 
   document.querySelectorAll('dialog').forEach(function (dialog) {
     dialog.addEventListener('click', function (e) {
-      if (e.target === dialog) dialog.close();
+      if (e.target === dialog) GKDialog.close(dialog);
+    });
+    dialog.addEventListener('cancel', function (e) {
+      if (dialog.classList.contains('panel')) {
+        e.preventDefault();
+        GKDialog.close(dialog);
+      }
     });
   });
 

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -9,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	gatekeeper "github.com/chr0nzz/gatekeeper"
@@ -169,6 +172,32 @@ func main() {
 
 	staticSub, _ := fs.Sub(gatekeeper.Assets, "web/static")
 
+	staticETags := map[string]string{}
+	fs.WalkDir(staticSub, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		body, readErr := fs.ReadFile(staticSub, p)
+		if readErr != nil {
+			return nil
+		}
+		sum := sha256.Sum256(body)
+		staticETags["/"+p] = `"` + hex.EncodeToString(sum[:12]) + `"`
+		return nil
+	})
+	staticFiles := http.StripPrefix("/static/", http.FileServer(http.FS(staticSub)))
+	staticHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tag, ok := staticETags[strings.TrimPrefix(r.URL.Path, "/static")]; ok {
+			w.Header().Set("ETag", tag)
+			w.Header().Set("Cache-Control", "no-cache")
+			if r.Header.Get("If-None-Match") == tag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+		staticFiles.ServeHTTP(w, r)
+	})
+
 	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, handoffStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
 
 	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore, qrTokenStore, handoffStore, redirectPolicy)
@@ -199,7 +228,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/javascript")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Service-Worker-Allowed", "/")
-		w.Write(data)
+		w.Write([]byte(strings.ReplaceAll(string(data), "__GK_VERSION__", version)))
 	})
 	serveManifest := func(file string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +247,7 @@ func main() {
 		r.Use(chimiddleware.Recoverer)
 		r.Use(gkmiddleware.SecureHeaders)
 		r.Use(gkmiddleware.CSRF)
-		r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
+		r.Handle("/static/*", staticHandler)
 		r.Get("/sw.js", swHandler)
 	}
 

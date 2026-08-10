@@ -1111,3 +1111,46 @@ dialog::backdrop {
 @media (max-width: 480px) {
   .otp-field input { max-width: 40px; height: 50px; font-size: 20px; }
 }
+
+dialog.panel {
+  position: fixed;
+  z-index: 60;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: 100%;
+  max-width: 560px;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid var(--bd-1);
+  box-shadow: none;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  animation: none;
+}
+dialog.panel.in { transform: translateX(0); box-shadow: -24px 0 80px rgba(0, 0, 0, 0.4); }
+dialog.panel::backdrop { animation: none; opacity: 0; transition: opacity 0.3s ease; }
+dialog.panel.in::backdrop { opacity: 1; }
+dialog.panel > form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+dialog.panel .modal-head { flex-shrink: 0; padding-top: 24px; }
+dialog.panel .modal-body { flex: 1; min-height: 0; overflow-y: auto; }
+dialog.panel .modal-foot { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  dialog.panel { max-width: 100%; border-left: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.panel { transition: none; }
+  dialog.panel::backdrop { transition: none; }
+}
+
+@media (min-width: 1440px) {
+  .main { transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  html.gk-panel-docked .main { margin-right: 560px; }
+  html.gk-panel-docked dialog.panel.in { box-shadow: none; }
+  dialog.panel:not([open]) { display: none; }
+}
+@media (min-width: 1440px) and (prefers-reduced-motion: reduce) {
+  .main { transition: none; }
+}

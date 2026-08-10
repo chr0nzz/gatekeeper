@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<dialog id="new-client-dialog">
+<dialog id="new-client-dialog" class="panel">
   <div class="modal-head">
     <h2>Register new OIDC client</h2>
     <p>Configures an application to authenticate users via GateKeeper.</p>
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </dialog>
 
 {{range .Clients}}
-<dialog id="edit-client-{{.ClientID}}">
+<dialog id="edit-client-{{.ClientID}}" class="panel">
   <div class="modal-head">
     <h2>Edit {{.Name}}</h2>
     <p>Client ID <span class="tag" style="font-size:11px">{{.ClientID}}</span> cannot be changed.</p>

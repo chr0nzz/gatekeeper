@@ -77,7 +77,7 @@
 </div>
 
 {{range .Webhooks}}
-<dialog id="edit-wh-{{.ID}}" style="max-width:560px">
+<dialog id="edit-wh-{{.ID}}" style="max-width:560px" class="panel">
   <div class="modal-head">
     <h2>{{.Name}}</h2>
   </div>
@@ -153,7 +153,7 @@
 </div>
 {{end}}
 
-<dialog id="new-webhook-dialog" style="max-width:560px">
+<dialog id="new-webhook-dialog" style="max-width:560px" class="panel">
   <div class="modal-head">
     <h2>Add webhook</h2>
     <p>Send notifications to an external service when events occur.</p>

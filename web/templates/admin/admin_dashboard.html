@@ -448,7 +448,7 @@
 })();
 </script>
 
-<dialog id="new-user-dialog">
+<dialog id="new-user-dialog" class="panel">
   <div class="modal-head">
     <h2>New user</h2>
     <p>Create an account with a password or email-code-only sign in.</p>
@@ -491,7 +491,7 @@
   </form>
 </dialog>
 
-<dialog id="new-client-dialog">
+<dialog id="new-client-dialog" class="panel">
   <div class="modal-head">
     <h2>Register new OIDC client</h2>
     <p>Configures an application to authenticate users via GateKeeper.</p>
@@ -550,7 +550,7 @@
   </form>
 </dialog>
 
-<dialog id="new-group-dialog">
+<dialog id="new-group-dialog" class="panel">
   <div class="modal-head">
     <h2>New group</h2>
     <p>Groups are included as a <code>groups</code> claim in OIDC tokens. Use them for role mapping in Grafana, Jellyfin, and other apps.</p>
@@ -575,7 +575,7 @@
   </form>
 </dialog>
 
-<dialog id="new-policy-dialog">
+<dialog id="new-policy-dialog" class="panel">
   <div class="modal-head">
     <h2>New policy</h2>
     <p>A policy is a named list of users. Attach it to an OIDC client or ForwardAuth route to restrict access.</p>
