@@ -38,6 +38,21 @@ Changes take effect immediately, with no restart.
 
 How many hours a session stays alive after the last authenticated request. Resets on every request, so active users are never logged out. Default is 8 hours, maximum is 720 (30 days).
 
+## Password policy
+
+Rules every new password must satisfy. They apply immediately and cover every place a password is set, including passwords an admin sets on someone else's behalf.
+
+| Setting | Default | Range |
+|---|---|---|
+| Minimum length | 12 | 8 to 128 |
+| Require at least one uppercase letter | Off | On or off |
+| Require at least one number | Off | On or off |
+| Require at least one symbol | Off | On or off |
+
+The sign-up, reset, and change-password forms all pick up the configured minimum, so what a user sees matches what the server enforces.
+
+Raising the minimum length generally does more for security than turning on the character requirements. See [Password policy](/security/password-policy) for the reasoning and for how passwords are hashed.
+
 ## SMTP
 
 GateKeeper sends email for two purposes: one-time login codes and password reset links. Without working SMTP, users cannot complete email OTP login or recover their passwords.

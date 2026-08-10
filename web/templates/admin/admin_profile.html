@@ -72,8 +72,8 @@
         <form method="POST" action="{{$.AdminBase}}/profile/password" style="display:flex;flex-direction:column;gap:8px">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input class="input" type="password" name="current_password" required autocomplete="current-password" placeholder="Current password">
-          <input class="input" type="password" name="new_password" required minlength="12" autocomplete="new-password" placeholder="New password (12+ chars)">
-          <input class="input" type="password" name="confirm_password" required minlength="12" autocomplete="new-password" placeholder="Confirm new password">
+          <input class="input" type="password" name="new_password" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="New password ({{.PasswordMinLength}}+ chars)">
+          <input class="input" type="password" name="confirm_password" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="Confirm new password">
           <div><button type="submit" class="btn btn-ghost btn-sm">Update password</button></div>
         </form>
       </div>

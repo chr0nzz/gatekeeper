@@ -29,12 +29,12 @@
         <input class="input" type="email" name="email" required autofocus autocomplete="email" placeholder="admin@example.com">
       </label>
       <label class="field">
-        <span class="field-label">Password <span style="color:var(--tx-3);font-weight:400">(12+ characters)</span></span>
-        <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="••••••••••••">
+        <span class="field-label">Password <span style="color:var(--tx-3);font-weight:400">({{.PasswordMinLength}}+ characters)</span></span>
+        <input class="input" type="password" name="password" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="••••••••••••">
       </label>
       <label class="field">
         <span class="field-label">Confirm password</span>
-        <input class="input" type="password" name="confirm" required minlength="12" autocomplete="new-password" placeholder="••••••••••••">
+        <input class="input" type="password" name="confirm" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="••••••••••••">
       </label>
       <button type="submit" class="btn btn-primary" style="width:100%;height:40px;font-size:14px;margin-top:4px">Create account</button>
     </form>

@@ -79,7 +79,7 @@
         </div>
         <form method="POST" action="{{$.AdminBase}}/users/{{.User.ID}}/password" style="display:flex;gap:6px;align-items:center">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="12+ chars" style="height:28px;max-width:160px;font-size:12px">
+          <input class="input" type="password" name="password" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="{{.PasswordMinLength}}+ chars" style="height:28px;max-width:160px;font-size:12px">
           <button type="submit" class="btn btn-ghost btn-sm">Set</button>
         </form>
       </div>
@@ -230,7 +230,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label class="field" style="margin-bottom:0">
           <span class="field-label">Password</span>
-          <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="12+ characters">
+          <input class="input" type="password" name="password" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="{{.PasswordMinLength}}+ characters">
         </label>
         <label class="field" style="margin-bottom:0">
           <span class="field-label">Confirm password</span>

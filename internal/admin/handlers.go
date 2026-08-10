@@ -157,6 +157,12 @@ func (h *Handlers) requireAdmin(next http.Handler) http.Handler {
 	})
 }
 
+func (h *Handlers) passwordPolicy(ctx context.Context) auth.PasswordPolicy {
+	return auth.LoadPasswordPolicy(func(key, fallback string) string {
+		return h.settings.Get(ctx, key, fallback)
+	})
+}
+
 func (h *Handlers) render(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
 	if data == nil {
 		data = make(map[string]interface{})
@@ -172,6 +178,7 @@ func (h *Handlers) render(w http.ResponseWriter, r *http.Request, name string, d
 	data["SidebarUserCount"] = userCount
 	data["SidebarClientCount"] = clientCount
 	data["HasUpdate"] = h.cachedHasUpdate(r.Context())
+	data["PasswordMinLength"] = h.passwordPolicy(r.Context()).MinLength
 	h.renderer.Render(w, name, data)
 }
 
@@ -349,6 +356,10 @@ func (h *Handlers) PostSetup(w http.ResponseWriter, r *http.Request) {
 	confirm := r.FormValue("confirm")
 	if password != confirm {
 		h.render(w, r, "admin_setup.html", map[string]interface{}{"Error": "Passwords do not match"})
+		return
+	}
+	if err := h.passwordPolicy(r.Context()).Check(password); err != nil {
+		h.render(w, r, "admin_setup.html", map[string]interface{}{"Error": err.Error()})
 		return
 	}
 	hash, err := auth.HashPassword(password)
@@ -1013,8 +1024,8 @@ func (h *Handlers) PostCreateUser(w http.ResponseWriter, r *http.Request) {
 	var hash string
 	if !passwordless {
 		password := r.FormValue("password")
-		if len(password) < 12 {
-			h.render(w, r, "admin_user_new.html", map[string]interface{}{"Error": "Password must be at least 12 characters."})
+		if err := h.passwordPolicy(r.Context()).Check(password); err != nil {
+			h.render(w, r, "admin_user_new.html", map[string]interface{}{"Error": err.Error()})
 			return
 		}
 		var err error
@@ -1120,6 +1131,10 @@ func (h *Handlers) PostSetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	password := r.FormValue("password")
+	if err := h.passwordPolicy(r.Context()).Check(password); err != nil {
+		http.Redirect(w, r, h.adminBase+"/users/"+id+"?err="+encodeMsg(err.Error()), http.StatusSeeOther)
+		return
+	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -1682,7 +1697,6 @@ func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
 		"RegistrationMode":           get("registration_mode", h.envDefaults.RegistrationMode),
 		"RegistrationAllowedDomains": get("registration_allowed_domains", h.envDefaults.RegistrationAllowedDomains),
 		"RedirectAllowedHosts":       get("redirect_allowed_hosts", ""),
-		"PasswordMinLength":          get("password_min_length", "12"),
 		"PasswordRequireUppercase":   get("password_require_uppercase", "0") == "1",
 		"PasswordRequireNumber":      get("password_require_number", "0") == "1",
 		"PasswordRequireSymbol":      get("password_require_symbol", "0") == "1",
@@ -1807,6 +1821,10 @@ func (h *Handlers) PostCreateAdmin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, h.adminBase+"/admins?err=mismatch", http.StatusSeeOther)
 		return
 	}
+	if err := h.passwordPolicy(r.Context()).Check(password); err != nil {
+		http.Redirect(w, r, h.adminBase+"/admins?err="+encodeMsg(err.Error()), http.StatusSeeOther)
+		return
+	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
 		http.Redirect(w, r, h.adminBase+"/admins?err=server", http.StatusSeeOther)
@@ -1864,6 +1882,10 @@ func (h *Handlers) PostMakeUserAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 	if password != confirm {
 		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err=admin_mismatch", http.StatusSeeOther)
+		return
+	}
+	if err := h.passwordPolicy(r.Context()).Check(password); err != nil {
+		http.Redirect(w, r, h.adminBase+"/users/"+userID+"?err="+encodeMsg(err.Error()), http.StatusSeeOther)
 		return
 	}
 	existing, _ := h.admins.GetByEmail(r.Context(), user.Email)
@@ -1989,6 +2011,12 @@ func (h *Handlers) PostProfilePassword(w http.ResponseWriter, r *http.Request) {
 	if newPass != confirm {
 		data := h.profilePageData(r)
 		data["Error"] = "Passwords do not match"
+		h.render(w, r, "admin_profile.html", data)
+		return
+	}
+	if err := h.passwordPolicy(r.Context()).Check(newPass); err != nil {
+		data := h.profilePageData(r)
+		data["Error"] = err.Error()
 		h.render(w, r, "admin_profile.html", data)
 		return
 	}

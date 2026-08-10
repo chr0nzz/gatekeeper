@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -256,4 +257,37 @@ func CheckResetRateLimit(ctx context.Context, db *sql.DB, key, keyType string, r
 		key, keyType, now.Unix(), storedWindow,
 	)
 	return nil
+}
+
+// PasswordPolicy is the configured strength requirement for new passwords.
+type PasswordPolicy struct {
+	MinLength     int
+	RequireUpper  bool
+	RequireNumber bool
+	RequireSymbol bool
+}
+
+// DefaultPasswordMinLength is used when no minimum has been configured.
+const DefaultPasswordMinLength = 12
+
+// MinConfigurablePasswordLength is the shortest minimum an operator may set.
+const MinConfigurablePasswordLength = 8
+
+// LoadPasswordPolicy reads the policy from a settings lookup function.
+func LoadPasswordPolicy(get func(key, fallback string) string) PasswordPolicy {
+	minLen := DefaultPasswordMinLength
+	if n, err := strconv.Atoi(get("password_min_length", "")); err == nil && n >= MinConfigurablePasswordLength {
+		minLen = n
+	}
+	return PasswordPolicy{
+		MinLength:     minLen,
+		RequireUpper:  get("password_require_uppercase", "0") == "1",
+		RequireNumber: get("password_require_number", "0") == "1",
+		RequireSymbol: get("password_require_symbol", "0") == "1",
+	}
+}
+
+// Check validates a password against the policy.
+func (p PasswordPolicy) Check(password string) error {
+	return CheckPasswordPolicy(password, p.MinLength, p.RequireUpper, p.RequireNumber, p.RequireSymbol)
 }

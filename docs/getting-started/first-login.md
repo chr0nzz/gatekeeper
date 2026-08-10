@@ -11,7 +11,7 @@ The admin panel runs on its own port and domain, served at the root - there is n
 
 ## Step 2 - create your admin account
 
-Enter your email address and a password (minimum 12 characters). Click **Create admin account**.
+Enter your email address and a password. The default minimum is 12 characters, which you can change later under Settings. Click **Create admin account**.
 
 This page only appears once. Once an admin account exists, the setup page redirects to the normal login and cannot be accessed again.
 

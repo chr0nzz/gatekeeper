@@ -21,11 +21,38 @@ These match the OWASP recommended minimum for argon2id. They mean each password 
 
 A new random salt is generated for every hash, so two users with the same password have different hashes in the database.
 
-## Minimum length
+## Policy settings
 
-Passwords must be at least **12 characters**. This is enforced server-side on every code path that sets or verifies a password. There is no maximum length.
+The policy is configured under **Settings - Password policy** and applies immediately, with no restart.
 
-There is no complexity requirement (uppercase, numbers, symbols). Length is a better predictor of password strength than complexity rules, and complexity requirements tend to produce patterns like `Password1!` that are predictable.
+| Setting | Default | Range |
+|---|---|---|
+| Minimum length | 12 | 8 to 128 |
+| Require at least one uppercase letter | Off | On or off |
+| Require at least one number | Off | On or off |
+| Require at least one symbol | Off | On or off |
+
+There is no maximum length.
+
+### Where it applies
+
+The policy is enforced server-side on every path that sets a password:
+
+- Self-registration
+- Password reset through the forgot-password email
+- A user changing their own password
+- An admin creating a user with a temporary password
+- An admin setting or resetting a user's password
+- Creating an admin account, promoting a user to admin, and the first-run setup page
+- An admin changing their own password
+
+The form fields also carry the configured minimum, so the browser shows the same requirement the server enforces.
+
+### Choosing a policy
+
+Length does more for password strength than character rules, so raising the minimum is usually a better move than switching the character requirements on. Requirements like "must contain a symbol" tend to push people toward predictable shapes such as `Password1!`.
+
+The character requirements exist because many organisations have to meet a written standard that names them. If that applies to you, turn on what you need. If it does not, a longer minimum with the requirements left off is the stronger setting.
 
 ## Forced password change
 

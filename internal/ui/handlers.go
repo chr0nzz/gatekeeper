@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -165,20 +164,14 @@ func (h *Handlers) checkCSRF(r *http.Request) bool {
 	return token != "" && r.FormValue("csrf_token") == token
 }
 
+func (h *Handlers) passwordPolicy(ctx context.Context) auth.PasswordPolicy {
+	return auth.LoadPasswordPolicy(func(key, fallback string) string {
+		return h.settings.Get(ctx, key, fallback)
+	})
+}
+
 func (h *Handlers) checkPasswordPolicy(ctx context.Context, password string) error {
-	minLen := 12
-	if v := h.settings.Get(ctx, "password_min_length", "12"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 8 {
-			minLen = n
-		}
-	}
-	return auth.CheckPasswordPolicy(
-		password,
-		minLen,
-		h.settings.Get(ctx, "password_require_uppercase", "0") == "1",
-		h.settings.Get(ctx, "password_require_number", "0") == "1",
-		h.settings.Get(ctx, "password_require_symbol", "0") == "1",
-	)
+	return h.passwordPolicy(ctx).Check(password)
 }
 
 func remoteIP(r *http.Request) string {
@@ -678,9 +671,10 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 
 func (h *Handlers) brand(r *http.Request) map[string]interface{} {
 	return map[string]interface{}{
-		"BrandName":    h.settings.Get(r.Context(), "login_app_name", ""),
-		"BrandLogoURL": h.settings.Get(r.Context(), "login_logo_url", ""),
-		"BrandTagline": h.settings.Get(r.Context(), "login_tagline", ""),
+		"BrandName":         h.settings.Get(r.Context(), "login_app_name", ""),
+		"BrandLogoURL":      h.settings.Get(r.Context(), "login_logo_url", ""),
+		"BrandTagline":      h.settings.Get(r.Context(), "login_tagline", ""),
+		"PasswordMinLength": h.passwordPolicy(r.Context()).MinLength,
 	}
 }
 
@@ -877,13 +871,26 @@ func (h *Handlers) PostProfileAvatar(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
+// changePasswordPage builds the data for the change-password form, keeping the
+// CSRF token and password policy present so a retry after an error still works.
+func (h *Handlers) changePasswordPage(r *http.Request, key, msg string) map[string]interface{} {
+	return map[string]interface{}{
+		key:                 msg,
+		"Forced":            r.URL.Query().Get("forced") == "1" || r.FormValue("forced") == "1",
+		"RedirectURI":       r.FormValue("redirect_uri"),
+		"CSRFToken":         h.csrf(r),
+		"PasswordMinLength": h.passwordPolicy(r.Context()).MinLength,
+	}
+}
+
 func (h *Handlers) GetChangePassword(w http.ResponseWriter, r *http.Request) {
 	forced := r.URL.Query().Get("forced") == "1"
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	h.render(w, "change_password.html", map[string]interface{}{
-		"Forced":      forced,
-		"RedirectURI": redirectURI,
-		"CSRFToken":   h.csrf(r),
+		"Forced":            forced,
+		"RedirectURI":       redirectURI,
+		"CSRFToken":         h.csrf(r),
+		"PasswordMinLength": h.passwordPolicy(r.Context()).MinLength,
 	})
 }
 
@@ -909,28 +916,28 @@ func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
 	confirm := r.FormValue("confirm_password")
 
 	if auth.VerifyPassword(current, user.PasswordHash) != nil {
-		h.render(w, "change_password.html", map[string]string{"Error": "Current password is incorrect"})
+		h.render(w, "change_password.html", h.changePasswordPage(r, "Error", "Current password is incorrect"))
 		return
 	}
 	if newPass != confirm {
-		h.render(w, "change_password.html", map[string]string{"Error": "Passwords do not match"})
+		h.render(w, "change_password.html", h.changePasswordPage(r, "Error", "Passwords do not match"))
 		return
 	}
 	if err := h.checkPasswordPolicy(r.Context(), newPass); err != nil {
-		h.render(w, "change_password.html", map[string]string{"Error": err.Error()})
+		h.render(w, "change_password.html", h.changePasswordPage(r, "Error", err.Error()))
 		return
 	}
 	if user.TOTPEnabled {
 		totpCode := strings.TrimSpace(r.FormValue("totp_code"))
 		if err := h.totp.Validate(r.Context(), user.ID, totpCode); err != nil {
-			h.render(w, "change_password.html", map[string]string{"Error": "Invalid TOTP code"})
+			h.render(w, "change_password.html", h.changePasswordPage(r, "Error", "Invalid TOTP code"))
 			return
 		}
 	}
 
 	hash, err := auth.HashPassword(newPass)
 	if err != nil {
-		h.render(w, "change_password.html", map[string]string{"Error": err.Error()})
+		h.render(w, "change_password.html", h.changePasswordPage(r, "Error", err.Error()))
 		return
 	}
 	if err := h.users.SetPassword(r.Context(), user.ID, hash, false); err != nil {
@@ -945,7 +952,7 @@ func (h *Handlers) PostChangePassword(w http.ResponseWriter, r *http.Request) {
 		h.redirect(w, r, user.ID, redirectURI)
 		return
 	}
-	h.render(w, "change_password.html", map[string]interface{}{"Success": "Password changed. All other sessions have been signed out."})
+	h.render(w, "change_password.html", h.changePasswordPage(r, "Success", "Password changed. All other sessions have been signed out."))
 }
 
 func (h *Handlers) GetTOTPEnroll(w http.ResponseWriter, r *http.Request) {

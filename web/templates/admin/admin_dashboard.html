@@ -478,8 +478,8 @@
       </label>
       <div id="db-pw-section">
         <label class="field">
-          <span class="field-label">Temporary password <span style="color:var(--tx-3);font-weight:400">(12+ characters)</span></span>
-          <input class="input" type="password" name="password" id="db-pw-input" minlength="12" autocomplete="new-password" placeholder="••••••••••••">
+          <span class="field-label">Temporary password <span style="color:var(--tx-3);font-weight:400">({{.PasswordMinLength}}+ characters)</span></span>
+          <input class="input" type="password" name="password" id="db-pw-input" minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="••••••••••••">
           <span class="field-hint">The user should change this on first sign-in.</span>
         </label>
       </div>

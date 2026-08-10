@@ -10,7 +10,7 @@ Logged-in users can change their password at `/profile/password`.
 To change your password, you need:
 
 1. Your current password (so someone who steals your session cookie cannot change your password).
-2. The new password (minimum 12 characters, entered twice to confirm).
+2. The new password, entered twice to confirm.
 3. If you have a TOTP authenticator app enrolled, your current 6-digit code is also required.
 
 ## What happens after a successful change
@@ -25,4 +25,4 @@ When an admin creates an account or directly sets a password, the user is requir
 
 ## Minimum password length
 
-The minimum is 12 characters, enforced on the server. The client-side `minlength` attribute is a convenience hint only and should not be relied on for security.
+The requirements come from your [password policy](/security/password-policy) and are enforced on the server. The `minlength` attribute on the form reflects the same configured minimum, but it is a convenience hint only and is not what enforces the rule.

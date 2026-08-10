@@ -7,7 +7,7 @@ description: Create, edit, disable, and delete users from the admin panel.
 
 Go to `/users` and click **New user**. Enter an email address and choose a sign-in method:
 
-- **Email + Password** - the user gets a temporary password (minimum 12 characters) and is required to change it on first login.
+- **Email + Password** - the user gets a temporary password and is required to change it on first login. The password must satisfy your [password policy](/security/password-policy).
 - **Email Only** - creates a passwordless account. The user signs in with just their email address and a one-time code sent to it. No password is set.
 
 If allowed email domains are configured in `/settings`, the email must match one of those domains.

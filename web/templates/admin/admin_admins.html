@@ -103,11 +103,11 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label class="field" style="margin-bottom:0">
           <span class="field-label">Password</span>
-          <input class="input" type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="12+ characters">
+          <input class="input" type="password" name="password" required minlength="{{.PasswordMinLength}}" autocomplete="new-password" placeholder="{{.PasswordMinLength}}+ characters">
         </label>
         <label class="field" style="margin-bottom:0">
           <span class="field-label">Confirm password</span>
-          <input class="input" type="password" name="confirm" required minlength="12" autocomplete="new-password">
+          <input class="input" type="password" name="confirm" required minlength="{{.PasswordMinLength}}" autocomplete="new-password">
         </label>
       </div>
     </div>
