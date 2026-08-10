@@ -263,7 +263,15 @@
         </div>
         <div style="flex:1;font-size:12px">
           <div style="font-weight:600;color:var(--tx-0)">OIDC signing key</div>
+          {{if .SigningKey}}
+          <div style="color:var(--tx-2);margin-top:1px">{{.SigningKey.Algorithm}}, rotates every 30 days automatically.</div>
+          <div style="display:flex;gap:14px;margin-top:5px;color:var(--tx-3);font-size:11px">
+            <span>Rotated <b style="color:var(--tx-2);font-weight:500">{{timeago .SigningKey.CreatedAt}}</b> <span style="opacity:.7">({{formatdate .SigningKey.CreatedAt}})</span></span>
+            <span>Next <b style="color:var(--tx-2);font-weight:500">{{formatdate .SigningKey.RotatesAt}}</b></span>
+          </div>
+          {{else}}
           <div style="color:var(--tx-2);margin-top:1px">RS256, rotates every 30 days automatically.</div>
+          {{end}}
         </div>
       </div>
     </div>

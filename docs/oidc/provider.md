@@ -97,7 +97,7 @@ When a user arrives via `/authorize`, the login page shows the client's display 
 
 ## Key rotation
 
-Tokens are signed with RS256. Keys rotate every 30 days automatically. The previous key stays active so tokens issued just before rotation remain valid.
+Tokens are signed with RS256. Keys rotate every 30 days automatically, checked hourly with no restart required. The previous key stays published for 48 hours so tokens issued just before rotation remain valid. See [OIDC security](/security/oidc-security#signing-keys).
 
 ## Trusted devices
 

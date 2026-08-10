@@ -28,6 +28,12 @@ const (
 	keyRotationDays = 30
 	accessTokenTTL  = 15 * time.Minute
 	refreshTokenTTL = 24 * time.Hour * 30
+
+	signingKeyTTL = keyRotationDays * 24 * time.Hour
+
+	// A retired key stays published far longer than the tokens it signed can
+	// live, so verification never fails while a token is still valid.
+	retiredKeyRetention = 48 * time.Hour
 )
 
 // Storage implements op.Storage for GateKeeper.
@@ -57,11 +63,70 @@ func (s *Storage) rotateKey(ctx context.Context) error {
 		return err
 	}
 	priv := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	_, err = s.db.ExecContext(ctx,
+	id := uuid.New().String()
+	now := time.Now()
+	if _, err := s.db.ExecContext(ctx,
 		`INSERT INTO oidc_signing_keys (id, private_key, algorithm, created_at) VALUES (?,?,?,?)`,
-		uuid.New().String(), string(priv), "RS256", time.Now().Unix(),
+		id, string(priv), "RS256", now.Unix(),
+	); err != nil {
+		return err
+	}
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE oidc_signing_keys SET rotated_at=? WHERE rotated_at IS NULL AND id!=?`,
+		now.Unix(), id,
 	)
 	return err
+}
+
+// SigningKeyStatus describes the signing key currently issuing tokens.
+type SigningKeyStatus struct {
+	Algorithm string
+	CreatedAt time.Time
+	RotatesAt time.Time
+	Retired   int
+}
+
+// SigningKeyStatus reports when the active key was created and when it is next due to rotate.
+func (s *Storage) SigningKeyStatus(ctx context.Context) (*SigningKeyStatus, error) {
+	var createdAt int64
+	var algorithm string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT algorithm, created_at FROM oidc_signing_keys WHERE rotated_at IS NULL ORDER BY created_at DESC LIMIT 1`,
+	).Scan(&algorithm, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+	var retired int
+	s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM oidc_signing_keys WHERE rotated_at IS NOT NULL`,
+	).Scan(&retired)
+	created := time.Unix(createdAt, 0)
+	return &SigningKeyStatus{
+		Algorithm: algorithm,
+		CreatedAt: created,
+		RotatesAt: created.Add(signingKeyTTL),
+		Retired:   retired,
+	}, nil
+}
+
+// RotateSigningKeyIfDue replaces the signing key once it reaches its maximum age
+// and discards retired keys that can no longer be needed to verify a token.
+func (s *Storage) RotateSigningKeyIfDue(ctx context.Context) (bool, error) {
+	s.db.ExecContext(ctx,
+		`DELETE FROM oidc_signing_keys WHERE rotated_at IS NOT NULL AND rotated_at<?`,
+		time.Now().Add(-retiredKeyRetention).Unix(),
+	)
+	status, err := s.SigningKeyStatus(ctx)
+	if err != nil {
+		return false, err
+	}
+	if time.Now().Before(status.RotatesAt) {
+		return false, nil
+	}
+	if err := s.rotateKey(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *Storage) loadCurrentKey(ctx context.Context) (*rsa.PrivateKey, string, error) {

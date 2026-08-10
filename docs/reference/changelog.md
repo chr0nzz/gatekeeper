@@ -3,6 +3,18 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.4
+
+### OIDC signing key rotation
+
+The documentation has always said the OIDC signing key rotates every 30 days. It did not. The key was generated on first run and then kept forever, because nothing ever triggered a rotation.
+
+- **Rotation now happens** - GateKeeper checks hourly and replaces the signing key once it is 30 days old. No restart needed.
+- **Old tokens keep working** - The retired key stays published in the JWKS for another 48 hours, far longer than the 15 minute lifetime of the tokens it signed. After that it is deleted.
+- **Visible on the dashboard** - System health now shows when the current key was last rotated and the date it is next due, instead of only claiming that rotation happens.
+
+---
+
 ## v0.9.3
 
 Fixes an OIDC regression introduced in v0.9.2 and moves cross-domain ForwardAuth configuration into the admin UI. Upgrade from v0.9.2 is recommended.

@@ -15,9 +15,15 @@ The implicit flow returns access tokens directly in the URL fragment, making the
 
 ## Signing keys
 
-OIDC tokens are signed with 2048-bit RSA keys using the RS256 algorithm (RSA with SHA-256). Keys rotate every 30 days. The previous key is kept active for validation until all tokens signed with it have expired.
+OIDC tokens are signed with 2048-bit RSA keys using the RS256 algorithm (RSA with SHA-256).
 
-Public keys are published at `/oauth/jwks` in JSON Web Key Set (JWKS) format. Any client can fetch this to verify token signatures without contacting GateKeeper for each request.
+A key is retired 30 days after it was created and replaced with a freshly generated one. GateKeeper checks hourly, so a restart is never needed for rotation to happen. Only one key signs tokens at a time.
+
+A retired key keeps being published for another 48 hours so that tokens it signed still verify. Access and ID tokens live 15 minutes, so this is far longer than any token can outlast its key. Once that window passes the retired key is deleted.
+
+Public keys are published at `/oauth/jwks` in JSON Web Key Set (JWKS) format, including retired keys still inside their window. Any client can fetch this to verify token signatures without contacting GateKeeper for each request.
+
+The admin dashboard shows when the current key was created and when it is next due to rotate, under System health.
 
 ## Token lifetimes
 

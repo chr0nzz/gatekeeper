@@ -310,6 +310,24 @@ func main() {
 	}()
 
 	go func() {
+		rotateSigningKey := func() {
+			rotated, err := oidcStorage.RotateSigningKeyIfDue(context.Background())
+			if err != nil {
+				slog.Error("oidc signing key rotation failed", "err", err)
+				return
+			}
+			if rotated {
+				slog.Info("oidc signing key rotated")
+			}
+		}
+		rotateSigningKey()
+		ticker := time.NewTicker(time.Hour)
+		for range ticker.C {
+			rotateSigningKey()
+		}
+	}()
+
+	go func() {
 		purgeAuditLog := func() {
 			val := settingsStore.Get(context.Background(), "audit_retention_days", "90")
 			n, err := strconv.Atoi(val)

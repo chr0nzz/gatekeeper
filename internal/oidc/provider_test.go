@@ -162,3 +162,166 @@ func TestHasScope(t *testing.T) {
 		t.Error("hasScope reported a scope on an empty list")
 	}
 }
+
+func activeKeyID(t *testing.T, conn *sql.DB) string {
+	t.Helper()
+	var id string
+	if err := conn.QueryRow(
+		`SELECT id FROM oidc_signing_keys WHERE rotated_at IS NULL ORDER BY created_at DESC LIMIT 1`,
+	).Scan(&id); err != nil {
+		t.Fatalf("no active signing key: %v", err)
+	}
+	return id
+}
+
+func TestSigningKeyStatusReportsSchedule(t *testing.T) {
+	ctx := context.Background()
+	conn := oidcTestDB(t)
+	s := NewStorage(conn, "https://auth.example.com")
+	if err := s.EnsureSigningKey(ctx); err != nil {
+		t.Fatalf("ensure key: %v", err)
+	}
+
+	status, err := s.SigningKeyStatus(ctx)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if status.Algorithm != "RS256" {
+		t.Errorf("algorithm = %q, want RS256", status.Algorithm)
+	}
+	if got := status.RotatesAt.Sub(status.CreatedAt); got != signingKeyTTL {
+		t.Errorf("rotation window = %v, want %v", got, signingKeyTTL)
+	}
+	if time.Until(status.RotatesAt) <= 0 {
+		t.Error("a freshly created key is already due for rotation")
+	}
+}
+
+// A key younger than its maximum age must be left alone.
+func TestSigningKeyNotRotatedBeforeDue(t *testing.T) {
+	ctx := context.Background()
+	conn := oidcTestDB(t)
+	s := NewStorage(conn, "https://auth.example.com")
+	s.EnsureSigningKey(ctx)
+	before := activeKeyID(t, conn)
+
+	rotated, err := s.RotateSigningKeyIfDue(ctx)
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	if rotated {
+		t.Error("rotated a key that is not yet due")
+	}
+	if activeKeyID(t, conn) != before {
+		t.Error("active key changed unexpectedly")
+	}
+}
+
+// Once the key passes its maximum age it is replaced, and the retired key stays
+// published so tokens it signed still verify.
+func TestSigningKeyRotatesWhenDue(t *testing.T) {
+	ctx := context.Background()
+	conn := oidcTestDB(t)
+	s := NewStorage(conn, "https://auth.example.com")
+	s.EnsureSigningKey(ctx)
+	old := activeKeyID(t, conn)
+
+	aged := time.Now().Add(-signingKeyTTL - time.Hour).Unix()
+	conn.Exec(`UPDATE oidc_signing_keys SET created_at=? WHERE id=?`, aged, old)
+
+	rotated, err := s.RotateSigningKeyIfDue(ctx)
+	if err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	if !rotated {
+		t.Fatal("key past its maximum age was not rotated")
+	}
+
+	current := activeKeyID(t, conn)
+	if current == old {
+		t.Fatal("active key did not change")
+	}
+
+	var active int
+	conn.QueryRow(`SELECT COUNT(*) FROM oidc_signing_keys WHERE rotated_at IS NULL`).Scan(&active)
+	if active != 1 {
+		t.Errorf("%d active keys, want exactly 1", active)
+	}
+
+	var retiredAt sql.NullInt64
+	conn.QueryRow(`SELECT rotated_at FROM oidc_signing_keys WHERE id=?`, old).Scan(&retiredAt)
+	if !retiredAt.Valid {
+		t.Error("previous key was not marked as retired")
+	}
+
+	keys, err := s.KeySet(ctx)
+	if err != nil {
+		t.Fatalf("keyset: %v", err)
+	}
+	published := map[string]bool{}
+	for _, k := range keys {
+		published[k.ID()] = true
+	}
+	if !published[old] {
+		t.Error("retired key is no longer published, tokens it signed can no longer be verified")
+	}
+	if !published[current] {
+		t.Error("active key is not published")
+	}
+}
+
+// A retired key is dropped only once nothing it signed can still be valid.
+func TestRetiredSigningKeysArePrunedAfterGrace(t *testing.T) {
+	ctx := context.Background()
+	conn := oidcTestDB(t)
+	s := NewStorage(conn, "https://auth.example.com")
+	s.EnsureSigningKey(ctx)
+	old := activeKeyID(t, conn)
+
+	conn.Exec(`UPDATE oidc_signing_keys SET created_at=? WHERE id=?`,
+		time.Now().Add(-signingKeyTTL-time.Hour).Unix(), old)
+	if _, err := s.RotateSigningKeyIfDue(ctx); err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+
+	// Still inside the grace window.
+	s.RotateSigningKeyIfDue(ctx)
+	var count int
+	conn.QueryRow(`SELECT COUNT(*) FROM oidc_signing_keys WHERE id=?`, old).Scan(&count)
+	if count != 1 {
+		t.Fatal("retired key was pruned while tokens it signed could still be valid")
+	}
+
+	conn.Exec(`UPDATE oidc_signing_keys SET rotated_at=? WHERE id=?`,
+		time.Now().Add(-retiredKeyRetention-time.Hour).Unix(), old)
+	s.RotateSigningKeyIfDue(ctx)
+
+	conn.QueryRow(`SELECT COUNT(*) FROM oidc_signing_keys WHERE id=?`, old).Scan(&count)
+	if count != 0 {
+		t.Error("retired key was kept past its retention window")
+	}
+}
+
+// Rotation must never leave the server without a key to sign with.
+func TestRepeatedRotationKeepsExactlyOneActiveKey(t *testing.T) {
+	ctx := context.Background()
+	conn := oidcTestDB(t)
+	s := NewStorage(conn, "https://auth.example.com")
+	s.EnsureSigningKey(ctx)
+
+	for i := 0; i < 3; i++ {
+		conn.Exec(`UPDATE oidc_signing_keys SET created_at=? WHERE rotated_at IS NULL`,
+			time.Now().Add(-signingKeyTTL-time.Hour).Unix())
+		if _, err := s.RotateSigningKeyIfDue(ctx); err != nil {
+			t.Fatalf("rotation %d: %v", i, err)
+		}
+		var active int
+		conn.QueryRow(`SELECT COUNT(*) FROM oidc_signing_keys WHERE rotated_at IS NULL`).Scan(&active)
+		if active != 1 {
+			t.Fatalf("after rotation %d there are %d active keys, want 1", i, active)
+		}
+		if _, _, err := s.loadCurrentKey(ctx); err != nil {
+			t.Fatalf("after rotation %d the current key could not be loaded: %v", i, err)
+		}
+	}
+}

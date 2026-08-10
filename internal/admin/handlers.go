@@ -639,6 +639,7 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		"SparkFailed":       sparkFailed,
 		"SparkOIDC":         sparkOIDC,
 		"OIDCClients":       clients,
+		"SigningKey":        func() interface{} { k, _ := h.oidcStorage.SigningKeyStatus(ctx); return k }(),
 		"Policies":          func() interface{} { p, _ := h.policies.List(ctx); return p }(),
 	})
 }
