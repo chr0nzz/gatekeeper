@@ -1,0 +1,96 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "timezone": "America/Toronto",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 5,
+  "labels": [
+    "dependencies"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ],
+    "schedule": [
+      "at any time"
+    ]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on the first day of the month"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Go runtime dependencies are reviewed by hand. This is an auth server, so a bad bump is a security problem rather than a broken build.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "go dependencies",
+      "automerge": false
+    },
+    {
+      "description": "Major Go updates always land on their own so the changelog gets read.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": null,
+      "automerge": false
+    },
+    {
+      "description": "The documentation site does not ship in the container. Its routine updates merge on green CI.",
+      "matchFileNames": [
+        "docs/**"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "groupName": "docs dependencies",
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Workflow actions merge on green CI once pinned to a digest.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "groupName": "github actions",
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Container base images are grouped, and the Go toolchain image is kept in step with go.mod by hand.",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "groupName": "container base images",
+      "automerge": false
+    }
+  ]
+}
