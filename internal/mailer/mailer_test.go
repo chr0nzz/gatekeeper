@@ -36,7 +36,7 @@ func (c mailCaptured) header(t *testing.T, name string) string {
 func (c mailCaptured) body(t *testing.T) string {
 	t.Helper()
 	msg := c.parsed(t)
-	var reader io.Reader = msg.Body
+	reader := msg.Body
 	switch strings.ToLower(strings.TrimSpace(msg.Header.Get("Content-Transfer-Encoding"))) {
 	case "quoted-printable":
 		reader = quotedprintable.NewReader(msg.Body)
