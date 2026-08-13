@@ -13,6 +13,7 @@ Single Docker container, SQLite database, configured entirely through the admin 
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-gatekeeper.xyzlab.dev-4338ca)](https://gatekeeper.xyzlab.dev)
+[![RepoGrade](https://www.repo-grade.com/api/badge/chr0nzz/gatekeeper)](https://www.repo-grade.com/report/chr0nzz/gatekeeper)
 
 [Documentation](https://gatekeeper.xyzlab.dev) &nbsp;·&nbsp;
 [Installation](https://gatekeeper.xyzlab.dev/getting-started/installation) &nbsp;·&nbsp;
