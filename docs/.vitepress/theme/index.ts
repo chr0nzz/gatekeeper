@@ -1,6 +1,7 @@
 import { h } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import HomeHero from './components/HomeHero.vue'
+import ShowcaseMockup from './components/ShowcaseMockup.vue'
 import HomeShowcase from './components/HomeShowcase.vue'
 import HomeCta from './components/HomeCta.vue'
 import './style.css'
@@ -10,7 +11,7 @@ export default {
   Layout() {
     return h(DefaultTheme.Layout, null, {
       'home-hero-before': () => h(HomeHero),
-      'home-features-before': () => h(HomeCta),
+      'home-features-before': () => [h(ShowcaseMockup), h(HomeCta)],
       'home-features-after': () => h(HomeShowcase),
     })
   },
