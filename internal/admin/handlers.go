@@ -300,6 +300,7 @@ func (h *Handlers) Mount(r chi.Router) {
 		r.Post("/groups/{id}/members", h.PostAddGroupMember)
 		r.Post("/groups/{id}/members/{userID}/remove", h.PostRemoveGroupMember)
 		r.Get("/integrations", h.GetIntegrations)
+		r.Get("/integrations/{section}", h.GetIntegrations)
 		r.Get("/audit", h.GetAudit)
 		r.Get("/audit/export.csv", h.GetAuditExport)
 		r.Get("/settings", h.GetSettings)
@@ -1525,9 +1526,30 @@ func (h *Handlers) PostDeleteClaim(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.adminBase+"/clients/"+id+"/claims", http.StatusFound)
 }
 
+// integrationSections are the sub-pages of the Integrations area, in menu order.
+var integrationSections = []struct{ Key, Label string }{
+	{"oidc", "OIDC endpoints"},
+	{"apps", "Applications"},
+	{"proxy", "Reverse proxy auth"},
+	{"policies", "Access policies"},
+}
+
 func (h *Handlers) GetIntegrations(w http.ResponseWriter, r *http.Request) {
+	section := chi.URLParam(r, "section")
+	known := false
+	for _, s := range integrationSections {
+		if s.Key == section {
+			known = true
+			break
+		}
+	}
+	if !known {
+		section = integrationSections[0].Key
+	}
 	h.render(w, r, "admin_integrations.html", map[string]interface{}{
-		"BaseURL": h.baseURL,
+		"BaseURL":  h.baseURL,
+		"Section":  section,
+		"Sections": integrationSections,
 	})
 }
 

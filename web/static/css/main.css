@@ -1154,3 +1154,9 @@ dialog.panel .modal-foot { flex-shrink: 0; }
 @media (min-width: 1440px) and (prefers-reduced-motion: reduce) {
   .main { transition: none; }
 }
+
+.side-sub { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 3px 26px; padding-left: 10px; border-left: 1px solid var(--bd-0); }
+.side-sublink { display: block; padding: 5px 8px; border-radius: 6px; font-size: 12px; color: var(--tx-2); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .12s, color .12s; }
+.side-sublink:hover { background: var(--bg-3); color: var(--tx-0); }
+.side-sublink.active { color: var(--tx-0); font-weight: 600; }
+html.sidebar-collapsed .side-sub { display: none; }

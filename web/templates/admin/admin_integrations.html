@@ -11,6 +11,7 @@
 
 <div style="display:flex;flex-direction:column;gap:14px">
 
+{{if eq .Section "oidc"}}
     <div class="card" id="oidc">
       <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
@@ -40,6 +41,8 @@
     </div>
 
 
+{{end}}
+{{if eq .Section "apps"}}
     <div class="card" id="apps">
       <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -143,6 +146,8 @@ app.immich:///oauth-callback</pre>
       </div>
     </div>
 
+{{end}}
+{{if eq .Section "proxy"}}
     <div class="card" id="forwardauth">
       <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h7"/></svg>
@@ -236,6 +241,8 @@ app.immich:///oauth-callback</pre>
       </div>
     </div>
 
+{{end}}
+{{if eq .Section "policies"}}
     <div class="card" id="policies">
       <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 5 3.5 9 8 10 4.5-1 8-5 8-10V5z"/></svg>
@@ -323,6 +330,7 @@ location = /gk-staff {
       </div>
     </div>
 
+{{end}}
 </div>
 
 <script nonce="__CSP_NONCE__">

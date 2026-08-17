@@ -65,6 +65,13 @@
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
         <span>Integrations</span>
       </a>
+      {{if eq .ActivePage "integrations"}}
+      <div class="side-sub">
+        {{range $.Sections}}
+        <a class="side-sublink {{if eq $.Section .Key}}active{{end}}" href="{{$.AdminBase}}/integrations{{if ne .Key "oidc"}}/{{.Key}}{{end}}">{{.Label}}</a>
+        {{end}}
+      </div>
+      {{end}}
       <a class="side-link {{if eq .ActivePage "social"}}active{{end}}" href="{{$.AdminBase}}/social" data-tooltip="Social login">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
         <span>Social login</span>
