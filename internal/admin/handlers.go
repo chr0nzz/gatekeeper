@@ -1389,10 +1389,11 @@ func (h *Handlers) GetClientTest(w http.ResponseWriter, r *http.Request) {
 		Note  string `json:"note,omitempty"`
 	}
 	type result struct {
-		ClientID string  `json:"client_id"`
-		Name     string  `json:"name"`
-		AuthURL  string  `json:"auth_url"`
-		Checks   []check `json:"checks"`
+		ClientID     string   `json:"client_id"`
+		Name         string   `json:"name"`
+		AuthURL      string   `json:"auth_url"`
+		RedirectURIs []string `json:"redirect_uris"`
+		Checks       []check  `json:"checks"`
 	}
 
 	var name, secret, redirectsRaw string
@@ -1409,8 +1410,16 @@ func (h *Handlers) GetClientTest(w http.ResponseWriter, r *http.Request) {
 
 	var policyName string
 	h.db.QueryRowContext(r.Context(),
-		`SELECT p.name FROM policies p JOIN policy_clients pc ON pc.policy_id=p.id WHERE pc.client_id=?`, id,
+		`SELECT p.name FROM policies p JOIN oidc_clients c ON c.policy_id=p.id WHERE c.client_id=?`, id,
 	).Scan(&policyName)
+
+	native := false
+	for _, uri := range redirectURIs {
+		if oidcstore.IsNativeRedirect(uri) {
+			native = true
+			break
+		}
+	}
 
 	claimList, _ := h.claims.List(r.Context(), id)
 
@@ -1433,6 +1442,12 @@ func (h *Handlers) GetClientTest(w http.ResponseWriter, r *http.Request) {
 			}
 			return "Open to all users (no policy assigned)."
 		}()},
+		{Label: "Application type", OK: true, Note: func() string {
+			if native {
+				return "Native. A redirect URI uses a custom scheme, so mobile sign-in is allowed."
+			}
+			return "Web. All redirect URIs use http or https."
+		}()},
 		{Label: "Custom claims", OK: true, Note: func() string {
 			if len(claimList) > 0 {
 				return fmt.Sprintf("%d claim(s) configured.", len(claimList))
@@ -1454,7 +1469,10 @@ func (h *Handlers) GetClientTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result{ClientID: id, Name: name, AuthURL: authURL, Checks: checks})
+	json.NewEncoder(w).Encode(result{
+		ClientID: id, Name: name, AuthURL: authURL,
+		RedirectURIs: redirectURIs, Checks: checks,
+	})
 }
 
 func (h *Handlers) GetClientClaims(w http.ResponseWriter, r *http.Request) {

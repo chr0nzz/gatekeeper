@@ -11,9 +11,10 @@ import (
 
 // clientTestResult mirrors the JSON the Test button consumes.
 type clientTestResult struct {
-	ClientID string `json:"client_id"`
-	AuthURL  string `json:"auth_url"`
-	Checks   []struct {
+	ClientID     string   `json:"client_id"`
+	AuthURL      string   `json:"auth_url"`
+	RedirectURIs []string `json:"redirect_uris"`
+	Checks       []struct {
 		Label string `json:"label"`
 		OK    bool   `json:"ok"`
 		Note  string `json:"note"`
@@ -126,5 +127,81 @@ func TestClientTestRequiresAdminSession(t *testing.T) {
 	rec := a.get("/clients/private/test")
 	if rec.Code == http.StatusOK {
 		t.Error("the client test endpoint served an anonymous request")
+	}
+}
+
+// The policy shown by the Test button previously came from a table that does not
+// exist, so the query always failed and every client was reported as unrestricted
+// even when a policy was attached.
+func TestClientTestReportsTheAttachedPolicy(t *testing.T) {
+	a := newAdminHarness(t)
+	seedTestClient(t, a, "filebrowser", []string{"https://fb.example.com/api/auth/oidc/callback"})
+
+	ctx := context.Background()
+	if _, err := a.db.ExecContext(ctx,
+		`INSERT INTO policies (id, name, description, created_at) VALUES ('pol-admin','admin','Admins only',0)`); err != nil {
+		t.Fatalf("seed policy: %v", err)
+	}
+	if _, err := a.db.ExecContext(ctx,
+		`UPDATE oidc_clients SET policy_id='pol-admin' WHERE client_id='filebrowser'`); err != nil {
+		t.Fatalf("attach policy: %v", err)
+	}
+
+	got := fetchClientTest(t, a, "filebrowser")
+	var note string
+	for _, c := range got.Checks {
+		if c.Label == "Access policy" {
+			note = c.Note
+		}
+	}
+	if !strings.Contains(note, "admin") {
+		t.Errorf("access policy note = %q, want it to name the attached policy", note)
+	}
+	if strings.Contains(strings.ToLower(note), "no policy assigned") {
+		t.Error("a client with a policy attached was reported as unrestricted")
+	}
+}
+
+func TestClientTestReportsNoPolicyWhenNoneAttached(t *testing.T) {
+	a := newAdminHarness(t)
+	seedTestClient(t, a, "openclient", []string{"https://open.example.com/cb"})
+
+	got := fetchClientTest(t, a, "openclient")
+	for _, c := range got.Checks {
+		if c.Label == "Access policy" && !strings.Contains(strings.ToLower(c.Note), "no policy") {
+			t.Errorf("unrestricted client reported policy %q", c.Note)
+		}
+	}
+}
+
+// The modal lists the redirect URIs, and reports whether the client counts as a
+// native application so mobile sign-in problems are visible.
+func TestClientTestReportsRedirectURIsAndApplicationType(t *testing.T) {
+	a := newAdminHarness(t)
+	seedTestClient(t, a, "immich", []string{
+		"https://immich.example.com/auth/login",
+		"app.immich:///oauth-callback",
+	})
+
+	got := fetchClientTest(t, a, "immich")
+	if len(got.RedirectURIs) != 2 {
+		t.Fatalf("returned %d redirect URIs, want 2", len(got.RedirectURIs))
+	}
+	var appType string
+	for _, c := range got.Checks {
+		if c.Label == "Application type" {
+			appType = c.Note
+		}
+	}
+	if !strings.Contains(appType, "Native") {
+		t.Errorf("application type = %q, want it to report Native for a custom scheme", appType)
+	}
+
+	a2 := newAdminHarness(t)
+	seedTestClient(t, a2, "webonly", []string{"https://web.example.com/cb"})
+	for _, c := range fetchClientTest(t, a2, "webonly").Checks {
+		if c.Label == "Application type" && !strings.Contains(c.Note, "Web") {
+			t.Errorf("application type = %q, want Web", c.Note)
+		}
 	}
 }

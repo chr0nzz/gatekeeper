@@ -954,6 +954,10 @@ func (s *Storage) IsRegisteredRedirect(ctx context.Context, target string) bool 
 	return false
 }
 
+// IsNativeRedirect reports whether a redirect URI makes its client a native
+// application, which is how mobile apps receive an authorization code.
+func IsNativeRedirect(uri string) bool { return hasCustomScheme(uri) }
+
 // hasCustomScheme reports whether a redirect URI uses a scheme other than HTTP,
 // which is how a mobile application receives its authorization code.
 func hasCustomScheme(uri string) bool {

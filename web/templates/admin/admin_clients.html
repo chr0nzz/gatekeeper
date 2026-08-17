@@ -280,6 +280,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script nonce="__CSP_NONCE__">
 (function() {
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
   document.querySelectorAll('[data-test-client]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var url = btn.getAttribute('data-test-client');
@@ -295,14 +300,22 @@ document.addEventListener('DOMContentLoaded', function() {
         nameEl.textContent = data.name + ' (' + data.client_id + ')';
         var html = data.checks.map(function(c) {
           var icon = c.ok
-            ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--success)" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>'
+            ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ok)" stroke-width="2"><path d="M5 12l4 4 10-10"/></svg>'
             : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--danger)" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-4 6 8 8m0-8-8 8"/></svg>';
           return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--bg-2);border-radius:7px;border:1px solid var(--bd-0)">'
             + '<span style="margin-top:1px;flex-shrink:0">' + icon + '</span>'
-            + '<div><div style="font-size:13px;font-weight:500">' + c.label + '</div>'
-            + (c.note ? '<div style="font-size:12px;color:var(--tx-3);margin-top:2px">' + c.note + '</div>' : '')
+            + '<div><div style="font-size:13px;font-weight:500">' + esc(c.label) + '</div>'
+            + (c.note ? '<div style="font-size:12px;color:var(--tx-3);margin-top:2px">' + esc(c.note) + '</div>' : '')
             + '</div></div>';
         }).join('');
+        if (data.redirect_uris && data.redirect_uris.length) {
+          html += '<div style="padding:8px 10px;background:var(--bg-2);border-radius:7px;border:1px solid var(--bd-0)">'
+            + '<div style="font-size:13px;font-weight:500;margin-bottom:4px">Redirect URIs</div>'
+            + data.redirect_uris.map(function(u) {
+                return '<div class="mono" style="font-size:11.5px;color:var(--tx-2);word-break:break-all">' + esc(u) + '</div>';
+              }).join('')
+            + '</div>';
+        }
         body.innerHTML = html;
         if (data.auth_url) {
           authLink.href = data.auth_url;
