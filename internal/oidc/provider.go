@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -737,9 +738,35 @@ func (c *OIDCClient) RedirectURIs() []string {
 	json.Unmarshal([]byte(c.redirectURIsRaw), &uris)
 	return uris
 }
-func (c *OIDCClient) PostLogoutRedirectURIs() []string    { return nil }
-func (c *OIDCClient) ApplicationType() op.ApplicationType { return op.ApplicationTypeWeb }
-func (c *OIDCClient) AuthMethod() oidc.AuthMethod         { return oidc.AuthMethodBasic }
+func (c *OIDCClient) PostLogoutRedirectURIs() []string { return nil }
+
+// ApplicationType reports a client as native when it registers a redirect URI
+// with a custom scheme. Mobile apps such as the Immich client sign in through a
+// URI like app.immich:///oauth-callback, which is only accepted for native apps.
+func (c *OIDCClient) ApplicationType() op.ApplicationType {
+	for _, uri := range c.RedirectURIs() {
+		if hasCustomScheme(uri) {
+			return op.ApplicationTypeNative
+		}
+	}
+	return op.ApplicationTypeWeb
+}
+
+// DevMode relaxes the transport rules applied to redirect URIs, which is needed
+// when a native client also signs in over plain HTTP on a local network. It is
+// only reported for clients that registered such an address. A redirect target
+// must still match a registered URI exactly before this is consulted, so it
+// widens the accepted scheme and never the set of destinations.
+func (c *OIDCClient) DevMode() bool {
+	for _, uri := range c.RedirectURIs() {
+		if isPlainHTTP(uri) && !isLoopbackURI(uri) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *OIDCClient) AuthMethod() oidc.AuthMethod { return oidc.AuthMethodBasic }
 func (c *OIDCClient) ResponseTypes() []oidc.ResponseType {
 	return []oidc.ResponseType{oidc.ResponseTypeCode}
 }
@@ -753,7 +780,6 @@ func (c *OIDCClient) GrantTypes() []oidc.GrantType {
 func (c *OIDCClient) LoginURL(id string) string            { return "/login?oidc_request=" + id }
 func (c *OIDCClient) AccessTokenType() op.AccessTokenType  { return op.AccessTokenTypeBearer }
 func (c *OIDCClient) IDTokenLifetime() time.Duration       { return accessTokenTTL }
-func (c *OIDCClient) DevMode() bool                        { return false }
 func (c *OIDCClient) ClockSkew() time.Duration             { return 0 }
 func (c *OIDCClient) IDTokenUserinfoClaimsAssertion() bool { return false }
 func (c *OIDCClient) RestrictAdditionalIdTokenScopes() func([]string) []string {
@@ -926,4 +952,26 @@ func (s *Storage) IsRegisteredRedirect(ctx context.Context, target string) bool 
 		}
 	}
 	return false
+}
+
+// hasCustomScheme reports whether a redirect URI uses a scheme other than HTTP,
+// which is how a mobile application receives its authorization code.
+func hasCustomScheme(uri string) bool {
+	if uri == "" || isPlainHTTP(uri) || strings.HasPrefix(uri, "https://") {
+		return false
+	}
+	return strings.Contains(uri, ":")
+}
+
+func isPlainHTTP(uri string) bool {
+	return strings.HasPrefix(uri, "http://")
+}
+
+func isLoopbackURI(uri string) bool {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
