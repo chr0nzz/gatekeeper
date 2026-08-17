@@ -9,6 +9,10 @@ description: Version history for GateKeeper.
 This is a pre-release. It carries a single documentation and interface correction and no functional change. Stay on v0.9.4 unless the icon field misled you too.
 :::
 
+### Documentation
+
+- **[Sonarr, Radarr, Lidarr and Prowlarr](/integrations/servarr)** - How to put GateKeeper in front of them without a second login. These applications no longer offer HTTP Basic, so credential injection does not apply to them, and their authentication has to be set to `External` instead. Also covers the `/api` route the applications use to reach each other, which has to skip ForwardAuth.
+
 ### Client icons
 
 The icon field on an OIDC client said an icon would be detected automatically if the field was left blank. Nothing ever did that, so leaving it blank produced a client with no icon and no indication why.

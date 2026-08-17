@@ -65,7 +65,13 @@ If no `?policy=` parameter is given, any authenticated user is allowed through.
 
 ## Credential injection
 
-Some apps do not support SSO or header-based authentication. They require a username and password every time. Credential injection lets GateKeeper supply those credentials automatically after a successful ForwardAuth check, so users never see the app's own login form.
+Some apps have no SSO support of their own and ask for a username and password every time. Credential injection lets GateKeeper supply those credentials after a successful ForwardAuth check, so users never see the app's own prompt.
+
+::: warning Works with HTTP Basic only
+The credentials travel as an `Authorization: Basic` header, so the app has to accept HTTP Basic authentication, the kind that produces a browser pop-up.
+
+An app with its own HTML login form cannot be signed in this way. A form login needs a form submission and the app's own session cookie in return, and a header provides neither. For those apps, look for a setting that tells them authentication is handled by a proxy. The [*arr applications](/integrations/servarr) call this `External`.
+:::
 
 ### How it works
 
@@ -99,7 +105,9 @@ http:
 
 ### App setup
 
-Configure the downstream app to accept Basic authentication. In Sonarr, Radarr, and similar apps this is found under **Settings - General - Authentication**. Set the method to **Basic** and enter the same username and password you saved in GateKeeper. The app will see the injected `Authorization` header and skip its own login prompt.
+Configure the downstream app to accept Basic authentication, then enter the same username and password you saved in GateKeeper. The app sees the injected `Authorization` header and skips its own prompt.
+
+Of the *arr applications only Sonarr still offers Basic, under **Settings - General - Security - Authentication**, and it is marked obsolete there. Radarr, Lidarr and Prowlarr have removed it, so use `External` for those instead. See [Sonarr, Radarr, Lidarr, Prowlarr](/integrations/servarr).
 
 ### Nginx and Caddy
 

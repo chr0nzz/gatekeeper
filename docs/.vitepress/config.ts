@@ -92,6 +92,7 @@ export default defineConfig({
           { text: 'Caddy forward_auth', link: '/integrations/caddy' },
           { text: 'Cross-domain ForwardAuth', link: '/integrations/cross-domain' },
           { text: 'Immich', link: '/integrations/immich' },
+          { text: 'Sonarr, Radarr, Lidarr, Prowlarr', link: '/integrations/servarr' },
           { text: 'Protecting an app (example)', link: '/integrations/example-app' },
           { text: 'OIDC client examples', link: '/integrations/oidc-client-examples' },
         ],
