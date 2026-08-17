@@ -84,6 +84,23 @@ http:
 
 The more specific rule wins, so `/api` skips GateKeeper while every other path is protected.
 
+### Prowlarr needs a wider rule
+
+Prowlarr serves each indexer at `/{id}/api`, with the indexer number first, so `PathPrefix(/api)` never matches it. When Sonarr or Radarr searches through Prowlarr the request goes to something like `/1/api?t=search`, and grabbing a release goes to `/1/download`. Both are caught by GateKeeper and fail unless the rule covers them:
+
+```yaml
+    prowlarr-api:
+      rule: "Host(`prowlarr.example.com`) && (PathPrefix(`/api`) || PathRegexp(`^/[0-9]+/(api|download)`))"
+      entryPoints: [https]
+      service: prowlarr
+      tls:
+        certResolver: cloudflare
+```
+
+`PathPrefix(/api)` still covers Prowlarr's own API, which is what the **Settings - Apps** sync uses, and the pattern covers the indexer and download endpoints. `PathRegexp` needs Traefik v3.
+
+The symptom is searches returning nothing and indexer tests failing in Sonarr or Radarr, while Prowlarr's own interface looks healthy.
+
 **This does not expose the API.** These applications require an API key on `/api` regardless of the authentication method, including `External`. Removing GateKeeper from that path hands the check back to the application, it does not remove it.
 
 If the interface loads but activity never updates, add `/signalr` to the same bypass. The live update connection authenticates with a query parameter rather than a header.
