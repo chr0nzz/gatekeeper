@@ -13,6 +13,16 @@ This is a pre-release. It carries a single documentation and interface correctio
 
 - **[Sonarr, Radarr, Lidarr and Prowlarr](/integrations/servarr)** - How to put GateKeeper in front of them without a second login. These applications no longer offer HTTP Basic, so credential injection does not apply to them, and their authentication has to be set to `External` instead. Also covers the `/api` route the applications use to reach each other, which has to skip ForwardAuth.
 
+### Application setup in the admin panel
+
+The Integrations page has a new **Applications** section. Enter your app's address and it produces the exact values for this server, ready to copy, rather than examples to adapt.
+
+- **Immich** - the three redirect URIs, including the phone app, and the settings to enter in Immich with your issuer already filled in.
+- **Sonarr, Radarr, Lidarr** - the environment variable that turns off the app's own login, and both Traefik routes with the right hostname, service name and port for the app you pick.
+- **Prowlarr** - the same, with the wider route rule its indexer endpoints need.
+
+Each panel links to the full guide for the explanation and troubleshooting, so the page carries values and the documentation carries the reasoning.
+
 ### Client icons
 
 The icon field on an OIDC client said an icon would be detected automatically if the field was left blank. Nothing ever did that, so leaving it blank produced a client with no icon and no indication why.

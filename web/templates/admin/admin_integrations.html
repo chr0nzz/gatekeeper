@@ -39,6 +39,110 @@
       </div>
     </div>
 
+
+    <div class="card" id="apps">
+      <div class="card-head">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <h3>Applications</h3>
+        <span style="margin-left:auto;font-size:11.5px;color:var(--tx-3)">Enter your app address to get the exact values for this server</span>
+      </div>
+      <div style="border-bottom:1px solid var(--bd-0)">
+        <div class="seg" style="margin:0;border:0;border-radius:0;padding:10px 16px;background:transparent;gap:6px">
+          <button type="button" class="int-tab on" data-tab="immich">Immich</button>
+          <button type="button" class="int-tab" data-tab="arr">Sonarr, Radarr, Lidarr</button>
+          <button type="button" class="int-tab" data-tab="prowlarr">Prowlarr</button>
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="immich">
+        <div style="padding:16px">
+          <label class="field" style="max-width:420px">
+            <span class="field-label">Your Immich address</span>
+            <input class="input" type="url" id="immich-url" placeholder="https://immich.example.com" autocomplete="off">
+          </label>
+
+          <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">1. Redirect URIs for the GateKeeper client</div>
+          <pre id="immich-redirects" style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">https://immich.example.com/auth/login
+https://immich.example.com/user-settings
+app.immich:///oauth-callback</pre>
+          <div style="font-size:11.5px;color:var(--tx-3);margin-top:6px">All three are needed. The last one is the phone app and is not a typo, it has three slashes.</div>
+
+          <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">2. Settings in Immich</div>
+          <table class="table" style="font-size:12px">
+            <thead><tr><th style="width:230px">Administration &gt; Settings &gt; OAuth</th><th>Value</th><th style="width:32px"></th></tr></thead>
+            <tbody>
+              <tr><td style="color:var(--tx-2);font-weight:500">Issuer URL</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">{{.BaseURL}}</td><td><button class="btn btn-ghost btn-xs" data-copy="{{.BaseURL}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+              <tr><td style="color:var(--tx-2);font-weight:500">Scope</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">openid email profile</td><td><button class="btn btn-ghost btn-xs" data-copy="openid email profile"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM5 7H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1"/></svg></button></td></tr>
+              <tr><td style="color:var(--tx-2);font-weight:500">ID Token Signed Response Alg</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">RS256</td><td></td></tr>
+              <tr><td style="color:var(--tx-2);font-weight:500">Userinfo Signed Response Alg</td><td style="font-family:var(--font-mono);font-size:11.5px;color:var(--tx-1)">none</td><td></td></tr>
+              <tr><td style="color:var(--tx-2);font-weight:500">Mobile Redirect URI Override</td><td style="color:var(--tx-3)">leave empty</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="arr" style="display:none">
+        <div style="padding:16px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <label class="field" style="max-width:180px;margin-bottom:0">
+              <span class="field-label">Application</span>
+              <select class="input select" id="arr-app">
+                <option value="SONARR">Sonarr</option>
+                <option value="RADARR">Radarr</option>
+                <option value="LIDARR">Lidarr</option>
+              </select>
+            </label>
+            <label class="field" style="max-width:320px;margin-bottom:0">
+              <span class="field-label">Its address</span>
+              <input class="input" type="url" id="arr-url" placeholder="https://sonarr.example.com" autocomplete="off">
+            </label>
+            <label class="field" style="max-width:220px;margin-bottom:0">
+              <span class="field-label">Where it runs</span>
+              <input class="input" type="text" id="arr-backend" placeholder="http://10.0.0.10:8989" autocomplete="off">
+            </label>
+          </div>
+
+          <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">1. Turn off its own login</div>
+          <pre id="arr-env" style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">environment:
+  - SONARR__AUTH__METHOD=External</pre>
+          <div style="font-size:11.5px;color:var(--tx-3);margin-top:6px">Restart the container afterwards. Do not set <code>AUTH__ENABLED</code>, it forces the login page back on.</div>
+
+          <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">2. Traefik routes</div>
+          <pre id="arr-routes" style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6"></pre>
+          <div style="font-size:11.5px;color:var(--tx-3);margin-top:6px">The second route lets the applications reach each other with an API key. It still needs that key, so nothing is left open.</div>
+        </div>
+      </div>
+
+      <div class="int-panel" data-panel="prowlarr" style="display:none">
+        <div style="padding:16px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <label class="field" style="max-width:320px;margin-bottom:0">
+              <span class="field-label">Your Prowlarr address</span>
+              <input class="input" type="url" id="prowlarr-url" placeholder="https://prowlarr.example.com" autocomplete="off">
+            </label>
+            <label class="field" style="max-width:220px;margin-bottom:0">
+              <span class="field-label">Where it runs</span>
+              <input class="input" type="text" id="prowlarr-backend" placeholder="http://10.0.0.10:9696" autocomplete="off">
+            </label>
+          </div>
+
+          <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">1. Turn off its own login</div>
+          <pre style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6">environment:
+  - PROWLARR__AUTH__METHOD=External</pre>
+
+          <div style="font-size:11px;font-weight:600;color:var(--tx-3);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">2. Traefik routes</div>
+          <pre id="prowlarr-routes" style="background:var(--bg-2);border:1px solid var(--bd-1);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--tx-1);overflow:auto;margin:0;line-height:1.6"></pre>
+          <div style="font-size:11.5px;color:var(--tx-3);margin-top:6px">Prowlarr serves each indexer at <code>/1/api</code>, with the number first, so a plain <code>/api</code> rule misses it and searches return nothing.</div>
+        </div>
+      </div>
+
+      <div style="padding:10px 16px;border-top:1px solid var(--bd-0);display:flex;gap:16px;font-size:11.5px;color:var(--tx-3)">
+        <span>Full guides with troubleshooting:</span>
+        <a href="https://gatekeeper.xyzlab.dev/integrations/immich" target="_blank" rel="noopener" style="color:var(--ac)">Immich</a>
+        <a href="https://gatekeeper.xyzlab.dev/integrations/servarr" target="_blank" rel="noopener" style="color:var(--ac)">Sonarr, Radarr, Lidarr, Prowlarr</a>
+      </div>
+    </div>
+
     <div class="card" id="forwardauth">
       <div class="card-head">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h7"/></svg>
@@ -230,6 +334,112 @@ document.querySelectorAll('.int-tab').forEach(function(btn) {
     card.querySelectorAll('.int-panel').forEach(function(p) { p.style.display = p.dataset.panel === tab ? '' : 'none'; });
   });
 });
+
+
+(function() {
+  function host(value, fallback) {
+    var raw = (value || '').trim() || fallback;
+    raw = raw.replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+    try {
+      var u = new URL(raw);
+      return { origin: u.origin, host: u.host, name: u.hostname.split('.')[0] };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function set(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  var immichInput = document.getElementById('immich-url');
+  function renderImmich() {
+    var h = host(immichInput && immichInput.value, 'https://immich.example.com');
+    if (!h) return;
+    set('immich-redirects', h.origin + '/auth/login\n' + h.origin + '/user-settings\napp.immich:///oauth-callback');
+  }
+
+  var arrApp = document.getElementById('arr-app');
+  var arrUrl = document.getElementById('arr-url');
+  var arrBackend = document.getElementById('arr-backend');
+  var arrPorts = { SONARR: '8989', RADARR: '7878', LIDARR: '8686' };
+
+  function renderArr() {
+    var app = arrApp ? arrApp.value : 'SONARR';
+    var lower = app.toLowerCase();
+    var h = host(arrUrl && arrUrl.value, 'https://' + lower + '.example.com');
+    if (!h) return;
+    var backend = (arrBackend && arrBackend.value.trim()) || ('http://10.0.0.10:' + arrPorts[app]);
+    if (arrUrl) arrUrl.placeholder = 'https://' + lower + '.example.com';
+    if (arrBackend) arrBackend.placeholder = 'http://10.0.0.10:' + arrPorts[app];
+
+    set('arr-env', 'environment:\n  - ' + app + '__AUTH__METHOD=External');
+    set('arr-routes',
+      'http:\n' +
+      '  routers:\n' +
+      '    ' + lower + ':\n' +
+      '      rule: "Host(`' + h.host + '`)"\n' +
+      '      entryPoints: [https]\n' +
+      '      middlewares:\n' +
+      '        - gk-auth@file\n' +
+      '      service: ' + lower + '\n' +
+      '      tls:\n' +
+      '        certResolver: cloudflare\n\n' +
+      '    ' + lower + '-api:\n' +
+      '      rule: "Host(`' + h.host + '`) && PathPrefix(`/api`)"\n' +
+      '      entryPoints: [https]\n' +
+      '      service: ' + lower + '\n' +
+      '      tls:\n' +
+      '        certResolver: cloudflare\n\n' +
+      '  services:\n' +
+      '    ' + lower + ':\n' +
+      '      loadBalancer:\n' +
+      '        servers:\n' +
+      '          - url: "' + backend + '"');
+  }
+
+  var prowUrl = document.getElementById('prowlarr-url');
+  var prowBackend = document.getElementById('prowlarr-backend');
+  function renderProwlarr() {
+    var h = host(prowUrl && prowUrl.value, 'https://prowlarr.example.com');
+    if (!h) return;
+    var backend = (prowBackend && prowBackend.value.trim()) || 'http://10.0.0.10:9696';
+    set('prowlarr-routes',
+      'http:\n' +
+      '  routers:\n' +
+      '    prowlarr:\n' +
+      '      rule: "Host(`' + h.host + '`)"\n' +
+      '      entryPoints: [https]\n' +
+      '      middlewares:\n' +
+      '        - gk-auth@file\n' +
+      '      service: prowlarr\n' +
+      '      tls:\n' +
+      '        certResolver: cloudflare\n\n' +
+      '    prowlarr-api:\n' +
+      '      rule: "Host(`' + h.host + '`) && (PathPrefix(`/api`) || PathRegexp(`^/[0-9]+/(api|download)`))"\n' +
+      '      entryPoints: [https]\n' +
+      '      service: prowlarr\n' +
+      '      tls:\n' +
+      '        certResolver: cloudflare\n\n' +
+      '  services:\n' +
+      '    prowlarr:\n' +
+      '      loadBalancer:\n' +
+      '        servers:\n' +
+      '          - url: "' + backend + '"');
+  }
+
+  [[immichInput, renderImmich], [arrUrl, renderArr], [arrBackend, renderArr],
+   [prowUrl, renderProwlarr], [prowBackend, renderProwlarr]].forEach(function(pair) {
+    if (pair[0]) pair[0].addEventListener('input', pair[1]);
+  });
+  if (arrApp) arrApp.addEventListener('change', renderArr);
+
+  renderImmich();
+  renderArr();
+  renderProwlarr();
+})();
 
 document.querySelectorAll('pre').forEach(function(pre) {
   var wrap = document.createElement('div');
