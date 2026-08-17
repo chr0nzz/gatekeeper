@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -1442,9 +1443,14 @@ func (h *Handlers) GetClientTest(w http.ResponseWriter, r *http.Request) {
 
 	authURL := ""
 	if len(redirectURIs) > 0 {
-		authURL = h.baseURL + "/oauth/authorize?client_id=" + id +
-			"&redirect_uri=" + redirectURIs[0] +
-			"&response_type=code&scope=openid+profile+email&prompt=login"
+		params := url.Values{
+			"client_id":     {id},
+			"redirect_uri":  {redirectURIs[0]},
+			"response_type": {"code"},
+			"scope":         {"openid profile email"},
+			"prompt":        {"login"},
+		}
+		authURL = h.baseURL + "/authorize?" + params.Encode()
 	}
 
 	w.Header().Set("Content-Type", "application/json")
