@@ -3,6 +3,22 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.5
+
+:::warning Pre-release
+This is a pre-release. It carries a single documentation and interface correction and no functional change. Stay on v0.9.4 unless the icon field misled you too.
+:::
+
+### Client icons
+
+The icon field on an OIDC client said an icon would be detected automatically if the field was left blank. Nothing ever did that, so leaving it blank produced a client with no icon and no indication why.
+
+- **The field says what it does** - Paste a direct link to an image file. The three places a client icon can be set, the new client form on the Clients page, the one on the Dashboard, and the edit form, now carry the same wording. The edit form previously offered no guidance at all.
+- **Finding an icon** - [selfh.st/icons](https://selfh.st/icons/) covers most self-hosted applications. Search for the application, copy the image address, and paste it in.
+- **Documented limitation** - An icon hosted only on your internal network cannot be used. GateKeeper downloads the image when you save, and outbound requests to private and loopback addresses are refused. See [Managing clients](/admin/managing-clients).
+
+---
+
 ## v0.9.4
 
 ### Mobile app sign-in

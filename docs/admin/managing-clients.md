@@ -25,7 +25,11 @@ Apps that support OIDC discovery only need the discovery URL - they will auto-co
 Click **New client** and fill in:
 
 - **Display name** - shown in the admin UI and on the login page when users authenticate via this client.
-- **Icon URL** - optional. Paste a direct image URL (PNG, SVG, etc.). GateKeeper fetches and caches the image server-side immediately on save - icons are never loaded from external servers by users. Browse [selfh.st/icons](https://selfh.st/icons/) for a large library of self-hosted app icons.
+- **Icon URL** - optional. Paste a direct link to an image file (PNG, SVG, and so on). The address has to point at the image itself, not at a page containing it.
+
+  For self-hosted applications, [selfh.st/icons](https://selfh.st/icons/) carries logos for most of them. Search for the application, then copy the image address and paste it here. In a browser that is usually right-click, then "Copy image address".
+
+  GateKeeper downloads the image when you save and stores its own copy, so your users' browsers never contact the source. Requests to private or loopback addresses are refused, so an icon hosted only on your internal network cannot be fetched this way.
 - **Client ID** - a short identifier like `grafana` or `jellyfin-prod`. This is public and appears in authorization requests. Lowercase, digits, dashes, and underscores only. Cannot be changed after creation.
 - **Client secret** - click **Generate** to create a cryptographically random secret, or paste your own. Store it securely - GateKeeper will not show it again after you close the dialog.
 - **Redirect URIs** - the callback URLs your app sends users to after authentication. One per line. Must match exactly, including path and scheme.
