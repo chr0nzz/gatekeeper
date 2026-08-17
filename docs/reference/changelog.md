@@ -11,6 +11,18 @@ description: Version history for GateKeeper.
 - **Plain HTTP still works alongside it** - Native clients are normally held to stricter transport rules, which would have broken web sign-in for anyone reaching their app over plain HTTP on a local network. Those clients keep working.
 - **[Immich guide](/integrations/immich)** - A full walkthrough covering the web interface and the mobile app.
 
+### Password policy is enforced everywhere
+
+The password rules in Settings were only applied to passwords users chose themselves. Every administrator path skipped them, and the forms advertised a fixed minimum of 12 characters no matter what was configured.
+
+- **Applied on every path** - Creating a user, setting a user's password, creating an administrator, promoting a user to administrator, the first-run setup, and an administrator changing their own password all check the configured rules. Previously an administrator could set a 12 character password on an account while the policy required 20.
+- **Forms show the real minimum** - Every password field now states and enforces the configured length instead of a hardcoded 12.
+- **The Settings hint is accurate** - It read "Minimum 8", which looked like the policy in force rather than the lowest value that can be configured.
+
+### Slide-in panels
+
+Dialogs that contain a form now arrive as a panel from the right rather than a box in the middle of the screen. On a wide display the page moves aside to make room instead of dimming, so the list you were working from stays readable. Below 1440px they behave as before, covering the page. Escape closes a panel in both cases.
+
 ### Client test dialog
 
 - **The sign-in link works** - It pointed at `/oauth/authorize`, which is not a route this server serves, so opening the auth flow always returned 404. It now uses `/authorize`, and the redirect address is encoded so one containing a query string is no longer mangled.
@@ -25,6 +37,18 @@ The documentation has always said the OIDC signing key rotates every 30 days. It
 - **Rotation now happens** - GateKeeper checks hourly and replaces the signing key once it is 30 days old. No restart needed.
 - **Old tokens keep working** - The retired key stays published in the JWKS for another 48 hours, far longer than the 15 minute lifetime of the tokens it signed. After that it is deleted.
 - **Visible on the dashboard** - System health now shows when the current key was last rotated and the date it is next due, instead of only claiming that rotation happens.
+
+### Documentation
+
+- **A new home page** with the feature tour, and a [screenshot gallery](/screenshots) of every page in both themes that follows whichever theme you are reading in.
+- **Phone and tablet screenshots**, captured by a script that now lives in the repository under `scripts/` along with the demo data it uses.
+- **`.env.example`** listing every environment variable, kept honest by a test that fails when one is added to the configuration without being documented.
+
+### Tests and tooling
+
+- **Coverage across the whole application** - The suite grew from 105 tests to over 250 and now covers the user-facing and administrator handlers, audit logging, webhook delivery, mail, and social sign-in, alongside the packages already covered. Several of the bugs above were found by writing them.
+- **Linting on every push** - `golangci-lint` and a formatting check run in CI, and the documentation site is type checked and built.
+- **Dependency updates** - A Renovate configuration keeps Go modules, npm packages, workflow actions and container base images current, with security updates raised immediately.
 
 ---
 
