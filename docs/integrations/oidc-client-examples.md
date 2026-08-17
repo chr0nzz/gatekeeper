@@ -124,3 +124,7 @@ const tokenSet = await client.callback(
 );
 const userinfo = await client.userinfo(tokenSet.access_token);
 ```
+
+## Real applications
+
+For a complete walkthrough with a real application, including mobile sign-in, see [Immich](/integrations/immich).

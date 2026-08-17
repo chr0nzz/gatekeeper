@@ -97,6 +97,16 @@ When a user arrives via `/authorize`, the login page shows the client's display 
 
 ## Key rotation
 
+## Mobile and desktop apps
+
+An application that is not a website receives its authorization code on a custom address such as `app.immich:///oauth-callback` instead of an `https://` one.
+
+Register that address as a redirect URI like any other. GateKeeper sees the custom scheme and treats the client as a native application, which is what allows the address to be used. Nothing needs to be switched on, and clients that only use `http` or `https` are unaffected.
+
+A client may mix both. Registering a web address and a mobile address on the same client is the normal arrangement for an app that has a website and a phone app, and both work.
+
+The redirect address is still matched exactly against the registered list, so a custom scheme widens the kind of address that is allowed and never the set of destinations. See [Immich](/integrations/immich) for a full example.
+
 Tokens are signed with RS256. Keys rotate every 30 days automatically, checked hourly with no restart required. The previous key stays published for 48 hours so tokens issued just before rotation remain valid. See [OIDC security](/security/oidc-security#signing-keys).
 
 ## Trusted devices

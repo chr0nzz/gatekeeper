@@ -25,7 +25,7 @@ export default defineConfig({
       { text: 'Security', link: '/security/overview' },
       { text: 'Reference', link: '/reference/env-vars' },
       {
-        text: 'v0.9.3',
+        text: 'v0.9.4',
         items: [
           { text: 'Changelog', link: '/reference/changelog' },
           { text: 'GitHub', link: 'https://github.com/chr0nzz/gatekeeper' },
@@ -91,6 +91,7 @@ export default defineConfig({
           { text: 'Nginx auth_request', link: '/integrations/nginx' },
           { text: 'Caddy forward_auth', link: '/integrations/caddy' },
           { text: 'Cross-domain ForwardAuth', link: '/integrations/cross-domain' },
+          { text: 'Immich', link: '/integrations/immich' },
           { text: 'Protecting an app (example)', link: '/integrations/example-app' },
           { text: 'OIDC client examples', link: '/integrations/oidc-client-examples' },
         ],

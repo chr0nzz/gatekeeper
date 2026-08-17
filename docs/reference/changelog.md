@@ -5,6 +5,19 @@ description: Version history for GateKeeper.
 
 ## v0.9.4
 
+### Mobile app sign-in
+
+- **Custom redirect schemes are accepted** - An application that is not a website, such as the Immich phone app, receives its authorization code on an address like `app.immich:///oauth-callback`. GateKeeper refused those, so mobile sign-in could not complete. A client that registers such an address is now treated as a native application, which permits it. Clients using only `http` or `https` are unchanged, and the address is still matched exactly against the registered list.
+- **Plain HTTP still works alongside it** - Native clients are normally held to stricter transport rules, which would have broken web sign-in for anyone reaching their app over plain HTTP on a local network. Those clients keep working.
+- **[Immich guide](/integrations/immich)** - A full walkthrough covering the web interface and the mobile app.
+
+### Client test dialog
+
+- **The sign-in link works** - It pointed at `/oauth/authorize`, which is not a route this server serves, so opening the auth flow always returned 404. It now uses `/authorize`, and the redirect address is encoded so one containing a query string is no longer mangled.
+- **The access policy is reported correctly** - The dialog read the policy from a table that does not exist, so the query silently failed and every client was described as open to all users even when a policy was attached.
+- **Passing checks are visible** - The tick used a colour that is not defined in the stylesheet, so successful checks rendered as blank rows.
+- **More detail** - The dialog now lists the client's redirect URIs and reports whether it counts as a web or native application.
+
 ### OIDC signing key rotation
 
 The documentation has always said the OIDC signing key rotates every 30 days. It did not. The key was generated on first run and then kept forever, because nothing ever triggered a rotation.
