@@ -5,13 +5,21 @@ description: Version history for GateKeeper.
 
 ## v0.9.5
 
-:::warning Pre-release
-This is a pre-release. It carries a single documentation and interface correction and no functional change. Stay on v0.9.4 unless the icon field misled you too.
+:::warning Security release
+An audit of the whole codebase found nine issues, including one that let a second factor be skipped. Upgrading is recommended.
 :::
 
-### Documentation
+### Security
 
-- **[Sonarr, Radarr, Lidarr and Prowlarr](/integrations/servarr)** - How to put GateKeeper in front of them without a second login. These applications no longer offer HTTP Basic, so credential injection does not apply to them, and their authentication has to be set to `External` instead. Also covers the `/api` route the applications use to reach each other, which has to skip ForwardAuth.
+- **A second factor could be skipped** - A session waiting at the TOTP or email code prompt was treated as signed in by the account pages. Someone holding a password but not the second factor could open the account page, register a passkey, and use it from then on. Every page now sends an unfinished sign-in back to the step it stopped at, and a new authenticator app cannot be enrolled while one is already active.
+- **Single-use credentials could be used more than once** - Invites, password reset links, email codes and recovery codes each checked whether they had been used and then marked them used as two separate steps, so two requests arriving together both passed. One invite could open any number of accounts. All four now claim the credential in a single statement that only one request wins.
+- **The password reset form could exhaust the server's memory** - It hashed the token with a function that allocates 64MB per call, on an endpoint with no sign-in and no rate limit. Reset tokens are random 256-bit values, so a plain digest is the correct choice and the amplification is gone.
+- **The client IP could be forged** - Forwarding headers were trusted from any source, so anyone could set their own address and evade every rate limit and lockout. They are now honoured only when the request arrives from a private, loopback or carrier-grade NAT address, which is where a reverse proxy sits.
+- **An invite could be redeemed under a different address** - The address typed into the form overrode the one the invite was issued to, and an invite also skipped the allowed-domains list. An invite is now bound to its address, and the domain list applies to invited registrations too.
+- **The sign-in forms had no CSRF token** - Login, email code, TOTP, recovery code and password reset accepted cross-site submissions, which allowed signing a visitor into an attacker's account. All five now carry one.
+- **TOTP codes could be replayed** - A code stayed valid for about 90 seconds, so one observed in transit could be used again. Each is now accepted once.
+- **Rate limits treated every IPv6 client as one** - The address was cut at the first colon, so all IPv6 addresses collapsed into a single bucket and one user hitting a limit locked out the rest.
+- **Password reset emails could vanish** - The message was sent on a task tied to the request, which was cancelled as soon as the browser got its reply.
 
 ### Admin API keys are hashed and scoped
 
@@ -25,7 +33,7 @@ Existing keys stop working and need regenerating, since the stored clear-text va
 
 ### Application setup in the admin panel
 
-The Integrations page has a new **Applications** section. Enter your app's address and it produces the exact values for this server, ready to copy, rather than examples to adapt.
+The Integrations page is now split into sections reached from a sidebar rather than one long page, and a new **Applications** section produces the exact values for this server, ready to copy, rather than examples to adapt.
 
 - **Immich** - the three redirect URIs, including the phone app, and the settings to enter in Immich with your issuer already filled in.
 - **Sonarr, Radarr, Lidarr** - the environment variable that turns off the app's own login, and both Traefik routes with the right hostname, service name and port for the app you pick.
@@ -40,6 +48,11 @@ The icon field on an OIDC client said an icon would be detected automatically if
 - **The field says what it does** - Paste a direct link to an image file. The three places a client icon can be set, the new client form on the Clients page, the one on the Dashboard, and the edit form, now carry the same wording. The edit form previously offered no guidance at all.
 - **Finding an icon** - [selfh.st/icons](https://selfh.st/icons/) covers most self-hosted applications. Search for the application, copy the image address, and paste it in.
 - **Documented limitation** - An icon hosted only on your internal network cannot be used. GateKeeper downloads the image when you save, and outbound requests to private and loopback addresses are refused. See [Managing clients](/admin/managing-clients).
+
+### Documentation
+
+- **[Sonarr, Radarr, Lidarr and Prowlarr](/integrations/servarr)** - How to put GateKeeper in front of them without a second login. These applications no longer offer HTTP Basic, so credential injection does not apply to them, and their authentication has to be set to `External` instead. Also covers the `/api` route the applications use to reach each other, which has to skip ForwardAuth, and the wider rule Prowlarr needs for `/{id}/api`.
+- A desktop, tablet and phone mockup on the home page.
 
 ---
 
