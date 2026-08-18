@@ -215,10 +215,6 @@ func pendingStep(data *auth.SessionData) string {
 	return ""
 }
 
-func fullyAuthenticated(data *auth.SessionData) bool {
-	return data != nil && data.UserID != "" && !data.PendingOTP && !data.PendingTOTP
-}
-
 func (h *Handlers) requireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _, err := h.sessions.Get(r)
