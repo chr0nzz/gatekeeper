@@ -339,8 +339,13 @@ func TestInviteIsRedeemableExactlyOnce(t *testing.T) {
 	if !q2inviteUsable(first) {
 		t.Fatal("a fresh invite was rejected")
 	}
-	if err := store.MarkUsed(ctx, first.ID); err != nil {
-		t.Fatalf("mark used: %v", err)
+	claimed, err := store.Claim(ctx, first.ID)
+	if err != nil || !claimed {
+		t.Fatalf("claim: %v (claimed=%v)", err, claimed)
+	}
+
+	if again, err := store.Claim(ctx, first.ID); err != nil || again {
+		t.Fatalf("the same invite was claimed twice: %v (claimed=%v)", err, again)
 	}
 
 	second, _ := store.GetByToken(ctx, token)

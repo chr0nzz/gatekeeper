@@ -179,3 +179,15 @@ func (u *uiHarness) auditCount(event string) int {
 func location(rec *httptest.ResponseRecorder) string {
 	return rec.Header().Get("Location")
 }
+
+func newRecorder() *httptest.ResponseRecorder { return httptest.NewRecorder() }
+
+func newGetRequest(path string) *http.Request {
+	return httptest.NewRequest(http.MethodGet, path, nil)
+}
+
+func newPostRequest(path string, form url.Values) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return req
+}

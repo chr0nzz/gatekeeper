@@ -17,6 +17,7 @@
     <p class="lede">Enter one of your saved recovery codes.</p>
     {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
     <form method="POST" action="/login/totp/recovery">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label class="field">
         <span class="field-label">Recovery code</span>
         <input class="input mono" type="text" name="code" required autofocus autocomplete="off" placeholder="xx-xx-xx-xx-xx">

@@ -155,6 +155,26 @@ func (h *Handlers) render(w http.ResponseWriter, name string, data interface{}) 
 	h.renderer.Render(w, name, data)
 }
 
+func (h *Handlers) renderCSRF(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
+	switch d := data.(type) {
+	case map[string]interface{}:
+		if d == nil {
+			d = map[string]interface{}{}
+		}
+		d["CSRFToken"] = h.csrf(r)
+		data = d
+	case map[string]string:
+		out := map[string]interface{}{"CSRFToken": h.csrf(r)}
+		for k, v := range d {
+			out[k] = v
+		}
+		data = out
+	case nil:
+		data = map[string]interface{}{"CSRFToken": h.csrf(r)}
+	}
+	h.renderer.Render(w, name, data)
+}
+
 func (h *Handlers) csrf(r *http.Request) string {
 	return gkmiddleware.CSRFToken(r)
 }
@@ -182,11 +202,32 @@ func remoteIP(r *http.Request) string {
 	return ip
 }
 
+func pendingStep(data *auth.SessionData) string {
+	if data == nil {
+		return "/login"
+	}
+	if data.PendingTOTP {
+		return "/login/totp"
+	}
+	if data.PendingOTP {
+		return "/login/otp"
+	}
+	return ""
+}
+
+func fullyAuthenticated(data *auth.SessionData) bool {
+	return data != nil && data.UserID != "" && !data.PendingOTP && !data.PendingTOTP
+}
+
 func (h *Handlers) requireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _, err := h.sessions.Get(r)
 		if err != nil || data == nil || data.UserID == "" {
 			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		if step := pendingStep(data); step != "" {
+			http.Redirect(w, r, step, http.StatusFound)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -246,6 +287,10 @@ func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
 	data, sessID, err := h.sessions.Get(r)
 	if err != nil || data == nil || data.UserID == "" {
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+	if step := pendingStep(data); step != "" {
+		http.Redirect(w, r, step, http.StatusFound)
 		return
 	}
 	user, err := h.users.GetByID(r.Context(), data.UserID)
@@ -319,7 +364,7 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	if errCode := r.URL.Query().Get("social_err"); errCode != "" {
 		tplData["Error"] = socialErrMsg(errCode)
 	}
-	h.render(w, "login.html", tplData)
+	h.renderCSRF(w, r, "login.html", tplData)
 }
 
 func rememberDevice(r *http.Request) bool {
@@ -335,6 +380,10 @@ func orBlank(s string) string {
 }
 
 func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
 	ip := remoteIP(r)
 	redirectURI := r.FormValue("redirect_uri")
 	oidcRequest := r.FormValue("oidc_request")
@@ -344,7 +393,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		d["Error"] = msg
 		d["RedirectURI"] = redirectURI
 		d["OIDCRequest"] = oidcRequest
-		h.render(w, "login.html", d)
+		h.renderCSRF(w, r, "login.html", d)
 	}
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
@@ -432,10 +481,14 @@ func (h *Handlers) handleOTPDispatch(w http.ResponseWriter, r *http.Request, use
 }
 
 func (h *Handlers) GetOTP(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "otp.html", map[string]string{"OIDCRequest": r.URL.Query().Get("oidc_request")})
+	h.renderCSRF(w, r, "otp.html", map[string]string{"OIDCRequest": r.URL.Query().Get("oidc_request")})
 }
 
 func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
 	data, sessID, err := h.sessions.Get(r)
 	if err != nil || data == nil || !data.PendingOTP {
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -445,7 +498,7 @@ func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(r.FormValue("code"))
 	if err := h.otps.Verify(r.Context(), data.UserID, code); err != nil {
 		h.auditLog.Log(r.Context(), audit.EventOTPFailed, data.UserID, "", r.RemoteAddr, "wrong email code")
-		h.render(w, "otp.html", map[string]string{"Error": err.Error()})
+		h.renderCSRF(w, r, "otp.html", map[string]string{"Error": err.Error()})
 		return
 	}
 
@@ -458,10 +511,14 @@ func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetTOTP(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "totp.html", map[string]string{"OIDCRequest": r.URL.Query().Get("oidc_request")})
+	h.renderCSRF(w, r, "totp.html", map[string]string{"OIDCRequest": r.URL.Query().Get("oidc_request")})
 }
 
 func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
 	data, sessID, err := h.sessions.Get(r)
 	if err != nil || data == nil || !data.PendingTOTP {
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -471,7 +528,7 @@ func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(r.FormValue("code"))
 	if err := h.totp.Validate(r.Context(), data.UserID, code); err != nil {
 		h.auditLog.Log(r.Context(), audit.EventTOTPFailed, data.UserID, "", r.RemoteAddr, "wrong authenticator code")
-		h.render(w, "totp.html", map[string]string{"Error": err.Error()})
+		h.renderCSRF(w, r, "totp.html", map[string]string{"Error": err.Error()})
 		return
 	}
 
@@ -483,10 +540,14 @@ func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetTOTPRecovery(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "totp_recovery.html", nil)
+	h.renderCSRF(w, r, "totp_recovery.html", nil)
 }
 
 func (h *Handlers) PostTOTPRecovery(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
 	data, sessID, err := h.sessions.Get(r)
 	if err != nil || data == nil || !data.PendingTOTP {
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -494,7 +555,7 @@ func (h *Handlers) PostTOTPRecovery(w http.ResponseWriter, r *http.Request) {
 	}
 	code := strings.TrimSpace(r.FormValue("code"))
 	if err := h.totp.UseRecoveryCode(r.Context(), data.UserID, code); err != nil {
-		h.render(w, "totp_recovery.html", map[string]string{"Error": err.Error()})
+		h.renderCSRF(w, r, "totp_recovery.html", map[string]string{"Error": err.Error()})
 		return
 	}
 	h.auditLog.Log(r.Context(), audit.EventTOTPRecoveryUsed, data.UserID, "", r.RemoteAddr, "")
@@ -668,19 +729,19 @@ func (h *Handlers) brand(r *http.Request) map[string]interface{} {
 }
 
 func (h *Handlers) GetForgotPassword(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "forgot_password.html", h.brand(r))
+	h.renderCSRF(w, r, "forgot_password.html", h.brand(r))
 }
 
 func (h *Handlers) PostForgotPassword(w http.ResponseWriter, r *http.Request) {
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
-	ip := strings.Split(r.RemoteAddr, ":")[0]
+	ip := remoteIP(r)
 
 	data := h.brand(r)
 	data["Success"] = "If an account with that email exists, a reset link has been sent."
-	h.render(w, "forgot_password.html", data)
+	h.renderCSRF(w, r, "forgot_password.html", data)
 
 	go func() {
-		ctx := r.Context()
+		ctx := context.WithoutCancel(r.Context())
 		if err := auth.CheckResetRateLimit(ctx, h.db, email, "email", r); err != nil {
 			return
 		}
@@ -707,15 +768,19 @@ func (h *Handlers) GetResetPassword(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		d := h.brand(r)
 		d["Error"] = "This link is invalid or has expired."
-		h.render(w, "reset_password.html", d)
+		h.renderCSRF(w, r, "reset_password.html", d)
 		return
 	}
 	d := h.brand(r)
 	d["Token"] = token
-	h.render(w, "reset_password.html", d)
+	h.renderCSRF(w, r, "reset_password.html", d)
 }
 
 func (h *Handlers) PostResetPassword(w http.ResponseWriter, r *http.Request) {
+	if !h.checkCSRF(r) {
+		http.Error(w, "CSRF check failed", http.StatusForbidden)
+		return
+	}
 	token := r.FormValue("token")
 	password := r.FormValue("password")
 	confirm := r.FormValue("confirm")
@@ -724,7 +789,7 @@ func (h *Handlers) PostResetPassword(w http.ResponseWriter, r *http.Request) {
 		d := h.brand(r)
 		d["Error"] = msg
 		d["Token"] = tok
-		h.render(w, "reset_password.html", d)
+		h.renderCSRF(w, r, "reset_password.html", d)
 	}
 
 	if password != confirm {
@@ -1158,14 +1223,14 @@ func (h *Handlers) GetRegister(w http.ResponseWriter, r *http.Request) {
 		if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
 			d := h.brand(r)
 			d["Error"] = "This invite link is invalid or has expired."
-			h.render(w, "register.html", d)
+			h.renderCSRF(w, r, "register.html", d)
 			return
 		}
 		d := h.brand(r)
 		d["Token"] = token
 		d["Email"] = inv.Email
 		d["CSRFToken"] = h.csrf(r)
-		h.render(w, "register.html", d)
+		h.renderCSRF(w, r, "register.html", d)
 		return
 	}
 
@@ -1174,7 +1239,7 @@ func (h *Handlers) GetRegister(w http.ResponseWriter, r *http.Request) {
 		d := h.brand(r)
 		d["CSRFToken"] = h.csrf(r)
 		d["Mode"] = mode
-		h.render(w, "register.html", d)
+		h.renderCSRF(w, r, "register.html", d)
 	default:
 		http.NotFound(w, r)
 	}
@@ -1195,7 +1260,7 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 	if token != "" {
 		inv, err := h.invites.GetByToken(r.Context(), token)
 		if err != nil || inv == nil || inv.IsUsed() || inv.IsExpired() {
-			h.render(w, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired.", "CSRFToken": h.csrf(r)})
+			h.renderCSRF(w, r, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired.", "CSRFToken": h.csrf(r)})
 			return
 		}
 		invLockedEmail = inv.Email
@@ -1206,6 +1271,9 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
+	if invLockedEmail != "" {
+		email = strings.ToLower(strings.TrimSpace(invLockedEmail))
+	}
 	if email == "" {
 		email = invLockedEmail
 	}
@@ -1223,25 +1291,25 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if email == "" {
-		h.render(w, "register.html", errData("Email is required."))
+		h.renderCSRF(w, r, "register.html", errData("Email is required."))
 		return
 	}
-	if token == "" && !h.registrationDomainAllowed(r, email) {
-		h.render(w, "register.html", errData("Registration is not allowed for this email domain."))
+	if !h.registrationDomainAllowed(r, email) {
+		h.renderCSRF(w, r, "register.html", errData("Registration is not allowed for this email domain."))
 		return
 	}
 	if err := h.checkPasswordPolicy(r.Context(), password); err != nil {
-		h.render(w, "register.html", errData(err.Error()))
+		h.renderCSRF(w, r, "register.html", errData(err.Error()))
 		return
 	}
 	if password != confirm {
-		h.render(w, "register.html", errData("Passwords do not match."))
+		h.renderCSRF(w, r, "register.html", errData("Passwords do not match."))
 		return
 	}
 	if existing, _ := h.users.GetByEmail(r.Context(), email); existing != nil {
 		h.auditLog.Log(r.Context(), "user.register_duplicate", existing.ID, "", r.RemoteAddr, email)
 		h.mailer.SendDuplicateRegistration(r.Context(), email)
-		h.render(w, "register.html", map[string]interface{}{"Pending": true})
+		h.renderCSRF(w, r, "register.html", map[string]interface{}{"Pending": true})
 		return
 	}
 
@@ -1254,21 +1322,24 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 	if mode == "approval" && token == "" {
 		userID, err := h.users.CreatePending(r.Context(), email, hash)
 		if err != nil {
-			h.render(w, "register.html", errData("Could not create account. Please try again."))
+			h.renderCSRF(w, r, "register.html", errData("Could not create account. Please try again."))
 			return
 		}
 		h.auditLog.Log(r.Context(), "user.pending", userID, "", r.RemoteAddr, email)
-		h.render(w, "register.html", map[string]interface{}{"Pending": true})
+		h.renderCSRF(w, r, "register.html", map[string]interface{}{"Pending": true})
 		return
 	}
 
 	userID, err := h.users.Create(r.Context(), email, hash, false)
 	if err != nil {
-		h.render(w, "register.html", errData("Could not create account. Please try again."))
+		h.renderCSRF(w, r, "register.html", errData("Could not create account. Please try again."))
 		return
 	}
 	if invID != "" {
-		h.invites.MarkUsed(r.Context(), invID)
+		if ok, err := h.invites.Claim(r.Context(), invID); err != nil || !ok {
+			h.renderCSRF(w, r, "register.html", map[string]interface{}{"Error": "This invite link is invalid or has expired.", "CSRFToken": h.csrf(r)})
+			return
+		}
 	}
 	h.auditLog.Log(r.Context(), "user.registered", userID, "", r.RemoteAddr, email)
 	h.sessions.Create(w, r, auth.SessionData{UserID: userID})

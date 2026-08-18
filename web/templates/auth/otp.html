@@ -17,6 +17,7 @@
     <p class="lede">We sent a 6-digit code to your inbox. It expires in 10 minutes.</p>
     {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
     <form method="POST" action="/login/otp">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
       <label class="field">
         <span class="field-label">Verification code</span>

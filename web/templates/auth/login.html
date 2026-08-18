@@ -67,9 +67,11 @@
       <p id="qr-status" style="font-size:12.5px;color:var(--tx-2);margin:0">Open your camera and scan this code to sign in.</p>
     </div>
 
-    <form method="POST" action="/login" id="qr-hidden-form" style="display:none"></form>
+    <form method="POST" action="/login" id="qr-hidden-form" style="display:none">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}"></form>
 
     <form method="POST" action="/login" id="login-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="redirect_uri" value="{{.RedirectURI}}">
       <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
       <input type="hidden" name="login_mode" id="login-mode" value="password">

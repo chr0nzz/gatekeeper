@@ -27,6 +27,9 @@ const (
 	recoveryCodes = 8
 )
 
+// ErrTOTPAlreadyEnrolled is returned when enrollment would replace a live secret.
+var ErrTOTPAlreadyEnrolled = errors.New("an authenticator is already enrolled, remove it before enrolling another")
+
 // ErrTOTPReenrollRequired is returned when a stored secret uses the retired format.
 var ErrTOTPReenrollRequired = errors.New("your authenticator setup has expired for security reasons, sign in with an email code and enroll again")
 
@@ -61,6 +64,12 @@ func QRCodePNG(key *otp.Key) ([]byte, error) {
 func (t *TOTPStore) ConfirmEnrollment(ctx context.Context, userID, secret, code string) ([]string, error) {
 	if !totp.Validate(code, secret) {
 		return nil, errors.New("invalid code, try again")
+	}
+
+	var alreadyEnrolled int
+	t.db.QueryRowContext(ctx, `SELECT totp_enabled FROM users WHERE id=?`, userID).Scan(&alreadyEnrolled)
+	if alreadyEnrolled == 1 {
+		return nil, ErrTOTPAlreadyEnrolled
 	}
 
 	stored, err := t.encryptSecret([]byte(secret))
@@ -134,19 +143,33 @@ func (t *TOTPStore) Validate(ctx context.Context, userID, code string) error {
 		return ErrTOTPReenrollRequired
 	}
 
-	valid := totp.Validate(code, string(raw))
-	if !valid {
-		prev := time.Now().Add(-30 * time.Second)
-		ok, _ := totp.ValidateCustom(code, string(raw), prev, totp.ValidateOpts{
-			Period: 30, Skew: 0, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1,
-		})
-		valid = ok
-	}
+	step, valid := matchTOTPStep(code, string(raw))
 	if !valid {
 		return t.recordTOTPFail(ctx, userID)
 	}
+
+	var lastStep int64
+	t.db.QueryRowContext(ctx, `SELECT totp_last_step FROM users WHERE id=?`, userID).Scan(&lastStep)
+	if step <= lastStep {
+		return errors.New("that code has already been used, wait for the next one")
+	}
+	t.db.ExecContext(ctx, `UPDATE users SET totp_last_step=? WHERE id=?`, step, userID)
 	t.db.ExecContext(ctx, `DELETE FROM otp_lockouts WHERE user_id=? AND lockout_type='totp'`, userID)
 	return nil
+}
+
+func matchTOTPStep(code, secret string) (int64, bool) {
+	now := time.Now()
+	for _, offset := range []time.Duration{0, -30 * time.Second, 30 * time.Second} {
+		at := now.Add(offset)
+		ok, _ := totp.ValidateCustom(code, secret, at, totp.ValidateOpts{
+			Period: 30, Skew: 0, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1,
+		})
+		if ok {
+			return at.Unix() / 30, true
+		}
+	}
+	return 0, false
 }
 
 func (t *TOTPStore) encryptSecret(plaintext []byte) (string, error) {
@@ -171,6 +194,9 @@ func (t *TOTPStore) decryptSecret(stored string) ([]byte, bool, error) {
 
 // UseRecoveryCode consumes a recovery code. Returns nil on success.
 func (t *TOTPStore) UseRecoveryCode(ctx context.Context, userID, code string) error {
+	if err := t.checkTOTPLockout(ctx, userID); err != nil {
+		return err
+	}
 	rows, err := t.db.QueryContext(ctx,
 		`SELECT id, code_hash FROM totp_recovery_codes WHERE user_id=? AND used=0`,
 		userID,
@@ -191,14 +217,21 @@ func (t *TOTPStore) UseRecoveryCode(ctx context.Context, userID, code string) er
 
 	for _, c := range candidates {
 		if VerifyPassword(code, c.hash) == nil {
-			_, err = t.db.ExecContext(ctx,
-				`UPDATE totp_recovery_codes SET used=1, used_at=? WHERE id=?`,
+			res, err := t.db.ExecContext(ctx,
+				`UPDATE totp_recovery_codes SET used=1, used_at=? WHERE id=? AND used=0`,
 				time.Now().Unix(), c.id,
 			)
-			return err
+			if err != nil {
+				return err
+			}
+			if n, err := res.RowsAffected(); err != nil || n != 1 {
+				return errors.New("invalid recovery code")
+			}
+			t.db.ExecContext(ctx, `DELETE FROM otp_lockouts WHERE user_id=? AND lockout_type='totp'`, userID)
+			return nil
 		}
 	}
-	return errors.New("invalid recovery code")
+	return t.recordTOTPFail(ctx, userID)
 }
 
 // Revoke removes TOTP enrollment for a user.

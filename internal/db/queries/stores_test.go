@@ -166,8 +166,8 @@ func TestInviteTokenLifecycle(t *testing.T) {
 		t.Error("a 7 day invite reports as expired")
 	}
 
-	if err := store.MarkUsed(ctx, inv.ID); err != nil {
-		t.Fatalf("mark used: %v", err)
+	if ok, err := store.Claim(ctx, inv.ID); err != nil || !ok {
+		t.Fatalf("claim: %v (claimed=%v)", err, ok)
 	}
 	used, _ := store.GetByToken(ctx, token)
 	if used == nil || !used.IsUsed() {

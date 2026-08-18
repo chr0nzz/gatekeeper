@@ -80,10 +80,17 @@ func (s *InviteStore) GetByToken(ctx context.Context, token string) (*Invite, er
 	return &inv, nil
 }
 
-// MarkUsed marks an invite as redeemed.
-func (s *InviteStore) MarkUsed(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE invites SET used_at=? WHERE id=?`, time.Now().Unix(), id)
-	return err
+// Claim marks an invite redeemed, and reports false if it was already used.
+func (s *InviteStore) Claim(ctx context.Context, id string) (bool, error) {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE invites SET used_at=? WHERE id=? AND used_at IS NULL`,
+		time.Now().Unix(), id,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
 }
 
 // List returns all invites newest first.

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -147,14 +148,7 @@ func (p *PasswordResetStore) IssueToken(ctx context.Context, userID string) (str
 		return "", err
 	}
 	token := hex.EncodeToString(raw)
-	hash, err := HashPassword(token + "reset-salt-suffix")
-	if err != nil {
-		tokenHash := argon2IDSimple(raw)
-		hash = fmt.Sprintf("$argon2id$%x", tokenHash)
-	}
-	_ = hash
-	tokenHash := argon2IDSimple(raw)
-	storedHash := hex.EncodeToString(tokenHash)
+	storedHash := hex.EncodeToString(resetTokenDigest(raw))
 
 	now := time.Now()
 	id, err := randomToken(16)
@@ -168,9 +162,9 @@ func (p *PasswordResetStore) IssueToken(ctx context.Context, userID string) (str
 	return token, err
 }
 
-func argon2IDSimple(data []byte) []byte {
-	salt := []byte("gatekeeper-reset-token-salt-v1xx")
-	return argon2.IDKey(data, salt, argonIterations, argonMemory, argonParallelism, argonKeyLen)
+func resetTokenDigest(raw []byte) []byte {
+	sum := sha256.Sum256(raw)
+	return sum[:]
 }
 
 // Redeem validates a token and marks it redeemed. Returns userID on success.
@@ -179,7 +173,7 @@ func (p *PasswordResetStore) Redeem(ctx context.Context, token string) (string, 
 	if err != nil {
 		return "", errors.New("invalid token")
 	}
-	tokenHash := hex.EncodeToString(argon2IDSimple(raw))
+	tokenHash := hex.EncodeToString(resetTokenDigest(raw))
 	now := time.Now()
 	var id, userID string
 	err = p.db.QueryRowContext(ctx,
@@ -193,11 +187,17 @@ func (p *PasswordResetStore) Redeem(ctx context.Context, token string) (string, 
 	if err != nil {
 		return "", err
 	}
-	_, err = p.db.ExecContext(ctx,
-		`UPDATE password_reset_tokens SET redeemed_at=? WHERE id=?`,
+	res, err := p.db.ExecContext(ctx,
+		`UPDATE password_reset_tokens SET redeemed_at=? WHERE id=? AND redeemed_at IS NULL`,
 		now.Unix(), id,
 	)
-	return userID, err
+	if err != nil {
+		return "", err
+	}
+	if n, err := res.RowsAffected(); err != nil || n != 1 {
+		return "", errors.New("invalid or expired token")
+	}
+	return userID, nil
 }
 
 // ValidateToken checks a token exists and is unexpired without redeeming it.
@@ -206,7 +206,7 @@ func (p *PasswordResetStore) ValidateToken(ctx context.Context, token string) (s
 	if err != nil {
 		return "", errors.New("invalid token")
 	}
-	tokenHash := hex.EncodeToString(argon2IDSimple(raw))
+	tokenHash := hex.EncodeToString(resetTokenDigest(raw))
 	now := time.Now()
 	var userID string
 	err = p.db.QueryRowContext(ctx,

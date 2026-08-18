@@ -78,7 +78,13 @@ func (o *OTPStore) Verify(ctx context.Context, userID, code string) error {
 		}
 		return errors.New("invalid code")
 	}
-	o.db.ExecContext(ctx, `UPDATE otps SET used=1 WHERE id=?`, id)
+	res, err := o.db.ExecContext(ctx, `UPDATE otps SET used=1 WHERE id=? AND used=0`, id)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil || n != 1 {
+		return errors.New("invalid or expired code")
+	}
 	o.db.ExecContext(ctx, `DELETE FROM otp_lockouts WHERE user_id=? AND lockout_type='otp'`, userID)
 	return nil
 }

@@ -243,7 +243,7 @@ func main() {
 		}
 	}
 	attachBase := func(r chi.Router) {
-		r.Use(chimiddleware.RealIP)
+		r.Use(gkmiddleware.TrustedRealIP)
 		r.Use(chimiddleware.Recoverer)
 		r.Use(gkmiddleware.SecureHeaders)
 		r.Use(gkmiddleware.CSRF)

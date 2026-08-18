@@ -17,6 +17,7 @@
     <p class="lede">Open your authenticator app and enter the 6-digit code.</p>
     {{if .Error}}<div class="alert alert-err" style="margin-bottom:18px"><b>{{.Error}}</b></div>{{end}}
     <form method="POST" action="/login/totp">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="oidc_request" value="{{.OIDCRequest}}">
       <label class="field">
         <span class="field-label">Code</span>
