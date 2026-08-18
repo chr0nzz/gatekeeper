@@ -52,8 +52,7 @@ type S3Storage struct {
 	prefix string
 }
 
-// NewS3Storage creates an S3Storage. Set pathStyle=true for MinIO, Garage, and other
-// self-hosted stores that require path-style addressing.
+// NewS3Storage creates an S3Storage. Use pathStyle for MinIO and Garage.
 func NewS3Storage(endpoint, bucket, accessKey, secretKey, region, prefix string, pathStyle bool) *S3Storage {
 	if prefix != "" && prefix[len(prefix)-1] != '/' {
 		prefix += "/"

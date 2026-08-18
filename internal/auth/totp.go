@@ -27,8 +27,7 @@ const (
 	recoveryCodes = 8
 )
 
-// ErrTOTPReenrollRequired is returned when a stored secret used the retired
-// pre-v0.4.0 format. The enrollment is cleared and the user must set up TOTP again.
+// ErrTOTPReenrollRequired is returned when a stored secret uses the retired format.
 var ErrTOTPReenrollRequired = errors.New("your authenticator setup has expired for security reasons, sign in with an email code and enroll again")
 
 // TOTPStore manages TOTP enrollment and validation.
@@ -59,7 +58,6 @@ func QRCodePNG(key *otp.Key) ([]byte, error) {
 }
 
 // ConfirmEnrollment validates the live code and stores the secret + recovery codes.
-// Returns the plaintext recovery codes (shown once).
 func (t *TOTPStore) ConfirmEnrollment(ctx context.Context, userID, secret, code string) ([]string, error) {
 	if !totp.Validate(code, secret) {
 		return nil, errors.New("invalid code, try again")
@@ -130,9 +128,6 @@ func (t *TOTPStore) Validate(ctx context.Context, userID, code string) error {
 		return err
 	}
 
-	// Secrets stored in the pre-v0.4.0 XOR format are recoverable from a database
-	// read alone, so they are retired rather than re-wrapped. The user must enroll
-	// a fresh secret.
 	if legacy {
 		t.db.ExecContext(ctx, `UPDATE users SET totp_secret='', totp_enabled=0 WHERE id=?`, userID)
 		t.db.ExecContext(ctx, `DELETE FROM totp_recovery_codes WHERE user_id=?`, userID)
@@ -154,7 +149,6 @@ func (t *TOTPStore) Validate(ctx context.Context, userID, code string) error {
 	return nil
 }
 
-// encryptSecret encrypts a TOTP secret with AES-256-GCM and returns a versioned string.
 func (t *TOTPStore) encryptSecret(plaintext []byte) (string, error) {
 	ct, err := aesGCMEncrypt(plaintext, t.secretKey)
 	if err != nil {
@@ -163,8 +157,6 @@ func (t *TOTPStore) encryptSecret(plaintext []byte) (string, error) {
 	return "v2:" + base64.StdEncoding.EncodeToString(ct), nil
 }
 
-// decryptSecret decodes both v2 (AES-GCM) and legacy (XOR) formats.
-// Returns the plaintext, a boolean indicating whether the value was in legacy format, and any error.
 func (t *TOTPStore) decryptSecret(stored string) ([]byte, bool, error) {
 	if strings.HasPrefix(stored, "v2:") {
 		enc, err := base64.StdEncoding.DecodeString(stored[3:])
@@ -174,8 +166,6 @@ func (t *TOTPStore) decryptSecret(stored string) ([]byte, bool, error) {
 		pt, err := aesGCMDecrypt(enc, t.secretKey)
 		return pt, false, err
 	}
-	// Legacy XOR format is never decrypted. The caller retires the secret and
-	// requires the user to enroll again.
 	return nil, true, nil
 }
 
@@ -199,8 +189,6 @@ func (t *TOTPStore) UseRecoveryCode(ctx context.Context, userID, code string) er
 	}
 	rows.Close()
 
-	// The cursor is closed before writing. The database is limited to a single
-	// connection, so updating while rows are still open would deadlock.
 	for _, c := range candidates {
 		if VerifyPassword(code, c.hash) == nil {
 			_, err = t.db.ExecContext(ctx,
@@ -279,7 +267,6 @@ func (t *TOTPStore) recordTOTPFail(ctx context.Context, userID string) error {
 	return errors.New("invalid code")
 }
 
-// aesGCMEncrypt encrypts plaintext with AES-256-GCM using a key derived from the provided secret.
 func aesGCMEncrypt(plaintext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(deriveKey(key))
 	if err != nil {
@@ -296,7 +283,6 @@ func aesGCMEncrypt(plaintext, key []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
-// aesGCMDecrypt decrypts AES-256-GCM ciphertext.
 func aesGCMDecrypt(ciphertext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(deriveKey(key))
 	if err != nil {
@@ -313,7 +299,6 @@ func aesGCMDecrypt(ciphertext, key []byte) ([]byte, error) {
 	return gcm.Open(nil, nonce, data, nil)
 }
 
-// deriveKey derives a 32-byte AES key from an arbitrary-length secret using SHA-256.
 func deriveKey(key []byte) []byte {
 	h := sha256.Sum256(key)
 	return h[:]

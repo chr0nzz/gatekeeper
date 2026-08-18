@@ -44,7 +44,6 @@ func TestTrustedDeviceRoundTrip(t *testing.T) {
 	}
 }
 
-// M1: a trust token lifted from one browser must not skip 2FA in another.
 func TestTrustedDeviceBoundToUserAgent(t *testing.T) {
 	store := NewTrustedDeviceStore(testDB(t), "")
 	rec := httptest.NewRecorder()
@@ -56,8 +55,6 @@ func TestTrustedDeviceBoundToUserAgent(t *testing.T) {
 	}
 }
 
-// L1: trust tokens are bearer credentials for skipping 2FA, so the database must
-// only hold their hash.
 func TestTrustedDeviceStoredHashed(t *testing.T) {
 	conn := testDB(t)
 	store := NewTrustedDeviceStore(conn, "")

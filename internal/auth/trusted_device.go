@@ -21,8 +21,7 @@ func NewTrustedDeviceStore(db *sql.DB, cookieDomain string) *TrustedDeviceStore 
 	return &TrustedDeviceStore{db: db, cookieDomain: cookieDomain}
 }
 
-// IsTrusted returns true if the request carries a valid trust token issued to
-// this user and to this same browser.
+// IsTrusted reports whether the request carries a valid trust token for the user.
 func (t *TrustedDeviceStore) IsTrusted(r *http.Request, userID string) bool {
 	cookie, err := r.Cookie(trustCookieName)
 	if err != nil || cookie.Value == "" {
@@ -48,7 +47,6 @@ func (t *TrustedDeviceStore) IsTrusted(r *http.Request, userID string) bool {
 }
 
 // Trust creates a 30-day trust token for this browser and sets the cookie.
-// Callers must only invoke this when the user explicitly opted in.
 func (t *TrustedDeviceStore) Trust(w http.ResponseWriter, r *http.Request, userID string) error {
 	token, err := randomToken(32)
 	if err != nil {

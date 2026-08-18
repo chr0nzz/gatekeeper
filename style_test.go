@@ -1,6 +1,9 @@
 package gatekeeper
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,8 +29,6 @@ var styleSkippedDirs = map[string]bool{
 	"screenshots":  true,
 }
 
-// walkSourceFiles visits every hand-written source and documentation file,
-// skipping vendored, generated, and binary content.
 func walkSourceFiles(t *testing.T, visit func(path, content string)) {
 	t.Helper()
 	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
@@ -55,8 +56,6 @@ func walkSourceFiles(t *testing.T, visit func(path, content string)) {
 	}
 }
 
-// The project writes hyphens rather than em or en dashes, in code comments,
-// interface copy, and documentation alike.
 func TestNoDashesInPlaceOfHyphens(t *testing.T) {
 	banned := map[string]string{
 		"\u2014": "em dash",
@@ -81,8 +80,6 @@ func TestNoDashesInPlaceOfHyphens(t *testing.T) {
 	}
 }
 
-// Smart quotes come from pasting out of a word processor and break code and
-// shell snippets that readers copy out of the documentation.
 func TestNoSmartQuotes(t *testing.T) {
 	banned := []string{"\u201c", "\u201d", "\u2018", "\u2019"}
 	walkSourceFiles(t, func(path, content string) {
@@ -98,8 +95,6 @@ func TestNoSmartQuotes(t *testing.T) {
 	})
 }
 
-// A stray merge marker committed to the tree breaks the build in ways that are
-// slow to diagnose.
 func TestNoConflictMarkers(t *testing.T) {
 	walkSourceFiles(t, func(path, content string) {
 		for _, line := range strings.Split(content, "\n") {
@@ -109,4 +104,114 @@ func TestNoConflictMarkers(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestNoCommentsInsideFunctionBodies(t *testing.T) {
+	fset := token.NewFileSet()
+	for _, path := range styleGoFiles(t) {
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		var bodies []*ast.BlockStmt
+		ast.Inspect(f, func(n ast.Node) bool {
+			if fn, ok := n.(*ast.FuncDecl); ok && fn.Body != nil {
+				bodies = append(bodies, fn.Body)
+			}
+			return true
+		})
+		for _, cg := range f.Comments {
+			if styleIsDirective(cg.List[0].Text) {
+				continue
+			}
+			for _, b := range bodies {
+				if cg.Pos() > b.Lbrace && cg.End() < b.Rbrace {
+					t.Errorf("%s:%d: comment inside a function body, name things clearly instead\n  %s",
+						path, fset.Position(cg.Pos()).Line, strings.TrimSpace(cg.List[0].Text))
+				}
+			}
+		}
+	}
+}
+
+func TestTestFilesCarryNoComments(t *testing.T) {
+	for _, path := range styleGoFiles(t) {
+		if !strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		for i, line := range strings.Split(string(src), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "//") && !styleIsDirective(trimmed) {
+				t.Errorf("%s:%d: test files carry no comments\n  %s", path, i+1, trimmed)
+			}
+		}
+	}
+}
+
+func TestDocCommentsAreASingleLine(t *testing.T) {
+	fset := token.NewFileSet()
+	for _, path := range styleGoFiles(t) {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		check := func(doc *ast.CommentGroup, name string) {
+			if doc == nil || len(doc.List) <= 1 {
+				return
+			}
+			if strings.HasPrefix(doc.List[0].Text, "//go:") {
+				return
+			}
+			t.Errorf("%s:%d: doc comment on %s spans %d lines, exported symbols get one line only",
+				path, fset.Position(doc.Pos()).Line, name, len(doc.List))
+		}
+		for _, d := range f.Decls {
+			switch decl := d.(type) {
+			case *ast.FuncDecl:
+				check(decl.Doc, decl.Name.Name)
+			case *ast.GenDecl:
+				check(decl.Doc, "declaration")
+			}
+		}
+	}
+}
+
+func styleGoFiles(t *testing.T) []string {
+	t.Helper()
+	var out []string
+	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && (d.Name() == "docs" || d.Name() == "node_modules" || d.Name() == ".git") {
+			return filepath.SkipDir
+		}
+		if !d.IsDir() && strings.HasSuffix(path, ".go") {
+			out = append(out, path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+	return out
+}
+
+func styleIsDirective(text string) bool {
+	return strings.HasPrefix(text, "//go:") || strings.HasPrefix(text, "//nolint")
 }

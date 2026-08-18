@@ -49,13 +49,11 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 		"policy", r.URL.Query().Get("policy"),
 	)
 
-	// Cross-domain callback: /_gk/auth?token=XXX&redirect=YYY
 	if strings.HasPrefix(forwardedURI, "/_gk/auth") {
 		f.handleCallback(w, r, forwardedURI)
 		return
 	}
 
-	// Normal session check.
 	data, _, err := f.sessions.Get(r)
 	if err != nil || data == nil || data.UserID == "" || data.PendingOTP || data.PendingTOTP {
 		login := f.loginURL(r)
@@ -97,9 +95,6 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleCallback validates a cross-domain token and sets a per-host session cookie.
-// Traefik passes the Set-Cookie and Location headers back to the browser, so the
-// browser receives a cookie scoped to the protected app's domain.
 func (f *ForwardAuth) handleCallback(w http.ResponseWriter, r *http.Request, rawURI string) {
 	parsed, err := url.Parse(rawURI)
 	if err != nil {
@@ -125,8 +120,6 @@ func (f *ForwardAuth) handleCallback(w http.ResponseWriter, r *http.Request, raw
 		return
 	}
 
-	// Mint a fresh session scoped to this host only. No session identifier ever
-	// travels in the handoff URL.
 	if _, err := f.sessions.CreateForHost(w, r, auth.SessionData{UserID: userID}); err != nil {
 		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
 		return
@@ -135,8 +128,6 @@ func (f *ForwardAuth) handleCallback(w http.ResponseWriter, r *http.Request, raw
 	http.Redirect(w, r, proto+"://"+host+redirect, http.StatusFound)
 }
 
-// isLocalPath reports whether redirect is a same-host path, rejecting absolute
-// and scheme-relative URLs that would leave the protected app.
 func isLocalPath(redirect string) bool {
 	return strings.HasPrefix(redirect, "/") &&
 		!strings.HasPrefix(redirect, "//") &&

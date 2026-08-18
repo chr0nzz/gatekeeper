@@ -83,7 +83,6 @@ func (o *OTPStore) Verify(ctx context.Context, userID, code string) error {
 	return nil
 }
 
-// hmacCode returns the hex-encoded HMAC-SHA256 of a code, keyed with the app secret.
 func (o *OTPStore) hmacCode(code string) string {
 	mac := hmac.New(sha256.New, o.secretKey)
 	mac.Write([]byte(code))

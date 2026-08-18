@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// RedirectPolicy decides whether a post-login redirect target is safe to send a
-// user to. Anything not explicitly permitted is rejected.
+// RedirectPolicy decides whether a post-login redirect target is trusted.
 type RedirectPolicy struct {
 	hosts        map[string]bool
 	suffixes     []string
@@ -14,8 +13,7 @@ type RedirectPolicy struct {
 	extraHosts   func() []string
 }
 
-// SetExtraHosts installs a loader for operator-managed allowed hosts. It is
-// called on every check so hosts added in the admin UI apply without a restart.
+// SetExtraHosts installs a loader for operator-managed allowed hosts.
 func (p *RedirectPolicy) SetExtraHosts(fn func() []string) {
 	p.extraHosts = fn
 }
@@ -34,9 +32,7 @@ func ParseHostList(raw string) []string {
 	return out
 }
 
-// NewRedirectPolicy builds a policy from the deployment's own URLs plus an
-// operator-supplied allowlist. Allowlist entries may be an exact hostname
-// ("app.example.com") or a domain suffix (".example.com" or "*.example.com").
+// NewRedirectPolicy builds a policy from the deployment URLs and an allowlist.
 func NewRedirectPolicy(baseURL, adminURL, cookieDomain string, allowed []string) *RedirectPolicy {
 	p := &RedirectPolicy{hosts: map[string]bool{}}
 	for _, raw := range []string{baseURL, adminURL} {
@@ -55,9 +51,6 @@ func NewRedirectPolicy(baseURL, adminURL, cookieDomain string, allowed []string)
 	return p
 }
 
-// normalizeEntry reduces an allowlist entry to a bare domain. Entries may be
-// written as "example.net", ".example.net", "*.example.net", or a full URL, and
-// all of them cover that domain and its subdomains.
 func normalizeEntry(entry string) string {
 	entry = strings.ToLower(strings.TrimSpace(entry))
 	if entry == "" {
@@ -70,8 +63,7 @@ func normalizeEntry(entry string) string {
 	return strings.TrimPrefix(entry, ".")
 }
 
-// Allowed reports whether target is a permitted redirect destination. Relative
-// paths are always allowed; absolute URLs must resolve to a known host.
+// Allowed reports whether target is a permitted redirect destination.
 func (p *RedirectPolicy) Allowed(target string) bool {
 	if target == "" {
 		return false
@@ -123,9 +115,6 @@ func (p *RedirectPolicy) hostAllowed(host string) bool {
 	return false
 }
 
-// matchesEntry reports whether host is covered by a single allowlist entry.
-// An entry always covers the domain itself and its subdomains, so "example.net"
-// and ".example.net" behave the same and neither silently misses an app.
 func matchesEntry(host, entry string) bool {
 	s := normalizeEntry(entry)
 	return s != "" && matchesSuffix(host, s)
@@ -135,9 +124,6 @@ func matchesSuffix(host, suffix string) bool {
 	return host == suffix || strings.HasSuffix(host, "."+suffix)
 }
 
-// isRelativePath reports whether target is a same-origin path reference. It
-// rejects scheme-relative ("//host") and backslash variants that browsers
-// normalise into an absolute URL.
 func isRelativePath(target string) bool {
 	if !strings.HasPrefix(target, "/") {
 		return false

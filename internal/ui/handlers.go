@@ -276,7 +276,6 @@ func (h *Handlers) GetHome(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	oidcRequest := r.URL.Query().Get("oidc_request")
-	// If already authenticated, complete the OIDC flow or forward directly.
 	data, sessID, _ := h.sessions.Get(r)
 	if data != nil && data.UserID != "" && !data.PendingOTP && !data.PendingTOTP {
 		user, _ := h.users.GetByID(r.Context(), data.UserID)
@@ -323,8 +322,6 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "login.html", tplData)
 }
 
-// rememberDevice reports whether the user explicitly asked to skip 2FA on this
-// browser in future logins.
 func rememberDevice(r *http.Request) bool {
 	v := r.FormValue("remember_device")
 	return v == "1" || v == "on" || v == "true"
@@ -392,7 +389,6 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Trusted device - skip 2FA entirely.
 	if h.trustedDevices.IsTrusted(r, user.ID) {
 		sessID, _ := h.sessions.Create(w, r, auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest})
 		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, user.ID, "", r.RemoteAddr, "trusted-device")
@@ -546,9 +542,6 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 	h.redirect(w, r, data.UserID, data.RedirectURI)
 }
 
-// redirectURL resolves where a freshly authenticated user should land. Untrusted
-// targets are discarded, and targets outside the shared cookie domain receive a
-// single-use, host-bound handoff token rather than any session identifier.
 func (h *Handlers) redirectURL(ctx context.Context, userID, target string) string {
 	target = h.redirects.Sanitize(target)
 	cross := h.needsCrossDomain(target)
@@ -570,14 +563,10 @@ func (h *Handlers) redirectURL(ctx context.Context, userID, target string) strin
 		"&redirect=" + url.QueryEscape(u.RequestURI())
 }
 
-// redirect sends the user to target, using a cross-domain handoff when the
-// target is outside the shared cookie domain.
 func (h *Handlers) redirect(w http.ResponseWriter, r *http.Request, userID, target string) {
 	http.Redirect(w, r, h.redirectURL(r.Context(), userID, target), http.StatusFound)
 }
 
-// needsCrossDomain returns true when the target URL's host is not covered by
-// the shared cookie domain (e.g. a completely different TLD).
 func (h *Handlers) needsCrossDomain(target string) bool {
 	if h.cookieDomain == "" {
 		return false
@@ -796,8 +785,6 @@ func (h *Handlers) EndSession(w http.ResponseWriter, r *http.Request) {
 	if target == "" {
 		target = r.URL.Query().Get("post_logout_redirect_uri")
 	}
-	// Only redirect to a destination registered for an OIDC client, or one the
-	// operator explicitly trusts. Anything else falls back to the login page.
 	if target != "" && (h.oidcStorage.IsRegisteredRedirect(r.Context(), target) || h.redirects.Allowed(target)) {
 		http.Redirect(w, r, target, http.StatusFound)
 		return
@@ -871,8 +858,6 @@ func (h *Handlers) PostProfileAvatar(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-// changePasswordPage builds the data for the change-password form, keeping the
-// CSRF token and password policy present so a retry after an error still works.
 func (h *Handlers) changePasswordPage(r *http.Request, key, msg string) map[string]interface{} {
 	return map[string]interface{}{
 		key:                 msg,
@@ -1253,9 +1238,6 @@ func (h *Handlers) PostRegister(w http.ResponseWriter, r *http.Request) {
 		h.render(w, "register.html", errData("Passwords do not match."))
 		return
 	}
-	// Registering an address that already exists returns the same response as a
-	// new signup so the form cannot be used to discover accounts. The owner is
-	// told out of band instead.
 	if existing, _ := h.users.GetByEmail(r.Context(), email); existing != nil {
 		h.auditLog.Log(r.Context(), "user.register_duplicate", existing.ID, "", r.RemoteAddr, email)
 		h.mailer.SendDuplicateRegistration(r.Context(), email)

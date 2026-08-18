@@ -11,8 +11,6 @@ func policy() *RedirectPolicy {
 	)
 }
 
-// CRITICAL-1: an unvalidated redirect_uri let an attacker receive a session-bearing
-// handoff token. Every off-allowlist destination must be refused.
 func TestRedirectPolicyRejectsUntrustedHosts(t *testing.T) {
 	p := policy()
 	blocked := []string{
@@ -63,7 +61,6 @@ func TestRedirectPolicyAllowsKnownDestinations(t *testing.T) {
 	}
 }
 
-// With no cookie domain and no allowlist, only relative paths may be used.
 func TestRedirectPolicyDefaultsClosed(t *testing.T) {
 	p := NewRedirectPolicy("https://auth.example.com", "", "", nil)
 	if p.Allowed("https://app.example.com/") {
@@ -77,8 +74,6 @@ func TestRedirectPolicyDefaultsClosed(t *testing.T) {
 	}
 }
 
-// Hosts added in the admin UI must take effect without a restart, so the policy
-// consults the loader on every check.
 func TestExtraHostsFromSettings(t *testing.T) {
 	p := NewRedirectPolicy("https://auth.example.com", "", "", nil)
 	configured := []string{}
@@ -93,7 +88,6 @@ func TestExtraHostsFromSettings(t *testing.T) {
 		t.Error("host not allowed after being added to the settings list")
 	}
 
-	// The same domain written without a leading dot must behave the same way.
 	configured = []string{"example.net"}
 	if !p.Allowed("https://jellyfin.example.net/") {
 		t.Error("a domain written without a leading dot did not cover its subdomains")
@@ -111,9 +105,6 @@ func TestExtraHostsFromSettings(t *testing.T) {
 	}
 }
 
-// Every accepted entry form must behave identically. Writing a domain without a
-// leading dot used to match only that exact host, which silently failed to allow
-// the app subdomains it was meant to cover.
 func TestExtraHostEntryForms(t *testing.T) {
 	p := NewRedirectPolicy("https://auth.example.com", "", "", nil)
 	p.SetExtraHosts(func() []string {

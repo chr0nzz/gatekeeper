@@ -32,8 +32,6 @@ func seedUserAndToken(t *testing.T, conn *sql.DB, verified int, scopes interface
 	if err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
-	// A token created without resolvable scopes stores the JSON literal "null",
-	// which is what production rows contain.
 	scopeRaw := "null"
 	if v, ok := scopes.([]string); ok {
 		b, _ := json.Marshal(v)
@@ -50,9 +48,6 @@ func seedUserAndToken(t *testing.T, conn *sql.DB, verified int, scopes interface
 	return "tok1"
 }
 
-// A token whose granted scopes were never recorded must still return the
-// standard claims. Relying parties identify users by email, so withholding it
-// breaks sign-in for every connected app.
 func TestUserinfoReturnsClaimsWhenScopesUnknown(t *testing.T) {
 	conn := oidcTestDB(t)
 	tokenID := seedUserAndToken(t, conn, 1, nil)
@@ -104,8 +99,6 @@ func TestUserinfoOmitsEmailWithoutEmailScope(t *testing.T) {
 	}
 }
 
-// L4: the claim used to be hard-coded true, which let an unverified address be
-// trusted by a relying party that links accounts by email.
 func TestEmailVerifiedReflectsStoredState(t *testing.T) {
 	for _, verified := range []int{0, 1} {
 		conn := oidcTestDB(t)
@@ -122,7 +115,6 @@ func TestEmailVerifiedReflectsStoredState(t *testing.T) {
 	}
 }
 
-// M5: post-logout redirects must match a URI a client actually registered.
 func TestIsRegisteredRedirect(t *testing.T) {
 	ctx := context.Background()
 	conn := oidcTestDB(t)
@@ -197,7 +189,6 @@ func TestSigningKeyStatusReportsSchedule(t *testing.T) {
 	}
 }
 
-// A key younger than its maximum age must be left alone.
 func TestSigningKeyNotRotatedBeforeDue(t *testing.T) {
 	ctx := context.Background()
 	conn := oidcTestDB(t)
@@ -217,8 +208,6 @@ func TestSigningKeyNotRotatedBeforeDue(t *testing.T) {
 	}
 }
 
-// Once the key passes its maximum age it is replaced, and the retired key stays
-// published so tokens it signed still verify.
 func TestSigningKeyRotatesWhenDue(t *testing.T) {
 	ctx := context.Background()
 	conn := oidcTestDB(t)
@@ -270,7 +259,6 @@ func TestSigningKeyRotatesWhenDue(t *testing.T) {
 	}
 }
 
-// A retired key is dropped only once nothing it signed can still be valid.
 func TestRetiredSigningKeysArePrunedAfterGrace(t *testing.T) {
 	ctx := context.Background()
 	conn := oidcTestDB(t)
@@ -284,7 +272,6 @@ func TestRetiredSigningKeysArePrunedAfterGrace(t *testing.T) {
 		t.Fatalf("rotate: %v", err)
 	}
 
-	// Still inside the grace window.
 	s.RotateSigningKeyIfDue(ctx)
 	var count int
 	conn.QueryRow(`SELECT COUNT(*) FROM oidc_signing_keys WHERE id=?`, old).Scan(&count)
@@ -302,7 +289,6 @@ func TestRetiredSigningKeysArePrunedAfterGrace(t *testing.T) {
 	}
 }
 
-// Rotation must never leave the server without a key to sign with.
 func TestRepeatedRotationKeepsExactlyOneActiveKey(t *testing.T) {
 	ctx := context.Background()
 	conn := oidcTestDB(t)

@@ -33,14 +33,11 @@ func TestOTPIssueAndVerify(t *testing.T) {
 	if err := store.Verify(ctx, "u1", code); err != nil {
 		t.Errorf("correct code rejected: %v", err)
 	}
-	// A code is consumed once verified.
 	if err := store.Verify(ctx, "u1", code); err == nil {
 		t.Error("code accepted twice")
 	}
 }
 
-// Codes are stored as a keyed digest, so a database read cannot reveal the
-// active code.
 func TestOTPCodeStoredHashed(t *testing.T) {
 	ctx := context.Background()
 	store, conn := otpStoreWithUser(t)
@@ -78,8 +75,6 @@ func TestOTPVerifyWithoutIssuedCode(t *testing.T) {
 	}
 }
 
-// Repeated wrong guesses must lock the account rather than allowing unlimited
-// attempts against a six digit code.
 func TestOTPLockoutAfterRepeatedFailures(t *testing.T) {
 	ctx := context.Background()
 	store, _ := otpStoreWithUser(t)

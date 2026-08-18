@@ -25,8 +25,6 @@ const (
 	evilBinding = "someone-elses-browser"
 )
 
-// HIGH-1: an approved QR token used to mint a session on every poll. It must be
-// claimable exactly once.
 func TestQRTokenConsumedOnce(t *testing.T) {
 	ctx := context.Background()
 	store := NewQRTokenStore(queriesTestDB(t))
@@ -56,8 +54,6 @@ func TestQRTokenConsumedOnce(t *testing.T) {
 	}
 }
 
-// The token only works for the browser that displayed the QR code, so an
-// attacker who phishes an approval cannot claim the session.
 func TestQRTokenRequiresMatchingBinding(t *testing.T) {
 	ctx := context.Background()
 	store := NewQRTokenStore(queriesTestDB(t))
@@ -86,7 +82,6 @@ func TestQRTokenNotConsumableBeforeApproval(t *testing.T) {
 	}
 }
 
-// Concurrent polls race for the same approved token; exactly one may win.
 func TestQRTokenConcurrentConsumeYieldsOneWinner(t *testing.T) {
 	ctx := context.Background()
 	store := NewQRTokenStore(queriesTestDB(t))

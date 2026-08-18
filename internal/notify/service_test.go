@@ -87,8 +87,6 @@ func ntfLatestFor(t *testing.T, database *sql.DB, webhookID string) queries.Noti
 	return n
 }
 
-// Dispatch delivers in a goroutine, so the only stable barrier is the log row
-// it writes when the attempt finishes.
 func ntfAwaitCount(t *testing.T, database *sql.DB, webhookID string, want int) {
 	t.Helper()
 	deadline := time.After(10 * time.Second)
@@ -106,9 +104,6 @@ func ntfAwaitCount(t *testing.T, database *sql.DB, webhookID string, want int) {
 	}
 }
 
-// Webhook URLs are operator supplied, so every sender must refuse to reach an
-// address on the internal network. The test server stands in for a service that
-// is only reachable from inside the deployment.
 func TestWebhookSendersRefuseInternalTargets(t *testing.T) {
 	received := make(chan string, 8)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +222,6 @@ func TestDispatchOnlyNotifiesSubscribedWebhooks(t *testing.T) {
 	}
 }
 
-// A prefix match would wrongly subscribe "login" to "login.failure".
 func TestEventSubscriptionRequiresAnExactMatch(t *testing.T) {
 	svc, database, _ := ntfNewService(t)
 	partial := ntfAddWebhook(t, database, queries.Webhook{
@@ -287,8 +281,6 @@ func TestUnknownWebhookTypeIsRecordedAsFailed(t *testing.T) {
 	}
 }
 
-// Without SMTP the email channel must report failure rather than silently
-// dropping a security alert.
 func TestEmailWebhookWithoutSMTPFails(t *testing.T) {
 	svc, database, _ := ntfNewService(t)
 	wh := queries.Webhook{ID: "wh-email", Name: "ops-mail", Type: "email", Enabled: true, URL: "ops@example.com"}
@@ -358,7 +350,6 @@ func TestBuildMessageOmitsEmptyFields(t *testing.T) {
 	}
 }
 
-// Operators triage by colour, so a failure must never render as a success.
 func TestEventSeverityColours(t *testing.T) {
 	const (
 		red    = 0xED4245

@@ -28,8 +28,6 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 	}
 }
 
-// Restoring with the wrong SECRET_KEY must fail loudly rather than writing
-// corrupt data over the live database.
 func TestDecryptRejectsWrongKey(t *testing.T) {
 	enc, _ := encrypt([]byte("database"), backupKey)
 	if _, err := Decrypt(enc, []byte("a-completely-different-key-value-x")); err == nil {
@@ -87,8 +85,6 @@ func TestScheduleInterval(t *testing.T) {
 	}
 }
 
-// A restore checks this prefix before overwriting the database, so the format
-// marker must survive a round trip.
 func TestSQLiteHeaderSurvivesRoundTrip(t *testing.T) {
 	plain := append([]byte("SQLite format 3\x00"), bytes.Repeat([]byte{0x42}, 512)...)
 	enc, _ := encrypt(plain, backupKey)

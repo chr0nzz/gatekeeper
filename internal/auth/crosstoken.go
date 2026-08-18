@@ -11,12 +11,10 @@ import (
 
 const handoffTTL = 2 * time.Minute
 
-// ErrHandoffInvalid is returned when a handoff token is unknown, expired, already
-// used, or presented to a host it was not issued for.
+// ErrHandoffInvalid is returned when a handoff token cannot be redeemed.
 var ErrHandoffInvalid = errors.New("invalid handoff token")
 
-// HandoffStore issues single-use, host-bound tokens that transfer an authenticated
-// identity to another domain without ever exposing a session identifier.
+// HandoffStore issues single-use, host-bound identity handoff tokens.
 type HandoffStore struct {
 	db *sql.DB
 }
@@ -44,7 +42,6 @@ func (h *HandoffStore) Create(ctx context.Context, userID, targetHost string) (s
 }
 
 // Redeem consumes a handoff token exactly once and returns the user it belongs to.
-// The token is rejected unless host matches the host it was issued for.
 func (h *HandoffStore) Redeem(ctx context.Context, raw, host string) (string, error) {
 	id := hashToken(raw)
 	res, err := h.db.ExecContext(ctx,
@@ -71,6 +68,9 @@ func (h *HandoffStore) Redeem(ctx context.Context, raw, host string) (string, er
 func (h *HandoffStore) CleanExpired(ctx context.Context) {
 	h.db.ExecContext(ctx, `DELETE FROM handoff_tokens WHERE expires_at<? OR used_at IS NOT NULL`, time.Now().Unix())
 }
+
+// HashToken returns the stored form of a bearer token.
+func HashToken(raw string) string { return hashToken(raw) }
 
 func hashToken(raw string) string {
 	sum := sha256.Sum256([]byte(raw))

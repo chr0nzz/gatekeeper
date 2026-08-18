@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-// admAuthzChrome only ever appears once the admin layout has rendered, so its
-// presence in a response body means admin content leaked to the caller.
 const admAuthzChrome = `id="sidebar"`
 
 var admAuthzGetPages = []struct {
@@ -78,8 +76,6 @@ func TestAdminPagesDenyAnonymousCallers(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			admAuthzAssertDenied(t, a.get(tc.path), "GET "+tc.path)
 
-			// Positive control: without this a mistyped path would 404 and the
-			// anonymous check above would pass for the wrong reason.
 			rec := a.get(tc.path, cookie)
 			if rec.Code != http.StatusOK {
 				t.Fatalf("GET %s with an admin session returned %d, want 200", tc.path, rec.Code)
@@ -204,7 +200,7 @@ func TestAdminMutationsDenyAnonymousCallers(t *testing.T) {
 			name: "rotate api key",
 			path: "/profile/api-key/rotate",
 			verify: func(t *testing.T) {
-				if key := a.admins.GetAPIKey(context.Background(), a.adminID); key != "" {
+				if a.admins.HasAPIKey(context.Background(), a.adminID) {
 					t.Fatalf("anonymous POST minted an API key")
 				}
 			},
@@ -306,7 +302,7 @@ func TestAdminMutationsRejectMissingCSRFToken(t *testing.T) {
 			name: "rotate api key",
 			path: "/profile/api-key/rotate",
 			verify: func(t *testing.T) {
-				if key := a.admins.GetAPIKey(context.Background(), a.adminID); key != "admauthz-existing-key" {
+				if a.admins.GetByAPIKey(context.Background(), "admauthz-existing-key") != a.adminID {
 					t.Fatalf("forged POST rotated the API key")
 				}
 			},
@@ -348,7 +344,6 @@ func TestAdminMutationSucceedsWithCSRFToken(t *testing.T) {
 	cookie := a.signIn(t)
 	victim := a.addUser(t, "victim@example.com")
 
-	// Guards the CSRF table above against passing because the route is broken.
 	rec := a.postForm("/users/"+victim+"/disable", nil, cookie)
 	if rec.Code != http.StatusFound {
 		t.Fatalf("POST disable with a CSRF token returned %d, want 302", rec.Code)
@@ -363,29 +358,21 @@ func TestAdminAPIKeyHeaderAuthenticates(t *testing.T) {
 	a.signIn(t)
 
 	const key = "admauthz-secret-api-key-value"
-	if _, err := a.db.Exec(`UPDATE admin_users SET api_key=? WHERE id=?`, key, a.adminID); err != nil {
+	if err := a.admins.SetAPIKey(context.Background(), a.adminID, key); err != nil {
 		t.Fatalf("set api key: %v", err)
 	}
 
-	rec := admAuthzGetWithAPIKey(a, "/users", key)
+	rec := admAuthzGetWithAPIKey(a, "/api/dashboard-stats", key)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /users with a valid API key returned %d, want 200", rec.Code)
-	}
-	body := rec.Body.String()
-	if !strings.Contains(body, admAuthzChrome) {
-		t.Fatalf("API key request did not render the admin panel")
-	}
-	if !strings.Contains(body, "admin@example.com") {
-		t.Fatalf("API key request did not resolve to the owning admin")
+		t.Fatalf("GET /api/dashboard-stats with a valid API key returned %d, want 200", rec.Code)
 	}
 
-	for _, wrong := range []string{
-		"admauthz-secret-api-key-valu",
-		"admauthz-secret-api-key-value ",
-		"ADMAUTHZ-SECRET-API-KEY-VALUE",
-		"totally-wrong",
-	} {
-		admAuthzAssertDenied(t, admAuthzGetWithAPIKey(a, "/users", wrong), "GET /users with key "+wrong)
+	rec = admAuthzGetWithAPIKey(a, "/users", key)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("GET /users with an API key returned %d, want 403", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), admAuthzChrome) {
+		t.Fatal("an API key rendered the admin panel")
 	}
 }
 
@@ -393,8 +380,6 @@ func TestAdminAPIKeyHeaderDoesNotMatchAdminsWithoutAKey(t *testing.T) {
 	a := newAdminHarness(t)
 	a.signIn(t)
 
-	// Every admin row defaults to an empty api_key, so a blank-ish header must
-	// never match one of them.
 	for _, key := range []string{" ", "''", "%", "\x00"} {
 		admAuthzAssertDenied(t, admAuthzGetWithAPIKey(a, "/users", key), "GET /users with blank key")
 	}

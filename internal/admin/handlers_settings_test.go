@@ -92,7 +92,6 @@ func TestSettingsSavePersistsSubmittedValues(t *testing.T) {
 			t.Errorf("setting %s: got %q want %q", k, got, v)
 		}
 	}
-	// An unchecked checkbox must clear the flag, not leave the old value behind.
 	if got := a.settings.Get(ctx, "password_require_number", "unset"); got != "0" {
 		t.Errorf("password_require_number: got %q want 0", got)
 	}
@@ -130,7 +129,6 @@ func TestSettingsPasswordMinLengthRejectsOutOfRange(t *testing.T) {
 		}
 	}
 
-	// A rejected value must not clobber the last accepted one.
 	a.postForm("/settings", url.Values{"password_min_length": {"4"}}, cookie)
 	if got := a.settings.Get(ctx, "password_min_length", ""); got != "128" {
 		t.Fatalf("rejected value overwrote stored length: got %q want 128", got)
@@ -179,12 +177,10 @@ func TestSettingsSMTPPasswordStoredEncrypted(t *testing.T) {
 	if got := a.settings.GetAll(ctx)["smtp_password"]; got != secret {
 		t.Fatalf("GetAll smtp_password: got %q want %q", got, secret)
 	}
-	// Non-credential fields stay readable so operators can inspect them.
 	if got := admSetRawSetting(t, a, "smtp_username"); got != "postmaster@example.com" {
 		t.Fatalf("smtp_username: got %q", got)
 	}
 
-	// A blank password field means "keep the current one", not "erase it".
 	a.postForm("/settings", url.Values{"smtp_host": {"mail2.example.com"}}, cookie)
 	if got := a.settings.Get(ctx, "smtp_password", ""); got != secret {
 		t.Fatalf("blank submit changed stored password: got %q", got)
@@ -310,7 +306,6 @@ func TestCreateClientStoresCredentialsAndRedirectURIs(t *testing.T) {
 		t.Fatalf("client secret: got %q", got)
 	}
 
-	// A duplicate client_id must not silently replace the existing registration.
 	a.postForm("/clients", url.Values{
 		"client_id":     {"grafana"},
 		"client_secret": {"attacker-secret"},

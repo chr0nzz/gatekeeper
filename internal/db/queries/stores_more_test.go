@@ -2,11 +2,11 @@ package queries
 
 import (
 	"context"
+	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"testing"
 	"time"
 )
 
-// Mirrors the acceptance rule the registration handler applies to an invite.
 func q2inviteUsable(inv *Invite) bool {
 	return inv != nil && !inv.IsUsed() && !inv.IsExpired()
 }
@@ -82,8 +82,6 @@ func TestUserStoreSetDisplayNameDoesNotChangeIdentity(t *testing.T) {
 	}
 }
 
-// A self-registered account must be unusable until an admin approves it, so a
-// stranger cannot sign in by simply filling in the registration form.
 func TestUserStorePendingApprovalGatesSignIn(t *testing.T) {
 	ctx := context.Background()
 	store := NewUserStore(queriesTestDB(t))
@@ -260,25 +258,32 @@ func TestAdminStoreRejectsDuplicateEmail(t *testing.T) {
 	}
 }
 
-// The API key is a bearer credential for the whole admin API, so an empty or
-// unknown key must never resolve to an account.
 func TestAdminAPIKeyLookupRejectsEmptyAndUnknownKeys(t *testing.T) {
 	ctx := context.Background()
-	store := NewAdminStore(queriesTestDB(t))
+	conn := queriesTestDB(t)
+	store := NewAdminStore(conn)
 
 	store.Create(ctx, "keyed@example.com", "hash", "Keyed")
 	store.Create(ctx, "keyless@example.com", "hash", "Keyless")
 	keyedID := q2adminID(t, store, "keyed@example.com")
 	keylessID := q2adminID(t, store, "keyless@example.com")
 
-	if got := store.GetAPIKey(ctx, keyedID); got != "" {
-		t.Errorf("a new admin already has an API key: %q", got)
+	if store.HasAPIKey(ctx, keyedID) {
+		t.Error("a new admin already has an API key")
 	}
 	if err := store.SetAPIKey(ctx, keyedID, "gk_live_secret"); err != nil {
 		t.Fatalf("set api key: %v", err)
 	}
-	if got := store.GetAPIKey(ctx, keyedID); got != "gk_live_secret" {
-		t.Errorf("GetAPIKey = %q, want gk_live_secret", got)
+	if !store.HasAPIKey(ctx, keyedID) {
+		t.Error("HasAPIKey is false after setting one")
+	}
+	var stored string
+	conn.QueryRow(`SELECT api_key FROM admin_users WHERE id=?`, keyedID).Scan(&stored)
+	if stored == "gk_live_secret" {
+		t.Error("the API key is stored in clear text")
+	}
+	if stored != auth.HashToken("gk_live_secret") {
+		t.Error("the stored API key is not the hash of the issued key")
 	}
 
 	if got := store.GetByAPIKey(ctx, "gk_live_secret"); got != keyedID {
@@ -321,7 +326,6 @@ func TestAdminAPIKeyIsRemovedWithTheAdmin(t *testing.T) {
 	}
 }
 
-// An invite grants account creation, so redeeming it twice must be impossible.
 func TestInviteIsRedeemableExactlyOnce(t *testing.T) {
 	ctx := context.Background()
 	store := NewInviteStore(queriesTestDB(t))
@@ -499,8 +503,6 @@ func TestWebhookStoreLifecycle(t *testing.T) {
 	}
 }
 
-// Dispatch must respect the subscription list so an operator who narrowed a
-// channel to one event does not receive every other event.
 func TestWebhookDispatchRespectsSubscriptionAndEnabledFlag(t *testing.T) {
 	ctx := context.Background()
 	store := NewWebhookStore(queriesTestDB(t))
@@ -537,8 +539,6 @@ func TestWebhookDispatchRespectsSubscriptionAndEnabledFlag(t *testing.T) {
 		t.Errorf("user.created matched %v, want only everything", created)
 	}
 
-	// The subscription list is entered by hand, so surrounding spaces must not
-	// silently drop an event.
 	deleted := names("user.deleted")
 	if len(deleted) != 2 {
 		t.Errorf("user.deleted matched %v, want everything and logins", deleted)
@@ -623,8 +623,6 @@ func TestBackupStoreLifecycle(t *testing.T) {
 	}
 }
 
-// Retention trims each storage target independently, so pruning local copies
-// must never delete the offsite ones.
 func TestBackupPruneKeepsNewestPerStorage(t *testing.T) {
 	ctx := context.Background()
 	store := NewBackupStore(queriesTestDB(t))
@@ -722,8 +720,6 @@ func TestSocialAccountLinkAndUnlink(t *testing.T) {
 	}
 }
 
-// One external identity must map to at most one local account, otherwise a
-// social sign in could be ambiguous between two users.
 func TestSocialProviderIdentityCannotBeLinkedTwice(t *testing.T) {
 	ctx := context.Background()
 	conn := queriesTestDB(t)
@@ -745,7 +741,6 @@ func TestSocialProviderIdentityCannotBeLinkedTwice(t *testing.T) {
 		t.Errorf("identity owner = %v, want %s", owner, first)
 	}
 
-	// The same provider user id under a different provider is a different person.
 	if err := social.Create(ctx, second, "google", "gh-1", ""); err != nil {
 		t.Errorf("linking the same id on another provider failed: %v", err)
 	}
@@ -782,8 +777,6 @@ func TestQRTokenCleanupRemovesExpiredAndUsedTokens(t *testing.T) {
 	}
 }
 
-// Approval is only meaningful on a pending token, otherwise a later approval
-// could hand an already claimed or already approved token to another user.
 func TestQRTokenApproveOnlyAffectsPendingTokens(t *testing.T) {
 	ctx := context.Background()
 	store := NewQRTokenStore(queriesTestDB(t))

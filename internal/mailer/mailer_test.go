@@ -71,8 +71,6 @@ func (s *mailFakeSMTP) only(t *testing.T) mailCaptured {
 	return got[0]
 }
 
-// The fake speaks just enough ESMTP for go-mail to complete a plaintext
-// delivery, so the tests can inspect the real wire format without a network.
 func mailStartSMTP(t *testing.T) *mailFakeSMTP {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

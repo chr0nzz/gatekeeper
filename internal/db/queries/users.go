@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"time"
 
 	"github.com/google/uuid"
@@ -310,15 +311,19 @@ func (a *AdminStore) Delete(ctx context.Context, id string) error {
 }
 
 // GetAPIKey returns the API key for an admin.
-func (a *AdminStore) GetAPIKey(ctx context.Context, id string) string {
+func (a *AdminStore) HasAPIKey(ctx context.Context, id string) bool {
 	var key string
 	a.db.QueryRowContext(ctx, `SELECT api_key FROM admin_users WHERE id=?`, id).Scan(&key)
-	return key
+	return key != ""
 }
 
 // SetAPIKey stores an API key for an admin.
 func (a *AdminStore) SetAPIKey(ctx context.Context, id, key string) error {
-	_, err := a.db.ExecContext(ctx, `UPDATE admin_users SET api_key=? WHERE id=?`, key, id)
+	stored := ""
+	if key != "" {
+		stored = auth.HashToken(key)
+	}
+	_, err := a.db.ExecContext(ctx, `UPDATE admin_users SET api_key=? WHERE id=?`, stored, id)
 	return err
 }
 
@@ -328,7 +333,7 @@ func (a *AdminStore) GetByAPIKey(ctx context.Context, key string) string {
 		return ""
 	}
 	var id string
-	a.db.QueryRowContext(ctx, `SELECT id FROM admin_users WHERE api_key=? AND api_key!=''`, key).Scan(&id)
+	a.db.QueryRowContext(ctx, `SELECT id FROM admin_users WHERE api_key=? AND api_key!=''`, auth.HashToken(key)).Scan(&id)
 	return id
 }
 

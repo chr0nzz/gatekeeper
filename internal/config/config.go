@@ -7,7 +7,6 @@ import (
 )
 
 // Config holds infrastructure-level configuration that cannot change without a restart.
-// Runtime settings (SMTP, session TTL, allowed domains) are managed in the admin UI.
 type Config struct {
 	Port      int `env:"PORT" envDefault:"8282"`
 	AdminPort int `env:"ADMIN_PORT" envDefault:"8283"`
@@ -16,16 +15,12 @@ type Config struct {
 	AdminURL      string `env:"ADMIN_URL"`
 	AdminBasePath string `env:"ADMIN_BASE_PATH"`
 
-	// RedirectAllowedHosts limits where a user may be sent after login. Entries are
-	// exact hostnames or domain suffixes (".example.com"). The BASE_URL host,
-	// ADMIN_URL host, and COOKIE_DOMAIN are always permitted.
 	RedirectAllowedHosts []string `env:"REDIRECT_ALLOWED_HOSTS"`
 
 	SecretKey string `env:"SECRET_KEY,required"`
 
 	DBPath string `env:"DB_PATH" envDefault:"/data/gatekeeper.db"`
 
-	// SMTP env vars serve as fallback defaults; the admin UI values take precedence.
 	SMTPHost     string `env:"SMTP_HOST"`
 	SMTPPort     int    `env:"SMTP_PORT" envDefault:"587"`
 	SMTPUsername string `env:"SMTP_USERNAME"`
@@ -33,16 +28,13 @@ type Config struct {
 	SMTPFrom     string `env:"SMTP_FROM"`
 	SMTPTLS      string `env:"SMTP_TLS" envDefault:"starttls"`
 
-	// SessionTTLHours and AllowedEmailDomains are fallback defaults; admin UI values take precedence.
 	SessionTTLHours     int    `env:"SESSION_TTL_HOURS" envDefault:"8"`
 	AllowedEmailDomains string `env:"ALLOWED_EMAIL_DOMAINS"`
 	CookieDomain        string `env:"COOKIE_DOMAIN"`
 
-	// RegistrationMode and RegistrationAllowedDomains are fallback defaults; admin UI values take precedence.
 	RegistrationMode           string `env:"REGISTRATION_MODE" envDefault:"disabled"`
 	RegistrationAllowedDomains string `env:"REGISTRATION_ALLOWED_DOMAINS"`
 
-	// Social provider env vars are fallback defaults; admin UI values take precedence.
 	GitHubClientID      string `env:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret  string `env:"GITHUB_CLIENT_SECRET"`
 	GoogleClientID      string `env:"GOOGLE_CLIENT_ID"`

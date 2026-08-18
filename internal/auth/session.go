@@ -31,22 +31,17 @@ type SessionStore struct {
 	cookieDomain string
 }
 
-// NewSessionStore creates a SessionStore. getTTL is called on every session
-// operation so the TTL can be changed at runtime without a restart.
-// cookieDomain, when non-empty, sets the Domain attribute on the session cookie
-// (e.g. ".xyzlab.dev") so it is shared across all subdomains.
+// NewSessionStore creates a SessionStore whose TTL is read on every operation.
 func NewSessionStore(db *sql.DB, getTTL func() time.Duration, cookieDomain string) *SessionStore {
 	return &SessionStore{db: db, getTTL: getTTL, cookieDomain: cookieDomain}
 }
 
-// Create creates a new session and sets the session cookie across the configured
-// cookie domain. It returns the server-side session handle, never the cookie value.
+// Create starts a session and sets its cookie across the configured cookie domain.
 func (s *SessionStore) Create(w http.ResponseWriter, r *http.Request, data SessionData) (string, error) {
 	return s.create(w, r, data, s.cookieDomain)
 }
 
-// CreateForHost creates a session whose cookie is scoped to the requesting host
-// only. Used when handing an identity to an app on a different domain.
+// CreateForHost starts a session whose cookie is scoped to the requesting host.
 func (s *SessionStore) CreateForHost(w http.ResponseWriter, r *http.Request, data SessionData) (string, error) {
 	return s.create(w, r, data, "")
 }
@@ -152,7 +147,6 @@ type SessionInfo struct {
 	Current   bool
 }
 
-// parseDevice extracts a human-readable "Browser · OS" string from a UA string.
 func parseDevice(ua string) string {
 	browser := "Unknown"
 	switch {

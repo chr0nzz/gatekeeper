@@ -14,8 +14,7 @@ import (
 	"time"
 )
 
-// Create takes a hot snapshot of the SQLite database at dbPath using VACUUM INTO,
-// encrypts it with AES-256-GCM, and returns the ciphertext along with the backup filename.
+// Create takes an encrypted snapshot of the database and returns it with its name.
 func Create(ctx context.Context, db *sql.DB, dbPath string, secretKey []byte) (data []byte, name string, err error) {
 	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("gk-backup-%d.db", time.Now().UnixNano()))
 	defer os.Remove(tmp)

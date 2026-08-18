@@ -20,7 +20,6 @@ func testDB(t *testing.T) *sql.DB {
 	return conn
 }
 
-// insertUser adds a minimal user row for tests that need one.
 func insertUser(t *testing.T, conn *sql.DB, id, email string) {
 	t.Helper()
 	_, err := conn.Exec(
@@ -32,8 +31,6 @@ func insertUser(t *testing.T, conn *sql.DB, id, email string) {
 	}
 }
 
-// CRITICAL-1: the handoff token replaces the old scheme that base64-encoded a live
-// session ID into the URL. It must be single-use and bound to one host.
 func TestHandoffTokenIsSingleUse(t *testing.T) {
 	ctx := context.Background()
 	store := NewHandoffStore(testDB(t))
@@ -65,7 +62,6 @@ func TestHandoffTokenIsHostBound(t *testing.T) {
 	if _, err := store.Redeem(ctx, token, "evil.com"); err == nil {
 		t.Fatal("token redeemed by the wrong host")
 	}
-	// A failed redemption must not burn the token for the legitimate host.
 	if _, err := store.Redeem(ctx, token, "app.example.com"); err != nil {
 		t.Fatalf("legitimate redeem failed after wrong-host attempt: %v", err)
 	}
@@ -87,8 +83,6 @@ func TestHandoffTokenRejectsUnknownAndExpired(t *testing.T) {
 	}
 }
 
-// The stored row must not contain the token itself, so a database read cannot
-// produce a usable handoff.
 func TestHandoffTokenStoredHashed(t *testing.T) {
 	ctx := context.Background()
 	conn := testDB(t)

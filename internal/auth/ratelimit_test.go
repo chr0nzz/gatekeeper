@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-// M6: admin login runs argon2id on every attempt, so repeated failures from one
-// address must be cut off.
 func TestLimiterBlocksAfterMaxFailures(t *testing.T) {
 	l := NewLimiter(3, time.Minute)
 

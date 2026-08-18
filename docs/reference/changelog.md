@@ -13,6 +13,16 @@ This is a pre-release. It carries a single documentation and interface correctio
 
 - **[Sonarr, Radarr, Lidarr and Prowlarr](/integrations/servarr)** - How to put GateKeeper in front of them without a second login. These applications no longer offer HTTP Basic, so credential injection does not apply to them, and their authentication has to be set to `External` instead. Also covers the `/api` route the applications use to reach each other, which has to skip ForwardAuth.
 
+### Admin API keys are hashed and scoped
+
+An API key could read the whole admin panel, and it was the one bearer credential still written to the database in clear text. Sessions, invites and password reset tokens were already hashed.
+
+- **Hashed at rest** - Only a digest is stored, so a copy of the database no longer yields a working key. The value is shown once when generated and cannot be displayed again.
+- **Limited to the statistics endpoints** - A key reaches `/api/dashboard-stats`, `/api/activity`, `/api/auth-methods` and `/api/version-check`, which is what a dashboard needs. Everything else returns `403`, including the user list, the audit log, settings, and the search endpoint that returns email addresses. Signing in with a browser is unchanged.
+- **Recorded in the audit log** - Generating a key writes `admin.api_key_rotated`, and using one outside its allowed endpoints writes `admin.api_key_denied`.
+
+Existing keys stop working and need regenerating, since the stored clear-text value no longer matches.
+
 ### Application setup in the admin panel
 
 The Integrations page has a new **Applications** section. Enter your app's address and it produces the exact values for this server, ready to copy, rather than examples to adapt.

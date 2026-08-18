@@ -39,8 +39,6 @@ func TestCSRFIssuesTokenAndCookie(t *testing.T) {
 	}
 }
 
-// An existing token is reused so a second tab does not invalidate the first
-// tab's forms.
 func TestCSRFReusesExistingCookie(t *testing.T) {
 	var token string
 	h := CSRF(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

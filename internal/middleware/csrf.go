@@ -9,9 +9,7 @@ import (
 
 type csrfKey struct{}
 
-// CSRF sets a cookie-based CSRF token and stores it in the request context
-// so handlers can read it even on the very first request before the cookie
-// has been sent back to the browser.
+// CSRF issues a cookie-based CSRF token and exposes it on the request context.
 func CSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := ""

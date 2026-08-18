@@ -18,8 +18,6 @@ func clientWithRedirects(uris ...string) *OIDCClient {
 	return &OIDCClient{redirectURIsRaw: raw}
 }
 
-// A mobile application receives its code on a custom scheme, which the library
-// only accepts for native clients.
 func TestClientWithCustomSchemeIsNative(t *testing.T) {
 	cases := map[string][]string{
 		"immich mobile":     {"app.immich:///oauth-callback"},
@@ -35,8 +33,6 @@ func TestClientWithCustomSchemeIsNative(t *testing.T) {
 	}
 }
 
-// Ordinary web clients must not be reclassified, because native clients are held
-// to different transport rules.
 func TestWebOnlyClientStaysWeb(t *testing.T) {
 	cases := map[string][]string{
 		"https":            {"https://grafana.example.com/login/generic_oauth"},
@@ -53,10 +49,6 @@ func TestWebOnlyClientStaysWeb(t *testing.T) {
 	}
 }
 
-// Under native rules a plain HTTP address that is not loopback is refused unless
-// the transport rules are relaxed. Immich is commonly reached over plain HTTP on
-// a local network while its mobile app uses a custom scheme, so both have to work
-// for the same client.
 func TestNativeClientOnPlainHTTPRelaxesTransportRules(t *testing.T) {
 	c := clientWithRedirects("http://immich.lan:2283/auth/login", "app.immich:///oauth-callback")
 	if c.ApplicationType() != op.ApplicationTypeNative {
@@ -67,7 +59,6 @@ func TestNativeClientOnPlainHTTPRelaxesTransportRules(t *testing.T) {
 	}
 }
 
-// Relaxation is not handed out to clients that do not need it.
 func TestTransportRulesStayStrictWithoutPlainHTTP(t *testing.T) {
 	cases := map[string][]string{
 		"https only":          {"https://app.example.com/cb"},

@@ -26,8 +26,6 @@ import (
 
 const adminTestSecret = "0123456789abcdef0123456789abcdef"
 
-// adminHarness wires the admin panel against a real SQLite database so tests
-// exercise routing, authorisation, and CSRF exactly as a browser would.
 type adminHarness struct {
 	h        *Handlers
 	db       *sql.DB
@@ -102,7 +100,6 @@ func newAdminHarness(t *testing.T) *adminHarness {
 	}
 }
 
-// signIn creates an admin account plus an active admin session, returning the cookie.
 func (a *adminHarness) signIn(t *testing.T) *http.Cookie {
 	t.Helper()
 	ctx := context.Background()
@@ -144,8 +141,6 @@ func (a *adminHarness) get(path string, cookies ...*http.Cookie) *httptest.Respo
 	return rec
 }
 
-// postForm sends a form POST with a matching CSRF cookie and field. Pass
-// withoutCSRF to check that a handler rejects a forged request.
 func (a *adminHarness) postForm(path string, form url.Values, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	const csrf = "test-csrf-token"
 	if form == nil {
@@ -165,7 +160,6 @@ func (a *adminHarness) postForm(path string, form url.Values, cookies ...*http.C
 	return rec
 }
 
-// postWithoutCSRF omits the CSRF field so the handler's guard is exercised.
 func (a *adminHarness) postWithoutCSRF(path string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(""))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

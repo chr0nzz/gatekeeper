@@ -32,8 +32,6 @@ const (
 
 	signingKeyTTL = keyRotationDays * 24 * time.Hour
 
-	// A retired key stays published far longer than the tokens it signed can
-	// live, so verification never fails while a token is still valid.
 	retiredKeyRetention = 48 * time.Hour
 )
 
@@ -110,8 +108,7 @@ func (s *Storage) SigningKeyStatus(ctx context.Context) (*SigningKeyStatus, erro
 	}, nil
 }
 
-// RotateSigningKeyIfDue replaces the signing key once it reaches its maximum age
-// and discards retired keys that can no longer be needed to verify a token.
+// RotateSigningKeyIfDue replaces the signing key when it reaches its maximum age.
 func (s *Storage) RotateSigningKeyIfDue(ctx context.Context) (bool, error) {
 	s.db.ExecContext(ctx,
 		`DELETE FROM oidc_signing_keys WHERE rotated_at IS NOT NULL AND rotated_at<?`,
@@ -154,8 +151,6 @@ func (s *Storage) AuthRequestDone(ctx context.Context, id, userID string) error 
 	)
 	return err
 }
-
-// -- AuthStorage implementation --
 
 // CreateAuthRequest stores a new authorization request.
 func (s *Storage) CreateAuthRequest(ctx context.Context, req *oidc.AuthRequest, userID string) (op.AuthRequest, error) {
@@ -202,13 +197,11 @@ func (s *Storage) AuthRequestByID(ctx context.Context, id string) (op.AuthReques
 }
 
 // AuthRequestByCode retrieves an authorization request by its issued code.
-// SaveAuthCode overwrites the request ID with the code, so lookup is identical.
 func (s *Storage) AuthRequestByCode(ctx context.Context, code string) (op.AuthRequest, error) {
 	return s.AuthRequestByID(ctx, code)
 }
 
 // SaveAuthCode stores the mapping from auth request ID to authorization code.
-// We replace the request ID with the code so AuthRequestByCode can look it up directly.
 func (s *Storage) SaveAuthCode(ctx context.Context, id, code string) error {
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE oidc_auth_requests SET id=? WHERE id=?`,
@@ -363,8 +356,6 @@ func (s *Storage) KeySet(ctx context.Context) ([]op.Key, error) {
 	return keys, nil
 }
 
-// -- OPStorage implementation --
-
 // GetClientByClientID returns an OIDC client.
 func (s *Storage) GetClientByClientID(ctx context.Context, clientID string) (op.Client, error) {
 	var c OIDCClient
@@ -457,9 +448,6 @@ func (s *Storage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc.UserI
 		return err
 	}
 	userinfo.Subject = subject
-	// Claims are limited to the granted scopes only when those scopes are known.
-	// A token whose scopes cannot be resolved still receives the standard claims,
-	// otherwise relying parties get a response they cannot identify a user from.
 	scopes := s.tokenScopes(ctx, tokenID)
 	if len(scopes) == 0 || hasScope(scopes, oidc.ScopeEmail) {
 		userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(verified == 1)}
@@ -471,7 +459,6 @@ func (s *Storage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc.UserI
 	return nil
 }
 
-// tokenScopes returns the scopes granted to an issued access token.
 func (s *Storage) tokenScopes(ctx context.Context, tokenID string) []string {
 	var raw string
 	if err := s.db.QueryRowContext(ctx,
@@ -484,7 +471,6 @@ func (s *Storage) tokenScopes(ctx context.Context, tokenID string) []string {
 	return scopes
 }
 
-// emailVerified reports whether a user has proven control of their email address.
 func (s *Storage) emailVerified(ctx context.Context, userID string) bool {
 	var v int
 	s.db.QueryRowContext(ctx, `SELECT email_verified FROM users WHERE id=?`, userID).Scan(&v)
@@ -611,8 +597,6 @@ func (s *Storage) Health(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
 
-// -- Client management --
-
 // ListClients lists all OIDC clients.
 func (s *Storage) ListClients(ctx context.Context) ([]ClientRecord, error) {
 	rows, err := s.db.QueryContext(ctx,
@@ -685,8 +669,6 @@ func fetchIcon(iconURL string) ([]byte, string) {
 	if err != nil || len(data) == 0 {
 		return nil, ""
 	}
-	// Trust the bytes, not the upstream Content-Type, so this endpoint can only
-	// ever serve images back to the browser.
 	mime := http.DetectContentType(data)
 	if idx := strings.Index(mime, ";"); idx > 0 {
 		mime = mime[:idx]
@@ -721,8 +703,6 @@ func (s *Storage) UpdateClient(ctx context.Context, clientID, name, iconURL, new
 	return err
 }
 
-// -- OIDCClient implements op.Client --
-
 // OIDCClient is a registered OIDC application.
 type OIDCClient struct {
 	clientID          string
@@ -740,9 +720,7 @@ func (c *OIDCClient) RedirectURIs() []string {
 }
 func (c *OIDCClient) PostLogoutRedirectURIs() []string { return nil }
 
-// ApplicationType reports a client as native when it registers a redirect URI
-// with a custom scheme. Mobile apps such as the Immich client sign in through a
-// URI like app.immich:///oauth-callback, which is only accepted for native apps.
+// ApplicationType reports a client as native when it uses a custom scheme.
 func (c *OIDCClient) ApplicationType() op.ApplicationType {
 	for _, uri := range c.RedirectURIs() {
 		if hasCustomScheme(uri) {
@@ -752,11 +730,7 @@ func (c *OIDCClient) ApplicationType() op.ApplicationType {
 	return op.ApplicationTypeWeb
 }
 
-// DevMode relaxes the transport rules applied to redirect URIs, which is needed
-// when a native client also signs in over plain HTTP on a local network. It is
-// only reported for clients that registered such an address. A redirect target
-// must still match a registered URI exactly before this is consulted, so it
-// widens the accepted scheme and never the set of destinations.
+// DevMode relaxes redirect URI transport rules for native clients.
 func (c *OIDCClient) DevMode() bool {
 	for _, uri := range c.RedirectURIs() {
 		if isPlainHTTP(uri) && !isLoopbackURI(uri) {
@@ -792,7 +766,6 @@ func (c *OIDCClient) IsScopeAllowed(scope string) bool {
 	return scope == "openid" || scope == "profile" || scope == "email" || scope == "offline_access"
 }
 
-// credentialsRequest implements op.TokenRequest for client_credentials grant.
 type credentialsRequest struct {
 	clientID string
 	scopes   []string
@@ -801,8 +774,6 @@ type credentialsRequest struct {
 func (r *credentialsRequest) GetSubject() string    { return r.clientID }
 func (r *credentialsRequest) GetAudience() []string { return []string{r.clientID} }
 func (r *credentialsRequest) GetScopes() []string   { return r.scopes }
-
-// -- authRequest implements op.AuthRequest and op.RefreshTokenRequest --
 
 type authRequest struct {
 	id                  string
@@ -842,8 +813,6 @@ func (r *authRequest) GetClientSecret() string            { return "" }
 func (r *authRequest) SetCurrentScopes(scopes []string)   { r.scopes = scopes }
 func (r *authRequest) GetCurrentScopes() []string         { return r.scopes }
 
-// -- signingKey implements both op.SigningKey and op.Key --
-
 type signingKey struct {
 	id  string
 	key *rsa.PrivateKey
@@ -854,8 +823,6 @@ func (k *signingKey) SignatureAlgorithm() jose.SignatureAlgorithm { return jose.
 func (k *signingKey) Algorithm() jose.SignatureAlgorithm          { return jose.RS256 }
 func (k *signingKey) Use() string                                 { return "sig" }
 func (k *signingKey) Key() any                                    { return k.key }
-
-// -- ClientRecord for admin display --
 
 // ClientRecord holds OIDC client data for display.
 type ClientRecord struct {
@@ -868,8 +835,6 @@ type ClientRecord struct {
 	CredentialsScopes string
 	CreatedAt         int64
 }
-
-// -- helpers --
 
 func nullableStr(s string) any {
 	if s == "" {
@@ -925,8 +890,7 @@ func (s *Storage) userGroupClaims(ctx context.Context, userID string) map[string
 	return map[string]any{"groups": groups}
 }
 
-// IsRegisteredRedirect reports whether target exactly matches a redirect URI
-// registered by any OIDC client. Used to validate post-logout redirects.
+// IsRegisteredRedirect reports whether target exactly matches a registered URI.
 func (s *Storage) IsRegisteredRedirect(ctx context.Context, target string) bool {
 	if target == "" {
 		return false
@@ -954,12 +918,9 @@ func (s *Storage) IsRegisteredRedirect(ctx context.Context, target string) bool 
 	return false
 }
 
-// IsNativeRedirect reports whether a redirect URI makes its client a native
-// application, which is how mobile apps receive an authorization code.
+// IsNativeRedirect reports whether a redirect URI belongs to a native client.
 func IsNativeRedirect(uri string) bool { return hasCustomScheme(uri) }
 
-// hasCustomScheme reports whether a redirect URI uses a scheme other than HTTP,
-// which is how a mobile application receives its authorization code.
 func hasCustomScheme(uri string) bool {
 	if uri == "" || isPlainHTTP(uri) || strings.HasPrefix(uri, "https://") {
 		return false

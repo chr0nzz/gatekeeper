@@ -90,8 +90,6 @@ func uiQRHasSessionCookie(rec *httptest.ResponseRecorder) bool {
 	return false
 }
 
-// uiQRApprove signs a user in on a second browser and approves the token there,
-// mirroring the phone half of the flow.
 func uiQRApprove(t *testing.T, u *uiHarness, token, userID string) {
 	t.Helper()
 	rec := u.postForm("/login/qr/approve", url.Values{"token": {token}}, u.signIn(t, userID))

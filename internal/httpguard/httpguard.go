@@ -1,4 +1,4 @@
-// Package httpguard provides an HTTP client that refuses to reach internal
+// Package httpguard provides an HTTP client that refuses internal addresses.
 // network addresses, for use with operator-supplied URLs.
 package httpguard
 
@@ -31,8 +31,7 @@ func ValidateURL(raw string) error {
 	return nil
 }
 
-// IsBlockedIP reports whether an address is loopback, private, link-local,
-// unspecified, or otherwise not a public destination.
+// IsBlockedIP reports whether an address is internal and must not be reached.
 func IsBlockedIP(ip net.IP) bool {
 	if ip == nil {
 		return true
@@ -42,7 +41,6 @@ func IsBlockedIP(ip net.IP) bool {
 		ip.IsInterfaceLocalMulticast() || ip.IsMulticast() {
 		return true
 	}
-	// IPv4 shared address space (CGNAT) and IPv6 unique local addresses.
 	if ip4 := ip.To4(); ip4 != nil {
 		if ip4[0] == 100 && ip4[1]&0xc0 == 64 {
 			return true
@@ -54,8 +52,6 @@ func IsBlockedIP(ip net.IP) bool {
 }
 
 // Client returns an HTTP client that blocks connections to internal addresses.
-// The check runs on the resolved address for every connection, so DNS rebinding
-// and redirects to internal hosts are both rejected.
 func Client(timeout time.Duration) *http.Client {
 	dialer := &net.Dialer{
 		Timeout: 10 * time.Second,

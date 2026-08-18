@@ -47,8 +47,6 @@ func templateSources(t *testing.T) map[string]string {
 	return out
 }
 
-// Every template must parse, together with the base layout it is served with.
-// A syntax error would otherwise only surface as a broken page in production.
 func TestAllTemplatesParse(t *testing.T) {
 	r, err := New(gatekeeper.Assets, "web/templates")
 	if err != nil {
@@ -69,8 +67,6 @@ func TestAllTemplatesParse(t *testing.T) {
 	}
 }
 
-// Page-level values must be reached with $ inside a range block. Using a plain
-// dot resolves against the loop item instead, which breaks every row on the page.
 func TestPageScopedVarsUseRootContext(t *testing.T) {
 	pageVars := []string{"AdminBase", "CSRFToken"}
 	rangeStart := regexp.MustCompile(`\{\{\s*range\b`)
@@ -98,8 +94,6 @@ func TestPageScopedVarsUseRootContext(t *testing.T) {
 	}
 }
 
-// L2: inline script only runs if it carries the per-response nonce, so a
-// nonce-less <script> block would silently stop working.
 func TestInlineScriptsCarryNoncePlaceholder(t *testing.T) {
 	for path, src := range templateSources(t) {
 		if strings.Contains(src, "<script>") {
@@ -108,10 +102,8 @@ func TestInlineScriptsCarryNoncePlaceholder(t *testing.T) {
 	}
 }
 
-// L2: a nonce-based policy does not permit inline event handlers. New ones must
-// be wired up as delegated listeners instead.
 func TestNoInlineEventHandlers(t *testing.T) {
-	handler := regexp.MustCompile(`\son(click|change|input|error|load|submit|keyup|focus|blur)\s*=`)
+	handler := regexp.MustCompile(`(?:\s|\}\})on(click|change|input|error|load|submit|keyup|focus|blur)\s*=`)
 	for path, src := range templateSources(t) {
 		if m := handler.FindString(src); m != "" {
 			t.Errorf("%s uses an inline event handler (%s), which CSP blocks", filepath.Base(path), strings.TrimSpace(m))

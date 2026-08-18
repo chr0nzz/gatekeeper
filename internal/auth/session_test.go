@@ -23,8 +23,6 @@ func sessionCookie(t *testing.T, rec *httptest.ResponseRecorder) *http.Cookie {
 	return nil
 }
 
-// L1: the session row key must be a hash, so a database read yields no usable
-// cookie value.
 func TestSessionTokenStoredHashed(t *testing.T) {
 	store := newSessionStore(t)
 	rec := httptest.NewRecorder()
@@ -57,7 +55,6 @@ func TestSessionRoundTripAndForgery(t *testing.T) {
 		t.Fatalf("valid cookie not accepted: data=%v err=%v", data, err)
 	}
 
-	// A guessed or stolen-from-database identifier must not authenticate.
 	bad := httptest.NewRequest(http.MethodGet, "/", nil)
 	bad.AddCookie(&http.Cookie{Name: sessionCookieName, Value: hashToken(cookie.Value)})
 	if data, _, _ := store.Get(bad); data != nil {
@@ -65,12 +62,9 @@ func TestSessionRoundTripAndForgery(t *testing.T) {
 	}
 }
 
-// The cross-domain handoff must scope its cookie to the receiving host only.
 func TestCreateForHostOmitsCookieDomain(t *testing.T) {
 	store := newSessionStore(t)
 
-	// Cookie parsing drops the leading dot, so the shared domain reads back as
-	// "example.com" here. What matters is that it is set at all.
 	shared := httptest.NewRecorder()
 	store.Create(shared, httptest.NewRequest(http.MethodGet, "/", nil), SessionData{UserID: "u"})
 	if got := sessionCookie(t, shared).Domain; got != "example.com" {

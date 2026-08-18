@@ -9,12 +9,10 @@ import (
 	"strings"
 )
 
-// NoncePlaceholder is emitted by templates and replaced with the per-response
-// CSP nonce, so inline scripts run without allowing 'unsafe-inline'.
+// NoncePlaceholder is replaced in templates with the per-response CSP nonce.
 const NoncePlaceholder = "__CSP_NONCE__"
 
-// SecureHeaders adds security headers to every response and issues a
-// per-response Content-Security-Policy nonce for inline scripts.
+// SecureHeaders adds security headers and a per-response CSP nonce.
 func SecureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nonce := newNonce()
@@ -41,8 +39,6 @@ func newNonce() string {
 	return base64.RawStdEncoding.EncodeToString(b)
 }
 
-// nonceWriter buffers HTML responses so the nonce placeholder can be replaced.
-// Non-HTML responses stream straight through untouched.
 type nonceWriter struct {
 	http.ResponseWriter
 	nonce       string

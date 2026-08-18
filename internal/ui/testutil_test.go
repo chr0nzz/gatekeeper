@@ -25,8 +25,6 @@ import (
 
 const testSecret = "0123456789abcdef0123456789abcdef"
 
-// uiHarness wires a complete set of user-facing handlers against a real SQLite
-// database, so tests exercise the same code path a request takes in production.
 type uiHarness struct {
 	h        *Handlers
 	db       *sql.DB
@@ -103,7 +101,6 @@ func mustPasskeys(t *testing.T, conn *sql.DB) *auth.PasskeyStore {
 	return p
 }
 
-// addUser inserts a user with a usable password and returns its id.
 func (u *uiHarness) addUser(t *testing.T, email, password string) string {
 	t.Helper()
 	hash := ""
@@ -121,7 +118,6 @@ func (u *uiHarness) addUser(t *testing.T, email, password string) string {
 	return id
 }
 
-// signIn creates an active session and returns the cookie that carries it.
 func (u *uiHarness) signIn(t *testing.T, userID string) *http.Cookie {
 	t.Helper()
 	rec := httptest.NewRecorder()
@@ -138,7 +134,6 @@ func (u *uiHarness) signIn(t *testing.T, userID string) *http.Cookie {
 	return nil
 }
 
-// get issues a GET through the full router, including middleware.
 func (u *uiHarness) get(path string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	for _, c := range cookies {
@@ -149,7 +144,6 @@ func (u *uiHarness) get(path string, cookies ...*http.Cookie) *httptest.Response
 	return rec
 }
 
-// postForm issues a form POST carrying a matching CSRF cookie and field.
 func (u *uiHarness) postForm(path string, form url.Values, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	const csrf = "test-csrf-token"
 	if form == nil {

@@ -7,7 +7,9 @@ Each admin account can generate a personal API key. The key lets server-side ser
 
 ## Generating a key
 
-Go to **My account** (`/profile`) and scroll to the **API key** card. Click **Generate key**. The key is displayed once - copy it now. Click the eye icon to reveal it, then use the copy button.
+Go to **My account** (`/profile`) and scroll to the **API key** card. Click **Generate key**.
+
+The key is shown once, immediately after generating it. Copy it then. Only a hash of the key is stored, so it cannot be displayed again. If you lose it, generate a new one.
 
 ## Rotating the key
 
@@ -25,10 +27,23 @@ Host: auth.example.com
 X-Api-Key: your-api-key-here
 ```
 
-The key is accepted on all admin API endpoints in place of a session cookie. Session-based access (browser login) continues to work alongside key-based access.
+## What a key can reach
+
+A key is limited to the read-only statistics endpoints, which is what a dashboard or monitoring script needs:
+
+| Endpoint | Returns |
+|---|---|
+| `/api/dashboard-stats` | Counts of users, sign-ins, tokens, failures |
+| `/api/activity` | Sign-in activity over time |
+| `/api/auth-methods` | Breakdown of sign-in methods in use |
+| `/api/version-check` | The latest released version |
+
+Everything else in the admin panel is refused with `403`, including the user list, the audit log, settings, and the search endpoint, which returns email addresses. Signing in with a browser is unaffected.
+
+A key is a long-lived credential with no second factor behind it, which is why it cannot read the rest of the panel. Attempts to use one outside these endpoints are recorded in the audit log as `admin.api_key_denied`.
 
 ## Security
 
-- The key is stored in the database alongside your admin account. Rotating it immediately invalidates the previous value.
+- Only a hash of the key is stored, so a copy of the database does not yield a usable key. Rotating one invalidates the previous value immediately and is recorded as `admin.api_key_rotated`.
 - Use the key only in server-side code. Do not expose it in client-side JavaScript or commit it to version control.
 - Treat it like a password: use a secrets manager or environment variable to pass it to the services that need it.

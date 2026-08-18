@@ -132,6 +132,22 @@ func New(
 	}
 }
 
+var apiKeyAllowedPaths = []string{
+	"/api/dashboard-stats",
+	"/api/activity",
+	"/api/auth-methods",
+	"/api/version-check",
+}
+
+func (h *Handlers) apiKeyPath(r *http.Request) bool {
+	for _, p := range apiKeyAllowedPaths {
+		if r.URL.Path == h.adminBase+p {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Handlers) adminIDFromRequest(r *http.Request) string {
 	if key := r.Header.Get("X-Api-Key"); key != "" {
 		return h.admins.GetByAPIKey(r.Context(), key)
@@ -152,6 +168,11 @@ func (h *Handlers) requireAdmin(next http.Handler) http.Handler {
 		}
 		if h.adminIDFromRequest(r) == "" {
 			http.Redirect(w, r, h.adminBase+"/login", http.StatusFound)
+			return
+		}
+		if r.Header.Get("X-Api-Key") != "" && !h.apiKeyPath(r) {
+			h.auditLog.Log(r.Context(), "admin.api_key_denied", "", h.adminIDFromRequest(r), r.RemoteAddr, r.URL.Path)
+			http.Error(w, "This API key may only be used for the /api endpoints", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -389,7 +410,6 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	ip := adminRemoteIP(r)
 
-	// Password verification is deliberately expensive, so throttle before it runs.
 	if !h.limiter.Allow(ip) {
 		h.auditLog.Log(r.Context(), audit.EventAdminLoginFailed, "", "", r.RemoteAddr, "rate limited: "+email)
 		h.render(w, r, "admin_login.html", map[string]interface{}{"Error": "Too many attempts. Try again later."})
@@ -567,7 +587,6 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		{"OIDC", "clients", pct(oidcTokens24h)},
 	}
 
-	// Sparklines: hourly counts for last 12 hours
 	sparkSignIns := hourlySparkline(ctx, h.db, 12, `SELECT COUNT(*) FROM audit_log WHERE event IN ('login.success','login.passkey') AND created_at >= ? AND created_at < ?`)
 	sparkFailed := hourlySparkline(ctx, h.db, 12, `SELECT COUNT(*) FROM audit_log WHERE event LIKE '%fail%' AND created_at >= ? AND created_at < ?`)
 	sparkOIDC := hourlySparkline(ctx, h.db, 12, `SELECT COUNT(*) FROM oidc_tokens WHERE created_at >= ? AND created_at < ?`)
@@ -1526,7 +1545,6 @@ func (h *Handlers) PostDeleteClaim(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.adminBase+"/clients/"+id+"/claims", http.StatusFound)
 }
 
-// integrationSections are the sub-pages of the Integrations area, in menu order.
 var integrationSections = []struct{ Key, Label string }{
 	{"oidc", "OIDC endpoints"},
 	{"apps", "Applications"},
@@ -1964,7 +1982,7 @@ func (h *Handlers) profilePageData(r *http.Request) map[string]interface{} {
 		"TOTPEnabled":  totpEnabled,
 		"Passkeys":     passkeys,
 		"SessionCount": h.adminSess.CountByAdmin(r.Context(), adminID),
-		"APIKey":       h.admins.GetAPIKey(r.Context(), adminID),
+		"HasAPIKey":    h.admins.HasAPIKey(r.Context(), adminID),
 	}
 }
 
@@ -2012,7 +2030,11 @@ func (h *Handlers) PostProfileAPIKeyRotate(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "failed to save key", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, h.adminBase+"/profile?success=api_key_rotated", http.StatusSeeOther)
+	h.auditLog.Log(r.Context(), "admin.api_key_rotated", "", adminID, r.RemoteAddr, "")
+	data := h.profilePageData(r)
+	data["NewAPIKey"] = key
+	data["Success"] = "API key generated. Copy it now, it cannot be shown again."
+	h.render(w, r, "admin_profile.html", data)
 }
 
 func (h *Handlers) PostProfileRevokeSessions(w http.ResponseWriter, r *http.Request) {

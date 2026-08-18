@@ -30,8 +30,7 @@ func NewQRTokenStore(db *sql.DB) *QRTokenStore {
 	return &QRTokenStore{db: db}
 }
 
-// Create inserts a new pending QR token bound to the browser that started the
-// flow, and returns its ID. binding is a hash of the initiating browser's secret.
+// Create inserts a pending QR token bound to the browser that requested it.
 func (q *QRTokenStore) Create(ctx context.Context, oidcRequest, redirectURI, binding string) (string, error) {
 	id := uuid.New().String()
 	now := time.Now()
@@ -43,8 +42,7 @@ func (q *QRTokenStore) Create(ctx context.Context, oidcRequest, redirectURI, bin
 	return id, err
 }
 
-// Consume atomically claims an approved token for the browser that started the
-// flow. It succeeds at most once per token.
+// Consume atomically claims an approved token exactly once.
 func (q *QRTokenStore) Consume(ctx context.Context, id, binding string) (*QRToken, error) {
 	tok, err := q.Get(ctx, id)
 	if err != nil || tok == nil {

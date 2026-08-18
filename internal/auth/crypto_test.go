@@ -31,8 +31,6 @@ func TestCiphertextHidesPlaintext(t *testing.T) {
 	}
 }
 
-// AES-GCM must use a fresh nonce per encryption, so identical inputs never
-// produce identical ciphertext.
 func TestEncryptionIsNonDeterministic(t *testing.T) {
 	a, _ := EncryptSecret([]byte("same"), cryptoKey)
 	b, _ := EncryptSecret([]byte("same"), cryptoKey)
@@ -48,8 +46,6 @@ func TestDecryptRejectsWrongKey(t *testing.T) {
 	}
 }
 
-// GCM is authenticated, so any modification must be detected rather than
-// returning corrupted plaintext.
 func TestDecryptRejectsTamperedCiphertext(t *testing.T) {
 	enc, _ := EncryptSecret([]byte("secret"), cryptoKey)
 

@@ -29,8 +29,6 @@ func Open(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// applyPendingRestore swaps in a restored database written by the backup restore handler.
-// If <path>.restore exists, it replaces the live database and clears stale WAL sidecar files.
 func applyPendingRestore(path string) error {
 	restorePath := path + ".restore"
 	if _, err := os.Stat(restorePath); err != nil {

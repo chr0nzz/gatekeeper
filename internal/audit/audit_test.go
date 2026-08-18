@@ -83,8 +83,6 @@ func TestLogPersistsEventFields(t *testing.T) {
 	}
 }
 
-// An audit trail is only useful if separate events stay separate, so each write
-// gets its own identifier rather than overwriting the previous row.
 func TestLogGivesEachEventAnIdentifier(t *testing.T) {
 	conn := audTestDB(t)
 	logger := New(conn)
@@ -103,8 +101,6 @@ func TestLogGivesEachEventAnIdentifier(t *testing.T) {
 	}
 }
 
-// Blank optional fields become NULL so that queries filtering on a user or an
-// actor never match unrelated events through an empty string.
 func TestLogStoresBlankFieldsAsNull(t *testing.T) {
 	conn := audTestDB(t)
 
@@ -128,8 +124,6 @@ func TestLogStoresBlankFieldsAsNull(t *testing.T) {
 	}
 }
 
-// Audit details carry attacker controlled text such as a submitted email, so it
-// must be bound as a parameter and never interpreted as SQL.
 func TestLogTreatsDetailAsDataNotSQL(t *testing.T) {
 	conn := audTestDB(t)
 	hostile := `x'); DROP TABLE audit_log; --`
@@ -170,7 +164,6 @@ func TestLogInvokesEveryRegisteredHook(t *testing.T) {
 	}
 }
 
-// Hooks observe the caller's values, not the NULL substitution used for storage.
 func TestHooksReceiveBlankFieldsUnchanged(t *testing.T) {
 	conn := audTestDB(t)
 	logger := New(conn)
@@ -202,8 +195,6 @@ func TestLogWithoutHooksStillWritesRow(t *testing.T) {
 	}
 }
 
-// A cancelled context must not take down the caller, since Log is fired from
-// request paths that may already be unwinding.
 func TestLogWithCancelledContextDoesNotPanic(t *testing.T) {
 	conn := audTestDB(t)
 	ctx, cancel := context.WithCancel(context.Background())

@@ -25,8 +25,6 @@ func TestHashAndVerifyPassword(t *testing.T) {
 	}
 }
 
-// The salt must differ per hash, so two users with the same password do not
-// share a hash.
 func TestPasswordHashesAreSalted(t *testing.T) {
 	a, _ := HashPassword("same-password")
 	b, _ := HashPassword("same-password")
@@ -76,7 +74,6 @@ func TestPasswordPolicy(t *testing.T) {
 	}
 }
 
-// Reset tokens are bearer credentials: they must be single use and stored hashed.
 func TestPasswordResetTokenSingleUse(t *testing.T) {
 	ctx := context.Background()
 	conn := testDB(t)

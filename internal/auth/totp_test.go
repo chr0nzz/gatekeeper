@@ -48,7 +48,6 @@ func TestTOTPEnrollAndValidate(t *testing.T) {
 	}
 }
 
-// Secrets are encrypted with AES-GCM, marked by the v2 prefix.
 func TestTOTPSecretEncryptedAtRest(t *testing.T) {
 	store, conn := totpStoreWithUser(t)
 	secret := enroll(t, store, conn)
@@ -63,14 +62,11 @@ func TestTOTPSecretEncryptedAtRest(t *testing.T) {
 	}
 }
 
-// M2: secrets written before v0.4.0 used a scheme recoverable from a database
-// read. They must be retired, not silently reused.
 func TestLegacyTOTPSecretForcesReenrollment(t *testing.T) {
 	ctx := context.Background()
 	store, conn := totpStoreWithUser(t)
 	enroll(t, store, conn)
 
-	// Simulate a row still holding the retired format (no v2: prefix).
 	legacy := base64.StdEncoding.EncodeToString([]byte("legacy-xor-ciphertext"))
 	conn.Exec(`UPDATE users SET totp_secret=?, totp_enabled=1 WHERE id='u1'`, legacy)
 

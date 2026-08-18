@@ -2,8 +2,6 @@ package middleware
 
 import "testing"
 
-// The redirect carried through the handoff must stay on the protected app, so a
-// crafted /_gk/auth link cannot bounce the user to an attacker's site.
 func TestIsLocalPath(t *testing.T) {
 	local := []string{"/", "/dashboard", "/a/b?c=d", "/path#frag"}
 	for _, p := range local {
@@ -29,8 +27,6 @@ func TestIsLocalPath(t *testing.T) {
 	}
 }
 
-// M3: the ForwardAuth debug log must never include the handoff token, which
-// travels in the query string.
 func TestPathOnlyStripsQuery(t *testing.T) {
 	cases := map[string]string{
 		"/_gk/auth?token=SECRETVALUE&redirect=%2F": "/_gk/auth",

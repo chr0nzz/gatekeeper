@@ -39,7 +39,6 @@ func TestUserStoreLifecycle(t *testing.T) {
 	}
 }
 
-// Email is the login identifier, so duplicates must be impossible.
 func TestUserStoreRejectsDuplicateEmail(t *testing.T) {
 	ctx := context.Background()
 	store := NewUserStore(queriesTestDB(t))
@@ -125,7 +124,6 @@ func TestPolicyMembership(t *testing.T) {
 		t.Error("a non-member passed the policy check")
 	}
 
-	// An unknown policy must never grant access.
 	unknown, _ := policies.IsUserInPolicy(ctx, "does-not-exist", userID)
 	if unknown {
 		t.Error("an unknown policy name granted access")
@@ -138,7 +136,6 @@ func TestPolicyMembership(t *testing.T) {
 	}
 }
 
-// Invite tokens are credentials: stored hashed, usable once, and expiring.
 func TestInviteTokenLifecycle(t *testing.T) {
 	ctx := context.Background()
 	conn := queriesTestDB(t)

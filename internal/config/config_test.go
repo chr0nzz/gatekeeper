@@ -37,7 +37,6 @@ func TestLoadDefaults(t *testing.T) {
 	}
 }
 
-// A short SECRET_KEY weakens every derived key, so startup must refuse it.
 func TestLoadRejectsShortSecretKey(t *testing.T) {
 	t.Setenv("BASE_URL", "https://auth.example.com")
 	t.Setenv("SECRET_KEY", "too-short")
@@ -76,8 +75,6 @@ func TestLoadValidatesSMTPTLS(t *testing.T) {
 	}
 }
 
-// REDIRECT_ALLOWED_HOSTS gates where users may be sent after login, so the list
-// must parse into separate entries.
 func TestLoadParsesRedirectAllowedHosts(t *testing.T) {
 	setRequired(t)
 	t.Setenv("REDIRECT_ALLOWED_HOSTS", ".example.net,app.example.org")

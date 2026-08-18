@@ -21,8 +21,6 @@ func uiAcctUser(t *testing.T, h *uiHarness, userID string) *queries.User {
 	return u
 }
 
-// uiAcctSessionID resolves the server-side session handle behind a cookie, which
-// is the identifier the revoke routes take.
 func uiAcctSessionID(t *testing.T, h *uiHarness, c *http.Cookie) string {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

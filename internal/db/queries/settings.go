@@ -6,15 +6,13 @@ import (
 	"strings"
 )
 
-// SecretCipher encrypts and decrypts setting values that must not be readable
-// from a raw database copy.
+// SecretCipher encrypts and decrypts settings that must not be readable at rest.
 type SecretCipher interface {
 	EncryptSecret(plaintext string) (string, error)
 	DecryptSecret(ciphertext string) (string, error)
 }
 
-// SettingsStore reads and writes key-value application settings. Values whose
-// key identifies a credential are encrypted at rest.
+// SettingsStore reads and writes application settings, encrypting secret keys.
 type SettingsStore struct {
 	db     *sql.DB
 	cipher SecretCipher

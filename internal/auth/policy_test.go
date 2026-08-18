@@ -11,8 +11,6 @@ func settingsFrom(m map[string]string) func(string, string) string {
 	}
 }
 
-// The configured minimum must be what gets enforced. A stale default would let
-// passwords through that the operator intended to reject.
 func TestLoadPasswordPolicyUsesConfiguredMinimum(t *testing.T) {
 	p := LoadPasswordPolicy(settingsFrom(map[string]string{"password_min_length": "20"}))
 	if p.MinLength != 20 {
@@ -36,8 +34,6 @@ func TestLoadPasswordPolicyDefaults(t *testing.T) {
 	}
 }
 
-// A value below the configurable floor, or an unparseable one, must fall back to
-// the default rather than silently weakening the policy.
 func TestLoadPasswordPolicyIgnoresInvalidMinimum(t *testing.T) {
 	for _, v := range []string{"", "0", "3", "abc", "-5"} {
 		p := LoadPasswordPolicy(settingsFrom(map[string]string{"password_min_length": v}))

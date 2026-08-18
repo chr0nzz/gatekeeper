@@ -15,8 +15,6 @@ func serve(t *testing.T, h http.Handler) *httptest.ResponseRecorder {
 	return rec
 }
 
-// L2: 'unsafe-inline' in script-src removed any CSP protection against injected
-// script. The policy must now carry a per-response nonce instead.
 func TestCSPHasNonceAndNoUnsafeInlineScript(t *testing.T) {
 	rec := serve(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -61,8 +59,6 @@ func TestNoncePlaceholderReplacedInHTML(t *testing.T) {
 	}
 }
 
-// Each response gets its own nonce, so a value captured from one page cannot be
-// reused to run script on another.
 func TestNonceDiffersPerResponse(t *testing.T) {
 	html := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -75,7 +71,6 @@ func TestNonceDiffersPerResponse(t *testing.T) {
 	}
 }
 
-// Binary downloads (database backups) must stream through untouched.
 func TestNonHTMLResponsesPassThrough(t *testing.T) {
 	payload := []byte{0x00, 0x01, 0x02, 0x03, 0xff}
 	rec := serve(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

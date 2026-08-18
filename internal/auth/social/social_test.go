@@ -71,8 +71,6 @@ func TestAuthURLPointsAtTheProviderAndCarriesTheRequestedGrant(t *testing.T) {
 	}
 }
 
-// A missing state parameter would leave the callback open to CSRF, so an empty
-// state must not silently collapse into an absent one.
 func TestAuthURLAlwaysEmitsAStateParameter(t *testing.T) {
 	for _, provider := range []string{"github", "google", "discord"} {
 		raw, err := AuthURL(provider, "cid", "https://auth.example.test/cb", "")
@@ -86,8 +84,6 @@ func TestAuthURLAlwaysEmitsAStateParameter(t *testing.T) {
 	}
 }
 
-// Values that reach AuthURL come from configuration and from the request, so a
-// value containing query syntax must stay a single opaque value.
 func TestAuthURLEscapesValuesInsteadOfLettingThemInjectParameters(t *testing.T) {
 	const (
 		clientID    = "cid&scope=admin"
@@ -146,8 +142,6 @@ func TestExchangeTokenRejectsUnknownProviderWithoutCallingOut(t *testing.T) {
 	}
 }
 
-// The client secret must never travel back to the caller in an error string
-// that could be logged or rendered.
 func TestExchangeTokenErrorsDoNotLeakTheClientSecret(t *testing.T) {
 	const secret = "super-secret-value"
 	ctx, cancel := context.WithCancel(context.Background())
@@ -178,8 +172,6 @@ func TestFetchProfileRejectsUnknownProvider(t *testing.T) {
 	}
 }
 
-// A transport failure must not be mistaken for a successful lookup that yields
-// an anonymous profile, since the caller trusts ProviderID to identify a user.
 func TestFetchProfileReturnsNoProfileWhenTheCallFails(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

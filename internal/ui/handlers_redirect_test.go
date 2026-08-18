@@ -15,8 +15,6 @@ import (
 
 const uiRedirAllowedHost = "app.partner.net"
 
-// uiRedirEnableCrossDomain mirrors the wiring in cmd/gatekeeper: the operator
-// allowlist lives in settings and is re-read on every redirect decision.
 func uiRedirEnableCrossDomain(t *testing.T, u *uiHarness, cookieDomain, allowedHosts string) {
 	t.Helper()
 	u.set(t, "redirect_allowed_hosts", allowedHosts)
@@ -61,8 +59,6 @@ func TestLoginSendsSignedInUserToRelativeTarget(t *testing.T) {
 	}
 }
 
-// CRITICAL: an absolute redirect_uri outside the allowlist once handed an
-// attacker a usable authentication artefact. It must resolve to "/" instead.
 func TestLoginRefusesUntrustedAbsoluteRedirect(t *testing.T) {
 	hostile := []string{
 		"https://evil.example.net/",
@@ -98,7 +94,6 @@ func TestLoginHonoursHostAllowedBySettings(t *testing.T) {
 	}
 }
 
-// The whole point of the handoff: no session identifier ever travels in a URL.
 func TestHandoffURLNeverCarriesSessionCookie(t *testing.T) {
 	u := newUIHarness(t)
 	uiRedirEnableCrossDomain(t, u, "example.com", uiRedirAllowedHost)

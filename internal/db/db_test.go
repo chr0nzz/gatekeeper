@@ -29,8 +29,6 @@ func TestOpenRunsMigrations(t *testing.T) {
 	}
 }
 
-// Migrations are recorded, so reopening an existing database must not reapply
-// them or fail.
 func TestOpenIsIdempotent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.db")
 
@@ -58,8 +56,6 @@ func TestOpenIsIdempotent(t *testing.T) {
 	}
 }
 
-// A staged restore file must replace the live database on the next start, and
-// stale write-ahead files must not survive the swap.
 func TestPendingRestoreIsApplied(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "gatekeeper.db")
@@ -71,7 +67,6 @@ func TestPendingRestoreIsApplied(t *testing.T) {
 	conn.Exec(`INSERT INTO settings (key, value) VALUES ('marker','original')`)
 	conn.Close()
 
-	// Build a separate database that carries a different marker.
 	restoreSrc := filepath.Join(dir, "restore-source.db")
 	src, err := Open(restoreSrc)
 	if err != nil {

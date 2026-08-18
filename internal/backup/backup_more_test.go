@@ -71,8 +71,6 @@ func TestCreateProducesEncryptedSqliteSnapshot(t *testing.T) {
 	}
 }
 
-// A restore must be able to open the snapshot as a database, otherwise the
-// backup is only decorative.
 func TestCreateSnapshotIsAnOpenableDatabase(t *testing.T) {
 	ctx := context.Background()
 	conn, path := bkp2DB(t)
@@ -110,8 +108,6 @@ func TestCreateSnapshotIsAnOpenableDatabase(t *testing.T) {
 	}
 }
 
-// Restoring a real snapshot with the wrong key or a damaged file must fail,
-// never panic and never hand back partial plaintext.
 func TestDecryptOfRealSnapshotRejectsWrongKeyAndDamage(t *testing.T) {
 	ctx := context.Background()
 	conn, path := bkp2DB(t)
@@ -210,15 +206,11 @@ func TestLocalStorageDownloadOfMissingNameErrors(t *testing.T) {
 		t.Errorf("download of a missing backup returned %d bytes and no error", len(data))
 	}
 
-	// Delete is idempotent so retention pruning does not fail on an already
-	// removed object.
 	if err := store.Delete(ctx, "gatekeeper-never-written.db.enc"); err != nil {
 		t.Errorf("delete of a missing backup returned %v, want nil", err)
 	}
 }
 
-// A backup file is a full copy of the user database, so it must not be readable
-// by other accounts on the host.
 func TestLocalStorageFilesAreNotWorldReadable(t *testing.T) {
 	ctx := context.Background()
 	dir := filepath.Join(t.TempDir(), "backups")
@@ -301,8 +293,6 @@ func TestBuildStorageLocalUsesConfiguredDirectory(t *testing.T) {
 	}
 }
 
-// Half configured object storage must not produce an uploader that silently
-// fails every scheduled backup.
 func TestBuildStorageS3RequiresCompleteCredentials(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := bkp2DB(t)
@@ -367,8 +357,6 @@ func TestScheduleIntervalExactDurations(t *testing.T) {
 		}
 	}
 
-	// Anything the scheduler does not understand must disable automatic
-	// backups rather than pick an arbitrary interval.
 	for _, unknown := range []string{"", "manual", "Daily", "HOURLY", "monthly", "1h", "never", " daily "} {
 		if got := ScheduleInterval(unknown); got != 0 {
 			t.Errorf("ScheduleInterval(%q) = %v, want 0", unknown, got)

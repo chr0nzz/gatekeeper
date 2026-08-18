@@ -10,21 +10,19 @@ import (
 	"time"
 )
 
-// M4/L5: operator-supplied URLs (client icons, webhooks) must not be able to
-// reach the cloud metadata service or anything else on the internal network.
 func TestBlockedAddresses(t *testing.T) {
 	blocked := []string{
-		"169.254.169.254", // cloud instance metadata
+		"169.254.169.254",
 		"127.0.0.1",
 		"::1",
 		"10.1.2.3",
 		"192.168.1.1",
 		"172.16.0.1",
 		"0.0.0.0",
-		"100.64.0.1", // carrier-grade NAT
-		"fd00::1",    // IPv6 unique local
-		"fe80::1",    // IPv6 link-local
-		"224.0.0.1",  // multicast
+		"100.64.0.1",
+		"fd00::1",
+		"fe80::1",
+		"224.0.0.1",
 	}
 	for _, ip := range blocked {
 		if !IsBlockedIP(net.ParseIP(ip)) {
@@ -65,8 +63,6 @@ func TestValidateURLRejectsNonHTTPSchemes(t *testing.T) {
 	}
 }
 
-// A real connection attempt to a loopback server must be refused by the dialer,
-// which is what stops DNS names that resolve to internal addresses.
 func TestClientRefusesLoopbackConnection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("secret"))

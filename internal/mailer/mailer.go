@@ -50,8 +50,7 @@ type Mailer struct {
 	branding BrandingLoader
 }
 
-// New creates a Mailer. The loader is called on every send so settings can be
-// updated in the admin UI without restarting the container.
+// New creates a Mailer whose settings are re-read on every send.
 func New(load Loader) *Mailer {
 	return &Mailer{load: load}
 }
@@ -218,8 +217,6 @@ func (m *Mailer) SendPasswordReset(ctx context.Context, to, resetURL string) err
 }
 
 // SendPasswordChanged notifies a user that their password was changed.
-// SendDuplicateRegistration tells an existing account holder that someone tried
-// to register with their address, so the signup form need not reveal it.
 func (m *Mailer) SendDuplicateRegistration(ctx context.Context, to string) error {
 	b := m.loadBranding(ctx)
 	var buf bytes.Buffer

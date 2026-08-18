@@ -19,9 +19,7 @@ type Scheduler struct {
 	cancel context.CancelFunc
 }
 
-// Start launches the backup scheduler. intervalFn is called before each tick to
-// read the current schedule setting so changes take effect without a restart.
-// A zero or negative duration means backups are disabled.
+// Start launches the backup scheduler, re-reading its interval before each tick.
 func (s *Scheduler) Start(intervalFn func() time.Duration, run RunFunc) {
 	s.mu.Lock()
 	if s.cancel != nil {
@@ -65,7 +63,6 @@ func (s *Scheduler) Stop() {
 }
 
 // ScheduleInterval converts a settings value ("hourly", "daily", "weekly") to a duration.
-// Any other value (including "manual" or empty) returns 0.
 func ScheduleInterval(val string) time.Duration {
 	switch val {
 	case "hourly":

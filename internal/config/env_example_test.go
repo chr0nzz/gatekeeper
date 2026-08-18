@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// envVarsInConfig returns every environment variable the Config struct reads.
 func envVarsInConfig() []string {
 	var out []string
 	t := reflect.TypeOf(Config{})
@@ -22,8 +21,6 @@ func envVarsInConfig() []string {
 	return out
 }
 
-// .env.example is the first thing an operator reads. A variable missing from it
-// is a variable nobody knows exists.
 func TestEnvExampleCoversEveryVariable(t *testing.T) {
 	body, err := os.ReadFile("../../.env.example")
 	if err != nil {
@@ -38,8 +35,6 @@ func TestEnvExampleCoversEveryVariable(t *testing.T) {
 	}
 }
 
-// The reverse: a variable left in the file after it was removed from the code
-// sends operators chasing a setting that does nothing.
 func TestEnvExampleHasNoUnknownVariables(t *testing.T) {
 	body, err := os.ReadFile("../../.env.example")
 	if err != nil {

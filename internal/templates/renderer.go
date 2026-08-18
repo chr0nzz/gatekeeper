@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-// Renderer renders page templates from an fs.FS, creating a fresh template set
-// per render so {{define "content"}} blocks never bleed across pages.
+// Renderer renders page templates from an fs.FS.
 type Renderer struct {
 	fsys      fs.FS
 	index     map[string]string
@@ -60,8 +59,7 @@ var funcMap = template.FuncMap{
 	},
 }
 
-// New builds a Renderer from the given FS. templateRoot is the directory
-// inside the FS containing the templates (e.g. "web/templates").
+// New builds a Renderer from the templates under templateRoot in fsys.
 func New(fsys fs.FS, templateRoot string) (*Renderer, error) {
 	r := &Renderer{
 		fsys:  fsys,

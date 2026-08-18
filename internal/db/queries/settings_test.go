@@ -8,8 +8,6 @@ import (
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 )
 
-// L6: SMTP passwords, S3 keys, OAuth secrets and webhook tokens were stored in
-// clear text. They must be unreadable from a raw database copy.
 func TestSecretSettingsEncryptedAtRest(t *testing.T) {
 	ctx := context.Background()
 	conn := queriesTestDB(t)
@@ -52,7 +50,6 @@ func TestSecretSettingsEncryptedAtRest(t *testing.T) {
 	}
 }
 
-// Ordinary settings stay readable so existing tooling and queries keep working.
 func TestNonSecretSettingsStoredPlainly(t *testing.T) {
 	ctx := context.Background()
 	conn := queriesTestDB(t)
@@ -85,8 +82,6 @@ func TestIsSecretKey(t *testing.T) {
 	}
 }
 
-// Without a cipher configured the store must still work, so startup order and
-// tooling that builds a bare store keep functioning.
 func TestSettingsWithoutCipher(t *testing.T) {
 	ctx := context.Background()
 	store := NewSettingsStore(queriesTestDB(t))

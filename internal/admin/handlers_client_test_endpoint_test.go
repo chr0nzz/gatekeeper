@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// clientTestResult mirrors the JSON the Test button consumes.
 type clientTestResult struct {
 	ClientID     string   `json:"client_id"`
 	AuthURL      string   `json:"auth_url"`
@@ -47,9 +46,6 @@ func fetchClientTest(t *testing.T, a *adminHarness, clientID string) clientTestR
 	return out
 }
 
-// The generated link must point at the authorization endpoint this server
-// actually serves. It previously pointed at /oauth/authorize, which is not
-// routed, so every use of the Test button returned 404.
 func TestClientTestLinkUsesTheRealAuthorizationEndpoint(t *testing.T) {
 	a := newAdminHarness(t)
 	seedTestClient(t, a, "grafana", []string{"https://grafana.example.com/login/generic_oauth"})
@@ -71,8 +67,6 @@ func TestClientTestLinkUsesTheRealAuthorizationEndpoint(t *testing.T) {
 	}
 }
 
-// The redirect URI travels inside a query string, so it has to be encoded or a
-// URI carrying its own query breaks the request.
 func TestClientTestLinkEncodesRedirectURI(t *testing.T) {
 	a := newAdminHarness(t)
 	redirect := "https://app.example.com/callback?tenant=acme&next=/home"
@@ -130,9 +124,6 @@ func TestClientTestRequiresAdminSession(t *testing.T) {
 	}
 }
 
-// The policy shown by the Test button previously came from a table that does not
-// exist, so the query always failed and every client was reported as unrestricted
-// even when a policy was attached.
 func TestClientTestReportsTheAttachedPolicy(t *testing.T) {
 	a := newAdminHarness(t)
 	seedTestClient(t, a, "filebrowser", []string{"https://fb.example.com/api/auth/oidc/callback"})
@@ -174,8 +165,6 @@ func TestClientTestReportsNoPolicyWhenNoneAttached(t *testing.T) {
 	}
 }
 
-// The modal lists the redirect URIs, and reports whether the client counts as a
-// native application so mobile sign-in problems are visible.
 func TestClientTestReportsRedirectURIsAndApplicationType(t *testing.T) {
 	a := newAdminHarness(t)
 	seedTestClient(t, a, "immich", []string{
