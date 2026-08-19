@@ -74,7 +74,7 @@
   {{range .Entries}}
   <div class="audit-row" data-audit-row="{{.Event}} {{.User}} {{.UserName}} {{.Actor}} {{.IP}} {{.Detail}} {{.Method}}" data-kind="{{.Kind}}" data-day="{{.Date}}" data-event-prefix="{{.EventPrefix}}" data-method="{{.MethodClass}}">
     <span class="ts">{{.Time}}</span>
-    <span class="ev"><span class="pill pill-{{.Kind}}" {{if .Method}}title="Method: {{.Method}}" {{end}}style="font-size:10px;font-family:var(--font-mono)"><span class="dot"></span>{{.Event}}</span></span>
+    <span class="ev"><span class="pill pill-{{.Kind}}{{if .Method}} hover-swap{{end}}" style="font-size:10px;font-family:var(--font-mono)"><span class="dot"></span>{{if .Method}}<span class="hs-main">{{.Event}}</span><span class="hs-alt">{{.Method}}</span>{{else}}{{.Event}}{{end}}</span></span>
     <span style="display:flex;align-items:center;gap:8px;overflow:hidden;min-width:0">
       {{if .UserID}}
       <span style="width:28px;height:28px;border-radius:50%;overflow:hidden;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-3);border:1px solid var(--bd-0);font-size:10px;font-weight:600;color:var(--tx-2)">
@@ -82,8 +82,8 @@
         {{else if .User}}{{slice .User 0 1}}{{end}}
       </span>
       {{end}}
-      <span {{if .User}}title="{{.User}}" {{end}}style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500;font-size:12.5px">
-        {{if .User}}{{if .UserName}}{{.UserName}}{{else}}{{.User}}{{end}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
+      <span {{if and .User .UserName}}class="hover-swap" {{end}}style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500;font-size:12.5px">
+        {{if .User}}{{if .UserName}}<span class="hs-main">{{.UserName}}</span><span class="hs-alt">{{.User}}</span>{{else}}{{.User}}{{end}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
       </span>
     </span>
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-1);font-size:11.5px">

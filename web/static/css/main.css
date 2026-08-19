@@ -924,6 +924,9 @@ dialog::backdrop {
 .audit-filter-btn { transition: opacity 0.12s; }
 .audit-row .ts { font-family: var(--font-mono); color: var(--tx-2); font-size: 11px; }
 .audit-row .ev { }
+.hover-swap .hs-alt { display: none; }
+.hover-swap:hover .hs-main { display: none; }
+.hover-swap:hover .hs-alt { display: inline; }
 .audit-row .ip { font-family: var(--font-mono); color: var(--tx-2); font-size: 11px; }
 .method-badge { font-size:10px;font-weight:500;padding:1px 6px;border-radius:4px; }
 .method-password { background:var(--info-bg);color:var(--info);border:1px solid rgba(29,78,216,0.2); }
