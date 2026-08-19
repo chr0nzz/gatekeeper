@@ -619,7 +619,7 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Detail, &ts)
 			e.Time = time.Unix(ts, 0).Format("15:04:05")
 			e.Kind = eventKind(e.Event)
-			e.Method, e.MethodClass = loginMethod(e.Event)
+			e.Method, e.MethodClass = loginMethod(e.Event, e.Detail)
 			recentEvents = append(recentEvents, e)
 		}
 	}
@@ -906,7 +906,7 @@ func eventKind(event string) string {
 	}
 }
 
-func loginMethod(event string) (string, string) {
+func loginMethod(event, detail string) (string, string) {
 	switch event {
 	case "login.passkey", "admin.login.passkey":
 		return "Passkey", "method-passkey"
@@ -914,7 +914,17 @@ func loginMethod(event string) (string, string) {
 		return "TOTP", "method-totp"
 	case "otp.verified", "otp.sent":
 		return "Email OTP", "method-emailotp"
+	case "login.qr", "login.qr_approved":
+		return "QR code", "method-qr"
 	case "login.success":
+		switch detail {
+		case "sso":
+			return "SSO", "method-sso"
+		case "passwordless":
+			return "Email OTP", "method-emailotp"
+		case "trusted-device":
+			return "Trusted device", "method-trusted"
+		}
 		return "Password", "method-password"
 	case "admin.login":
 		return "Password", "method-password"
@@ -1647,7 +1657,7 @@ func (h *Handlers) auditQuery(ctx context.Context, days int, eventFilter, userFi
 		e.Date = t.Format("2006-01-02")
 		e.Kind = eventKind(e.Event)
 		e.EventPrefix = eventCategory(e.Event)
-		e.Method, e.MethodClass = loginMethod(e.Event)
+		e.Method, e.MethodClass = loginMethod(e.Event, e.Detail)
 		entries = append(entries, e)
 	}
 	return entries, nil
@@ -2688,7 +2698,7 @@ func (h *Handlers) GetNotifications(w http.ResponseWriter, r *http.Request) {
 				user = display
 			}
 		}
-		method, methodClass := loginMethod(n.Event)
+		method, methodClass := loginMethod(n.Event, n.Detail)
 		rows = append(rows, NotifRow{
 			Event:       n.Event,
 			User:        user,

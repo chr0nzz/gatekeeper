@@ -3,6 +3,27 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.6
+
+### The audit log records how you actually signed in
+
+Every sign-in was labelled **Password** unless it used a passkey or a social provider, because the completion step wrote one generic event no matter how the user authenticated. Opening an application while already signed in also wrote that event, so using an app through OIDC showed up as a password login even though nothing was typed.
+
+- **Signing into an app with an existing session** is now labelled **SSO**.
+- **Passwordless email-code sign-ins** are labelled **Email OTP**. Only sign-ins that began with a password say Password.
+- **Trusted-device sign-ins** are labelled **Trusted device**, and are no longer written twice.
+- **Social sign-ins** are no longer written twice, so the dashboard sign-in counts stop double-counting them.
+- **QR sign-ins** now get a method label too.
+- The audit page has filter chips for the new labels.
+
+Entries written by earlier versions keep their old labels.
+
+### Fixed
+
+- **A failed registration sent the wrong email** - Trying to register with an address that already has an account sent a message headed "Password changed", telling the recipient their password had just been changed and to contact their administrator immediately. Nothing had changed. It now says an account already exists and that no action is needed.
+
+---
+
 ## v0.9.5
 
 :::warning Security release
@@ -20,7 +41,6 @@ An audit of the whole codebase found nine issues, including one that let a secon
 - **TOTP codes could be replayed** - A code stayed valid for about 90 seconds, so one observed in transit could be used again. Each is now accepted once.
 - **Rate limits treated every IPv6 client as one** - The address was cut at the first colon, so all IPv6 addresses collapsed into a single bucket and one user hitting a limit locked out the rest.
 - **Password reset emails could vanish** - The message was sent on a task tied to the request, which was cancelled as soon as the browser got its reply.
-- **A failed registration sent the wrong email** - Trying to register with an address that already has an account sent a message headed "Password changed", telling the recipient their password had just been changed and to contact their administrator immediately. Nothing had changed. The subject was correct, the body was the password-changed template. It now says an account already exists and that no action is needed.
 
 ### Admin API keys are hashed and scoped
 

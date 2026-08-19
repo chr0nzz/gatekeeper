@@ -22,6 +22,7 @@ type SessionData struct {
 	PendingTOTP   bool
 	RedirectURI   string
 	OIDCRequestID string
+	LoginMethod   string
 }
 
 // SessionStore manages server-side sessions backed by SQLite.

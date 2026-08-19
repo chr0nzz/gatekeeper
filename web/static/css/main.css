@@ -931,6 +931,9 @@ dialog::backdrop {
 .method-passkey  { background:var(--ok-bg);color:var(--ok);border:1px solid rgba(21,128,61,0.2); }
 .method-emailotp { background:var(--ac-bg);color:var(--ac);border:1px solid var(--ac-bd); }
 .method-social   { background:var(--bg-3);color:var(--tx-2);border:1px solid var(--bd-1); }
+.method-sso      { background:var(--ac-bg);color:var(--ac);border:1px solid var(--ac-bd); }
+.method-trusted  { background:var(--bg-3);color:var(--tx-2);border:1px solid var(--bd-1); }
+.method-qr       { background:var(--warn-bg);color:var(--warn);border:1px solid rgba(180,83,9,0.2); }
 
 /* ============================================================
    TWEAKS - density + display font overrides applied via

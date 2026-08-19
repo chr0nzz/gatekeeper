@@ -325,7 +325,7 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 		} else if oidcRequest != "" {
 			data.OIDCRequestID = oidcRequest
 			h.sessions.Update(r.Context(), sessID, *data)
-			h.completeLogin(w, r, sessID, data)
+			h.completeLogin(w, r, sessID, data, "sso")
 			return
 		} else {
 			h.redirect(w, r, data.UserID, redirectURI)
@@ -423,7 +423,7 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if (password == "" || loginMode == "passwordless") && user.PasswordlessEnabled {
-		h.handleOTPDispatch(w, r, user.ID, redirectURI, oidcRequest)
+		h.handleOTPDispatch(w, r, user.ID, redirectURI, oidcRequest, "passwordless")
 		return
 	}
 
@@ -436,9 +436,8 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 
 	if h.trustedDevices.IsTrusted(r, user.ID) {
 		sessID, _ := h.sessions.Create(w, r, auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest})
-		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, user.ID, "", r.RemoteAddr, "trusted-device")
 		data := &auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest}
-		h.completeLogin(w, r, sessID, data)
+		h.completeLogin(w, r, sessID, data, "trusted-device")
 		return
 	}
 
@@ -453,10 +452,10 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.handleOTPDispatch(w, r, user.ID, redirectURI, oidcRequest)
+	h.handleOTPDispatch(w, r, user.ID, redirectURI, oidcRequest, "password")
 }
 
-func (h *Handlers) handleOTPDispatch(w http.ResponseWriter, r *http.Request, userID, redirectURI, oidcRequest string) {
+func (h *Handlers) handleOTPDispatch(w http.ResponseWriter, r *http.Request, userID, redirectURI, oidcRequest, method string) {
 	code, err := h.otps.Issue(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Could not issue OTP", http.StatusInternalServerError)
@@ -472,6 +471,7 @@ func (h *Handlers) handleOTPDispatch(w http.ResponseWriter, r *http.Request, use
 		PendingOTP:    true,
 		RedirectURI:   redirectURI,
 		OIDCRequestID: oidcRequest,
+		LoginMethod:   method,
 	})
 	http.Redirect(w, r, "/login/otp", http.StatusFound)
 }
@@ -503,7 +503,11 @@ func (h *Handlers) PostOTP(w http.ResponseWriter, r *http.Request) {
 	if rememberDevice(r) {
 		h.trustedDevices.Trust(w, r, data.UserID)
 	}
-	h.completeLogin(w, r, sessID, data)
+	method := data.LoginMethod
+	if method == "" {
+		method = "password"
+	}
+	h.completeLogin(w, r, sessID, data, method)
 }
 
 func (h *Handlers) GetTOTP(w http.ResponseWriter, r *http.Request) {
@@ -532,7 +536,7 @@ func (h *Handlers) PostTOTP(w http.ResponseWriter, r *http.Request) {
 	if rememberDevice(r) {
 		h.trustedDevices.Trust(w, r, data.UserID)
 	}
-	h.completeLogin(w, r, sessID, data)
+	h.completeLogin(w, r, sessID, data, "password")
 }
 
 func (h *Handlers) GetTOTPRecovery(w http.ResponseWriter, r *http.Request) {
@@ -558,10 +562,10 @@ func (h *Handlers) PostTOTPRecovery(w http.ResponseWriter, r *http.Request) {
 	if rememberDevice(r) {
 		h.trustedDevices.Trust(w, r, data.UserID)
 	}
-	h.completeLogin(w, r, sessID, data)
+	h.completeLogin(w, r, sessID, data, "password")
 }
 
-func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID string, data *auth.SessionData) {
+func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID string, data *auth.SessionData, method string) {
 	user, _ := h.users.GetByID(r.Context(), data.UserID)
 	if user != nil && user.ForcePasswordChange {
 		data.PendingOTP = false
@@ -573,7 +577,9 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 	data.PendingOTP = false
 	data.PendingTOTP = false
 	h.sessions.Update(r.Context(), sessID, *data)
-	h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, "", r.RemoteAddr, "")
+	if method != "" {
+		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, "", r.RemoteAddr, method)
+	}
 
 	if data.OIDCRequestID != "" && h.oidcStorage != nil {
 		req, reqErr := h.oidcStorage.AuthRequestByID(r.Context(), data.OIDCRequestID)
@@ -1564,7 +1570,7 @@ func (h *Handlers) GetSocialCallback(w http.ResponseWriter, r *http.Request) {
 	sessID, _ := h.sessions.Create(w, r, sd)
 	h.auditLog.Log(r.Context(), "login.social", userID, provider, r.RemoteAddr, "")
 	if oidcReq != "" {
-		h.completeLogin(w, r, sessID, &sd)
+		h.completeLogin(w, r, sessID, &sd, "")
 	} else {
 		h.redirect(w, r, userID, "")
 	}
