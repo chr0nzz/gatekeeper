@@ -10,8 +10,9 @@ The audit log at `/audit` is an append-only record of every authentication and a
 Each row shows:
 
 - **Time** - `HH:MM:SS` in server local time
-- **Event** - dotted code like `login.success` or `totp.failed`
-- **User** - avatar, display name (or email if no name is set), and email address. For authentication events a badge shows the method used: Passkey, TOTP, Email OTP, or Password.
+- **Event** - dotted code like `login.success` or `totp.failed`. For sign-in events, hovering shows the method used: Password, Passkey, Email OTP, TOTP, SSO, Trusted device, Social, or QR code.
+- **User** - avatar and display name, or email if no name is set. Hovering shows the email address.
+- **App / Site** - what was signed into: the OIDC client's name, or the hostname of a ForwardAuth protected site
 - **Detail** - additional context, e.g. failure reason or changed field
 - **IP** - originating IP address
 
@@ -38,9 +39,13 @@ Set a retention period in **Settings - Audit log**. Events older than the config
 
 | Event | Kind | Description |
 |---|---|---|
-| `login.success` | ok | Password verified and 2FA passed |
+| `login.success` | ok | Sign-in completed. The detail column holds the method: `password`, `passwordless`, `sso`, or `trusted-device` |
 | `login.failure` | err | Wrong password or unknown email |
 | `login.passkey` | ok | User authenticated via passkey |
+| `login.social` | ok | User authenticated via a social provider |
+| `login.qr` | ok | User authenticated by scanning a QR code |
+| `login.handoff` | ok | An existing sign-in reached a protected site on another domain |
+| `forwardauth.denied` | err | A signed-in user was refused by a site's access policy |
 | `otp.sent` | info | Email OTP dispatched |
 | `otp.verified` | ok | Email OTP accepted |
 | `otp.failed` | err | Wrong OTP code |

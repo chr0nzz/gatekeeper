@@ -604,7 +604,7 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		MethodClass string
 	}
 	rows, _ := h.db.QueryContext(ctx,
-		`SELECT a.event, COALESCE(u.email, au.email, a.user_id, ''), COALESCE(u.display_name, au.email, ''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(a.detail,''), a.created_at
+		`SELECT a.event, COALESCE(u.email, au.email, a.user_id, ''), COALESCE(NULLIF(u.display_name,''), NULLIF(au.display_name,''), ''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(a.detail,''), a.created_at
 		 FROM audit_log a
 		 LEFT JOIN users u ON u.id = a.user_id
 		 LEFT JOIN admin_users au ON au.id = a.user_id
@@ -893,7 +893,7 @@ func (h *Handlers) GetSearch(w http.ResponseWriter, r *http.Request) {
 
 func eventKind(event string) string {
 	switch {
-	case strings.Contains(event, "fail") || strings.Contains(event, "failure") || strings.Contains(event, "lockout"):
+	case strings.Contains(event, "fail") || strings.Contains(event, "failure") || strings.Contains(event, "lockout") || strings.Contains(event, "denied"):
 		return "err"
 	case strings.Contains(event, "disabled") || strings.Contains(event, "revoked") || strings.Contains(event, "deleted"):
 		return "warn"
@@ -916,6 +916,8 @@ func loginMethod(event, detail string) (string, string) {
 		return "Email OTP", "method-emailotp"
 	case "login.qr", "login.qr_approved":
 		return "QR code", "method-qr"
+	case "login.handoff":
+		return "SSO", "method-sso"
 	case "login.success":
 		switch detail {
 		case "sso":
@@ -1601,7 +1603,7 @@ type AuditEntry struct {
 func (h *Handlers) auditQuery(ctx context.Context, days int, eventFilter, userFilter string, limit int) ([]AuditEntry, error) {
 	base := `SELECT a.event,
 			COALESCE(u.email, au.email, a.user_id, ''),
-			COALESCE(u.display_name, au.email, ''),
+			COALESCE(NULLIF(u.display_name,''), NULLIF(au.display_name,''), ''),
 			COALESCE(a.user_id, ''),
 			(u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data) > 0),
 			COALESCE(act.email, aa.email, a.actor_id, ''),
@@ -2694,6 +2696,9 @@ func (h *Handlers) GetNotifications(w http.ResponseWriter, r *http.Request) {
 		if user != "" {
 			var display string
 			h.db.QueryRowContext(r.Context(), `SELECT COALESCE(NULLIF(display_name,''), email) FROM users WHERE id=?`, user).Scan(&display)
+			if display == "" {
+				h.db.QueryRowContext(r.Context(), `SELECT COALESCE(NULLIF(display_name,''), email) FROM admin_users WHERE id=?`, user).Scan(&display)
+			}
 			if display != "" {
 				user = display
 			}

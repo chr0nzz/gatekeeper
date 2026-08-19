@@ -198,7 +198,7 @@ func main() {
 		staticFiles.ServeHTTP(w, r)
 	})
 
-	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, handoffStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore)
+	fwAuth := gkmiddleware.NewForwardAuth(sessionStore, handoffStore, database, cfg.BaseURL, cfg.SecretKey, cfg.CookieDomain, policyStore, groupStore, auditLog)
 
 	uiHandlers := ui.New(database, userStore, sessionStore, otpStore, totpStore, passkeyStore, resetStore, settingsStore, trustedDeviceStore, m, auditLog, renderer, oidcStorage, cfg.BaseURL, rpID, cfg.SecretKey, cfg.CookieDomain, policyStore, inviteStore, socialStore, qrTokenStore, handoffStore, redirectPolicy)
 	adminHandlers := admin.New(database, userStore, adminStore, adminSessStore, sessionStore, totpStore, passkeyStore, trustedDeviceStore, oidcStorage, m, resetStore, settingsStore, auditLog, renderer, cfg.BaseURL, cfg.AdminBasePath, version, cfg.DBPath, cfg.SecretKey, envSMTP,

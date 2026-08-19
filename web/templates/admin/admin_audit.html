@@ -64,7 +64,7 @@
   </div>
 
   <div class="audit-row audit-row-head" style="background:var(--bg-2);color:var(--tx-3);text-transform:uppercase;font-size:10px;letter-spacing:0.05em;font-weight:500;border-bottom:1px solid var(--bd-0)">
-    <span>Time</span><span>Event</span><span>User</span><span>Email</span><span>Method</span><span>Detail</span><span>IP</span><span></span>
+    <span>Time</span><span>Event</span><span>User</span><span>App / Site</span><span>Detail</span><span>IP</span><span></span>
   </div>
 
   {{range .Groups}}
@@ -72,9 +72,9 @@
     {{.Date}} <span style="text-transform:none;letter-spacing:0;color:var(--tx-3)">· {{len .Entries}} events</span>
   </div>
   {{range .Entries}}
-  <div class="audit-row" data-audit-row="{{.Event}} {{.User}} {{.Actor}} {{.IP}} {{.Detail}}" data-kind="{{.Kind}}" data-day="{{.Date}}" data-event-prefix="{{.EventPrefix}}" data-method="{{.MethodClass}}">
+  <div class="audit-row" data-audit-row="{{.Event}} {{.User}} {{.UserName}} {{.Actor}} {{.IP}} {{.Detail}} {{.Method}}" data-kind="{{.Kind}}" data-day="{{.Date}}" data-event-prefix="{{.EventPrefix}}" data-method="{{.MethodClass}}">
     <span class="ts">{{.Time}}</span>
-    <span class="ev"><span class="pill pill-{{.Kind}}" style="font-size:10px;font-family:var(--font-mono)"><span class="dot"></span>{{.Event}}</span></span>
+    <span class="ev"><span class="pill pill-{{.Kind}}" {{if .Method}}title="Method: {{.Method}}" {{end}}style="font-size:10px;font-family:var(--font-mono)"><span class="dot"></span>{{.Event}}</span></span>
     <span style="display:flex;align-items:center;gap:8px;overflow:hidden;min-width:0">
       {{if .UserID}}
       <span style="width:28px;height:28px;border-radius:50%;overflow:hidden;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--bg-3);border:1px solid var(--bd-0);font-size:10px;font-weight:600;color:var(--tx-2)">
@@ -82,19 +82,15 @@
         {{else if .User}}{{slice .User 0 1}}{{end}}
       </span>
       {{end}}
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500;font-size:12.5px">
+      <span {{if .User}}title="{{.User}}" {{end}}style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-0);font-weight:500;font-size:12.5px">
         {{if .User}}{{if .UserName}}{{.UserName}}{{else}}{{.User}}{{end}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
       </span>
     </span>
-    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--tx-3)">
-      {{if .User}}{{.User}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
-    </span>
-    <span>
-      {{if .Method}}<span class="method-badge {{.MethodClass}}">{{.Method}}</span>{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-1);font-size:11.5px">
+      {{if .Actor}}{{.Actor}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
     </span>
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx-2);font-size:11.5px">
-      {{if .Detail}}{{.Detail}}{{end}}
-      {{if .Actor}}<span style="color:var(--tx-3)"> · </span><span style="color:var(--tx-1)">{{.Actor}}</span>{{end}}
+      {{if .Detail}}{{.Detail}}{{else}}<span style="color:var(--tx-3)">-</span>{{end}}
     </span>
     <span class="ip">{{.IP}}</span>
     <span style="text-align:right">

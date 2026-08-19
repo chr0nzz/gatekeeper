@@ -89,7 +89,7 @@ func (h *Handlers) GetQRPoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: qrBindingCookie, Value: "", Path: "/login/qr", MaxAge: -1, HttpOnly: true, Secure: true})
-	h.auditLog.Log(r.Context(), "login.qr", claimed.UserID, "", r.RemoteAddr, "")
+	h.auditLog.Log(r.Context(), "login.qr", claimed.UserID, h.loginActor(r.Context(), claimed.OIDCRequest, claimed.RedirectURI), r.RemoteAddr, "")
 	h.qrTokens.Cleanup(r.Context())
 
 	redirect := "/"

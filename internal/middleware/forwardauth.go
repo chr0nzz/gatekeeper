@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/chr0nzz/gatekeeper/internal/audit"
 	"github.com/chr0nzz/gatekeeper/internal/auth"
 	"github.com/chr0nzz/gatekeeper/internal/db/queries"
 )
@@ -22,10 +23,11 @@ type ForwardAuth struct {
 	cookieDomain string
 	policies     *queries.PolicyStore
 	groups       *queries.GroupStore
+	auditLog     *audit.Logger
 }
 
 // NewForwardAuth creates a ForwardAuth handler.
-func NewForwardAuth(sessions *auth.SessionStore, handoff *auth.HandoffStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore, groups *queries.GroupStore) *ForwardAuth {
+func NewForwardAuth(sessions *auth.SessionStore, handoff *auth.HandoffStore, db *sql.DB, baseURL, secretKey, cookieDomain string, policies *queries.PolicyStore, groups *queries.GroupStore, auditLog *audit.Logger) *ForwardAuth {
 	return &ForwardAuth{
 		sessions:     sessions,
 		handoff:      handoff,
@@ -35,6 +37,7 @@ func NewForwardAuth(sessions *auth.SessionStore, handoff *auth.HandoffStore, db 
 		cookieDomain: cookieDomain,
 		policies:     policies,
 		groups:       groups,
+		auditLog:     auditLog,
 	}
 }
 
@@ -72,6 +75,7 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	if policyName := r.URL.Query().Get("policy"); policyName != "" {
 		ok, err := f.policies.IsUserInPolicy(r.Context(), policyName, data.UserID)
 		if err != nil || !ok {
+			f.auditLog.Log(r.Context(), "forwardauth.denied", data.UserID, r.Header.Get("X-Forwarded-Host"), r.RemoteAddr, "policy: "+policyName)
 			http.Error(w, "Access denied", http.StatusForbidden)
 			return
 		}
@@ -125,6 +129,7 @@ func (f *ForwardAuth) handleCallback(w http.ResponseWriter, r *http.Request, raw
 		return
 	}
 
+	f.auditLog.Log(r.Context(), "login.handoff", userID, host, r.RemoteAddr, "")
 	http.Redirect(w, r, proto+"://"+host+redirect, http.StatusFound)
 }
 

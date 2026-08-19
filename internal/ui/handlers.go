@@ -565,6 +565,25 @@ func (h *Handlers) PostTOTPRecovery(w http.ResponseWriter, r *http.Request) {
 	h.completeLogin(w, r, sessID, data, "password")
 }
 
+func (h *Handlers) loginActor(ctx context.Context, oidcRequestID, redirectURI string) string {
+	if oidcRequestID != "" && h.oidcStorage != nil {
+		if req, err := h.oidcStorage.AuthRequestByID(ctx, oidcRequestID); err == nil && req != nil {
+			var name string
+			h.db.QueryRowContext(ctx, `SELECT name FROM oidc_clients WHERE client_id=?`, req.GetClientID()).Scan(&name)
+			if name != "" {
+				return name
+			}
+			return req.GetClientID()
+		}
+	}
+	if redirectURI != "" {
+		if u, err := url.Parse(redirectURI); err == nil && u.Host != "" {
+			return u.Host
+		}
+	}
+	return ""
+}
+
 func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID string, data *auth.SessionData, method string) {
 	user, _ := h.users.GetByID(r.Context(), data.UserID)
 	if user != nil && user.ForcePasswordChange {
@@ -578,7 +597,8 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 	data.PendingTOTP = false
 	h.sessions.Update(r.Context(), sessID, *data)
 	if method != "" {
-		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, "", r.RemoteAddr, method)
+		actor := h.loginActor(r.Context(), data.OIDCRequestID, data.RedirectURI)
+		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, actor, r.RemoteAddr, method)
 	}
 
 	if data.OIDCRequestID != "" && h.oidcStorage != nil {
@@ -704,7 +724,7 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
 	}
-	h.auditLog.Log(r.Context(), audit.EventLoginPasskey, userID, "", r.RemoteAddr, "")
+	h.auditLog.Log(r.Context(), audit.EventLoginPasskey, userID, h.loginActor(r.Context(), oidcRequest, redirectURI), r.RemoteAddr, "")
 
 	if oidcRequest != "" && h.oidcStorage != nil {
 		if err := h.oidcStorage.AuthRequestDone(r.Context(), oidcRequest, userID); err == nil {

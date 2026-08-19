@@ -18,6 +18,15 @@ Every sign-in was labelled **Password** unless it used a passkey or a social pro
 
 Entries written by earlier versions keep their old labels.
 
+### The audit log shows what was signed into
+
+A new **App / Site** column answers the other half of the question. Sign-ins through OIDC show the client's name, such as Immich. Sign-ins that came from a ForwardAuth redirect show the site's hostname, such as `radarr.example.com`.
+
+- **`login.handoff`** - a new event written when an existing sign-in reaches a protected site on another domain, once per site rather than once per request.
+- **`forwardauth.denied`** - written when a signed-in user is refused by a site's access policy, with the site and the policy name. Denied access attempts were previously not recorded at all.
+- **More room to show it** - the User and Email columns are merged, with the email shown on hover, and the Method column folded into the event, shown on hover too. The method filter chips still work.
+- **Admin display names** - audit rows for admins showed their email even when a display name was set. They now show the name, like user rows do.
+
 ### Fixed
 
 - **A failed registration sent the wrong email** - Trying to register with an address that already has an account sent a message headed "Password changed", telling the recipient their password had just been changed and to contact their administrator immediately. Nothing had changed. It now says an account already exists and that no action is needed.

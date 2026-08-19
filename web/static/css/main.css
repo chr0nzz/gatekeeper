@@ -914,7 +914,7 @@ dialog::backdrop {
    AUDIT ROWS
    ============================================================ */
 .audit-row {
-  display: grid; grid-template-columns: 90px 170px minmax(150px,1.5fr) minmax(130px,1fr) 90px minmax(180px,2fr) 110px 32px;
+  display: grid; grid-template-columns: 90px 170px minmax(150px,1.5fr) minmax(120px,1fr) minmax(180px,2fr) 110px 32px;
   gap: 10px; align-items: center;
   padding: 9px 16px; border-bottom: 1px solid var(--bd-0);
   font-size: 12.5px; transition: background 0.08s;

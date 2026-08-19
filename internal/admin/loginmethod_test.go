@@ -14,6 +14,7 @@ func TestLoginMethodLabelsFollowTheDetailColumn(t *testing.T) {
 		{"login.passkey", "", "Passkey", "method-passkey"},
 		{"login.social", "", "Social", "method-social"},
 		{"login.qr", "", "QR code", "method-qr"},
+		{"login.handoff", "", "SSO", "method-sso"},
 		{"admin.login", "password", "Password", "method-password"},
 		{"user.created", "", "", ""},
 	}
