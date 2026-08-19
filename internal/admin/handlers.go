@@ -597,6 +597,7 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		UserName    string
 		UserID      string
 		HasAvatar   bool
+		Actor       string
 		Detail      string
 		Time        string
 		Kind        string
@@ -604,10 +605,12 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		MethodClass string
 	}
 	rows, _ := h.db.QueryContext(ctx,
-		`SELECT a.event, COALESCE(u.email, au.email, a.user_id, ''), COALESCE(NULLIF(u.display_name,''), NULLIF(au.display_name,''), ''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(a.detail,''), a.created_at
+		`SELECT a.event, COALESCE(u.email, au.email, a.user_id, ''), COALESCE(NULLIF(u.display_name,''), NULLIF(au.display_name,''), ''), COALESCE(a.user_id,''), (u.avatar_data IS NOT NULL AND LENGTH(u.avatar_data)>0), COALESCE(act.email, aa.email, a.actor_id, ''), COALESCE(a.detail,''), a.created_at
 		 FROM audit_log a
 		 LEFT JOIN users u ON u.id = a.user_id
 		 LEFT JOIN admin_users au ON au.id = a.user_id
+		 LEFT JOIN admin_users aa ON aa.id = a.actor_id
+		 LEFT JOIN users act ON act.id = a.actor_id
 		 ORDER BY a.created_at DESC LIMIT 8`,
 	)
 	var recentEvents []RecentEvent
@@ -616,7 +619,7 @@ func (h *Handlers) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var e RecentEvent
 			var ts int64
-			rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Detail, &ts)
+			rows.Scan(&e.Event, &e.User, &e.UserName, &e.UserID, &e.HasAvatar, &e.Actor, &e.Detail, &ts)
 			e.Time = time.Unix(ts, 0).Format("15:04:05")
 			e.Kind = eventKind(e.Event)
 			e.Method, e.MethodClass = loginMethod(e.Event, e.Detail)
