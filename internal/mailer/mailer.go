@@ -186,6 +186,31 @@ var changedTmpl = template.Must(template.New("changed").Parse(`<!DOCTYPE html>
 </table>
 </body></html>`))
 
+var duplicateTmpl = template.Must(template.New("duplicate").Parse(`<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>You already have an account</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px">
+  <tr><td align="center">
+    <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <tr><td style="background:{{.AccentColor}};padding:24px 32px;text-align:center">
+        {{if .LogoURL}}<img src="{{.LogoURL}}" alt="{{.SenderName}}" height="36" style="display:block;margin:0 auto">
+        {{else}}<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-.3px">{{.SenderName}}</span>{{end}}
+      </td></tr>
+      <tr><td style="padding:36px 32px">
+        <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827">You already have an account</h1>
+        <p style="margin:0 0 16px;font-size:15px;color:#6b7280">Someone tried to create a {{.SenderName}} account with this address. One already exists, so nothing has changed.</p>
+        <p style="margin:0 0 16px;font-size:15px;color:#6b7280">If that was you, sign in as usual. If you have forgotten your password, use the reset link on the sign-in page.</p>
+        <p style="margin:0;font-size:15px;color:#6b7280">If it was not you, no action is needed. Your account was not affected.</p>
+      </td></tr>
+      <tr><td style="padding:20px 32px;border-top:1px solid #f0f0f0;text-align:center">
+        <p style="margin:0;font-size:12px;color:#9ca3af">Sent by {{.SenderName}}</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`))
+
 // SendOTP sends a one-time password to the given address.
 func (m *Mailer) SendOTP(ctx context.Context, to, code string) error {
 	b := m.loadBranding(ctx)
@@ -216,11 +241,11 @@ func (m *Mailer) SendPasswordReset(ctx context.Context, to, resetURL string) err
 	return m.send(ctx, to, "Reset your password", buf.String())
 }
 
-// SendPasswordChanged notifies a user that their password was changed.
+// SendDuplicateRegistration tells an address that an account already exists for it.
 func (m *Mailer) SendDuplicateRegistration(ctx context.Context, to string) error {
 	b := m.loadBranding(ctx)
 	var buf bytes.Buffer
-	if err := changedTmpl.Execute(&buf, map[string]string{
+	if err := duplicateTmpl.Execute(&buf, map[string]string{
 		"LogoURL":     b.LogoURL,
 		"SenderName":  b.senderName(),
 		"AccentColor": b.accentColor(),
@@ -230,6 +255,7 @@ func (m *Mailer) SendDuplicateRegistration(ctx context.Context, to string) error
 	return m.send(ctx, to, "You already have an account", buf.String())
 }
 
+// SendPasswordChanged notifies a user that their password was changed.
 func (m *Mailer) SendPasswordChanged(ctx context.Context, to string) error {
 	b := m.loadBranding(ctx)
 	var buf bytes.Buffer

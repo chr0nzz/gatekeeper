@@ -159,7 +159,7 @@ func (g *GroupStore) GetUserGroups(ctx context.Context, userID string) ([]string
 	return names, nil
 }
 
-// GetUserGroupsByID returns group IDs and names for a user (used for non-members list).
+// ListNotMember returns the users who are not members of a group.
 func (g *GroupStore) ListNotMember(ctx context.Context, groupID string) ([]User, error) {
 	rows, err := g.db.QueryContext(ctx,
 		`SELECT u.id, u.email, u.password_hash, u.passwordless_enabled, u.force_password_change,

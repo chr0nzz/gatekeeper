@@ -310,7 +310,7 @@ func (a *AdminStore) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-// GetAPIKey returns the API key for an admin.
+// HasAPIKey reports whether an admin has an API key set.
 func (a *AdminStore) HasAPIKey(ctx context.Context, id string) bool {
 	var key string
 	a.db.QueryRowContext(ctx, `SELECT api_key FROM admin_users WHERE id=?`, id).Scan(&key)

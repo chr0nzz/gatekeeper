@@ -330,6 +330,11 @@ func TestSendDuplicateRegistrationUsesItsOwnSubject(t *testing.T) {
 	if subject := got.header(t, "Subject"); subject != "You already have an account" {
 		t.Errorf("Subject = %q, want %q", subject, "You already have an account")
 	}
+	if body := got.body(t); strings.Contains(body, "Password changed") || strings.Contains(body, "password was just changed") {
+		t.Error("a failed registration attempt told the recipient their password had been changed")
+	} else if !strings.Contains(body, "You already have an account") {
+		t.Error("the body does not say an account already exists")
+	}
 	if len(got.envelopeTo) != 1 || got.envelopeTo[0] != "user@example.test" {
 		t.Errorf("envelope recipients = %v, want [user@example.test]", got.envelopeTo)
 	}
