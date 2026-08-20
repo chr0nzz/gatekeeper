@@ -197,7 +197,9 @@ a { color: inherit; text-decoration: none; }
    ============================================================ */
 .shell { display: grid; grid-template-columns: 244px 1fr; min-height: 100vh; background: var(--bg-0); }
 .shell.signed-out { display: block; }
-:root.sidebar-collapsed .shell { grid-template-columns: 56px 1fr; }
+@media (min-width: 761px) {
+  :root.sidebar-collapsed .shell { grid-template-columns: 56px 1fr; }
+}
 
 .sidebar {
   border-right: 1px solid var(--bd-0);
@@ -318,14 +320,14 @@ a { color: inherit; text-decoration: none; }
 .search-trigger .kbd { margin-left: auto; }
 
 .page { padding: 28px 32px; max-width: 1240px; }
-.page-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 22px; }
+.page-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
 .page-head h1 {
   font-family: var(--font-display);
   font-size: 34px; font-weight: 600; letter-spacing: -0.03em; margin: 0;
   line-height: 1; color: var(--tx-0);
 }
 .page-head .sub { color: var(--tx-2); font-size: 13.5px; margin-top: 6px; max-width: 560px; }
-.page-head .head-actions { margin-left: auto; display: flex; gap: 6px; }
+.page-head .head-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ============================================================
    THEME TOGGLE - 3-state segmented control (sun / monitor / moon)
@@ -1077,9 +1079,8 @@ dialog::backdrop {
   .audit-row > *:nth-child(3) { order: 1; flex: 1; min-width: 0; overflow: hidden; }
   .audit-row > *:nth-child(4),
   .audit-row > *:nth-child(5),
-  .audit-row > *:nth-child(6),
   .audit-row .ip,
-  .audit-row > *:nth-child(8) { display: none; }
+  .audit-row > *:nth-child(7) { display: none; }
   .audit-row:hover .audit-filter-btn { display: none; }
 
   /* --- Detail list --- */
@@ -1112,6 +1113,14 @@ dialog::backdrop {
   .user-page { padding: 18px 14px 28px !important; }
   .user-page-head { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
   .user-page-head .head-actions { margin-left: 0 !important; }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .audit-row {
+    grid-template-columns: 80px 150px minmax(110px,1.2fr) minmax(90px,1fr) minmax(120px,1.5fr) 28px;
+    gap: 8px;
+  }
+  .audit-row > *:nth-child(6) { display: none; }
 }
 
 @media (max-width: 480px) {
