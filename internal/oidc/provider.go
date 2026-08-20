@@ -351,7 +351,7 @@ func (s *Storage) KeySet(ctx context.Context) ([]op.Key, error) {
 		if err != nil {
 			continue
 		}
-		keys = append(keys, &signingKey{id: id, key: k})
+		keys = append(keys, &publicKey{id: id, key: &k.PublicKey})
 	}
 	return keys, nil
 }
@@ -823,6 +823,16 @@ func (k *signingKey) SignatureAlgorithm() jose.SignatureAlgorithm { return jose.
 func (k *signingKey) Algorithm() jose.SignatureAlgorithm          { return jose.RS256 }
 func (k *signingKey) Use() string                                 { return "sig" }
 func (k *signingKey) Key() any                                    { return k.key }
+
+type publicKey struct {
+	id  string
+	key *rsa.PublicKey
+}
+
+func (k *publicKey) ID() string                         { return k.id }
+func (k *publicKey) Algorithm() jose.SignatureAlgorithm { return jose.RS256 }
+func (k *publicKey) Use() string                        { return "sig" }
+func (k *publicKey) Key() any                           { return k.key }
 
 // ClientRecord holds OIDC client data for display.
 type ClientRecord struct {

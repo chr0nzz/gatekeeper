@@ -73,10 +73,7 @@ func (o *OTPStore) Verify(ctx context.Context, userID, code string) error {
 		return err
 	}
 	if !hmac.Equal([]byte(stored), []byte(o.hmacCode(code))) {
-		if err := o.recordFail(ctx, userID); err != nil {
-			return err
-		}
-		return errors.New("invalid code")
+		return o.recordFail(ctx, userID)
 	}
 	res, err := o.db.ExecContext(ctx, `UPDATE otps SET used=1 WHERE id=? AND used=0`, id)
 	if err != nil {

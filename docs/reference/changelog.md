@@ -5,6 +5,18 @@ description: Version history for GateKeeper.
 
 ## v0.9.6
 
+:::danger Critical security release
+The public key endpoint at `/keys` served the full RSA private signing key. Anyone who fetched it can forge id_tokens for any identity until keys rotate. Upgrade immediately; the upgrade retires all stored keys and generates a fresh one. See the release notes for rotation steps.
+:::
+
+### The JWKS endpoint published the private signing key
+
+The unauthenticated `/keys` endpoint, which applications use to verify token signatures, served the private key's full material (`d`, `p`, `q`, `dp`, `dq`, `qi`) alongside the public fields. The structure holding the signing key was reused for the published key set, so the private key was serialised where the public key belonged.
+
+- **Fixed** - the endpoint now publishes only `kty`, `n`, `e`, `kid`, `alg` and `use`, and a test asserts the private fields can never appear.
+- **Scope** - the key signs id_tokens only. Sessions, access tokens, refresh tokens and ForwardAuth cookies are opaque database-checked values and cannot be forged with it.
+- **Rotation** - upgrading deletes all stored signing keys and generates a fresh one on startup. Applications that cache the key set should be restarted or signed into again.
+
 ### The audit log records how you actually signed in
 
 Every sign-in was labelled **Password** unless it used a passkey or a social provider, because the completion step wrote one generic event no matter how the user authenticated. Opening an application while already signed in also wrote that event, so using an app through OIDC showed up as a password login even though nothing was typed.
