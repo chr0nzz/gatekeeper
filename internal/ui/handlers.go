@@ -434,6 +434,12 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if auth.NeedsRehash(user.PasswordHash) {
+		if fresh, err := auth.HashPassword(password); err == nil {
+			h.users.SetPassword(r.Context(), user.ID, fresh, user.ForcePasswordChange)
+		}
+	}
+
 	if h.trustedDevices.IsTrusted(r, user.ID) {
 		sessID, _ := h.sessions.Create(w, r, auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest})
 		data := &auth.SessionData{UserID: user.ID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest}

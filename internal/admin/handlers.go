@@ -423,6 +423,12 @@ func (h *Handlers) PostLogin(w http.ResponseWriter, r *http.Request) {
 		h.render(w, r, "admin_login.html", map[string]interface{}{"Error": "Invalid credentials"})
 		return
 	}
+
+	if auth.NeedsRehash(admin.PasswordHash) {
+		if fresh, hashErr := auth.HashPassword(password); hashErr == nil {
+			h.db.ExecContext(r.Context(), `UPDATE admin_users SET password_hash=? WHERE id=?`, fresh, admin.ID)
+		}
+	}
 	h.limiter.Reset(ip)
 
 	sessID, err := h.adminSess.Create(r.Context(), admin.ID)

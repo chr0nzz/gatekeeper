@@ -245,6 +245,7 @@ func main() {
 	attachBase := func(r chi.Router) {
 		r.Use(gkmiddleware.TrustedRealIP)
 		r.Use(chimiddleware.Recoverer)
+		r.Use(gkmiddleware.Timeout(20 * time.Second))
 		r.Use(gkmiddleware.SecureHeaders)
 		r.Use(gkmiddleware.CSRF)
 		r.Handle("/static/*", staticHandler)
@@ -367,7 +368,7 @@ func main() {
 	go func() {
 		adminAddr := fmt.Sprintf(":%d", cfg.AdminPort)
 		slog.Info("admin server starting", "addr", adminAddr, "admin_url", cfg.AdminURL)
-		if err := http.ListenAndServe(adminAddr, adm); err != nil {
+		if err := newServer(adminAddr, adm).ListenAndServe(); err != nil {
 			slog.Error("admin server error", "err", err)
 			os.Exit(1)
 		}
@@ -375,8 +376,19 @@ func main() {
 
 	pubAddr := fmt.Sprintf(":%d", cfg.Port)
 	slog.Info("gatekeeper starting", "addr", pubAddr, "base_url", cfg.BaseURL, "version", version)
-	if err := http.ListenAndServe(pubAddr, pub); err != nil {
+	if err := newServer(pubAddr, pub).ListenAndServe(); err != nil {
 		slog.Error("server error", "err", err)
 		os.Exit(1)
+	}
+}
+
+func newServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 }

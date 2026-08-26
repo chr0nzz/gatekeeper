@@ -125,3 +125,33 @@ func TestInviteCannotBeRedeemedTwice(t *testing.T) {
 		t.Errorf("one invite produced %d accounts, want 1", n)
 	}
 }
+
+func TestLegacyPasswordHashSignsInAndIsUpgraded(t *testing.T) {
+	ctx := context.Background()
+	u := newUIHarness(t)
+	const pw = "correct-horse-battery-staple"
+
+	id := u.addUser(t, "legacy@example.com", pw)
+	legacy := auth.LegacyHashForTest(t, pw)
+	if _, err := u.db.Exec(`UPDATE users SET password_hash=? WHERE id=?`, legacy, id); err != nil {
+		t.Fatalf("seed legacy hash: %v", err)
+	}
+
+	rec := u.postForm("/login", url.Values{
+		"email":    {"legacy@example.com"},
+		"password": {pw},
+	})
+	if rec.Code != http.StatusFound {
+		t.Fatalf("a user with an old-format hash could not sign in: status %d", rec.Code)
+	}
+
+	var stored string
+	u.db.QueryRow(`SELECT password_hash FROM users WHERE id=?`, id).Scan(&stored)
+	if stored == legacy {
+		t.Error("the old-format hash was not upgraded on sign-in")
+	}
+	if auth.VerifyPassword(pw, stored) != nil {
+		t.Error("the upgraded hash does not verify the same password")
+	}
+	_ = ctx
+}

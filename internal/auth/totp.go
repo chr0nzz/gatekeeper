@@ -77,6 +77,19 @@ func (t *TOTPStore) ConfirmEnrollment(ctx context.Context, userID, secret, code 
 		return nil, err
 	}
 
+	codes := make([]string, recoveryCodes)
+	hashes := make([]string, recoveryCodes)
+	ids := make([]string, recoveryCodes)
+	for i := range codes {
+		codes[i] = randomAlphanumeric(recoveryLen)
+		h, err := HashPassword(codes[i])
+		if err != nil {
+			return nil, err
+		}
+		hashes[i] = h
+		ids[i], _ = randomToken(16)
+	}
+
 	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -96,17 +109,11 @@ func (t *TOTPStore) ConfirmEnrollment(ctx context.Context, userID, secret, code 
 		return nil, err
 	}
 
-	codes := make([]string, recoveryCodes)
+	now := time.Now().Unix()
 	for i := range codes {
-		codes[i] = randomAlphanumeric(recoveryLen)
-		h, err := HashPassword(codes[i])
-		if err != nil {
-			return nil, err
-		}
-		id, _ := randomToken(16)
 		_, err = tx.ExecContext(ctx,
 			`INSERT INTO totp_recovery_codes (id, user_id, code_hash, created_at) VALUES (?,?,?,?)`,
-			id, userID, h, time.Now().Unix(),
+			ids[i], userID, hashes[i], now,
 		)
 		if err != nil {
 			return nil, err

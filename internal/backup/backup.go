@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	gkdb "github.com/chr0nzz/gatekeeper/internal/db"
 )
 
 // Create takes an encrypted snapshot of the database and returns it with its name.
@@ -19,7 +21,13 @@ func Create(ctx context.Context, db *sql.DB, dbPath string, secretKey []byte) (d
 	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("gk-backup-%d.db", time.Now().UnixNano()))
 	defer os.Remove(tmp)
 
-	if _, err = db.ExecContext(ctx, "VACUUM INTO ?", tmp); err != nil {
+	snap, err := gkdb.OpenSnapshot(dbPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("open snapshot connection: %w", err)
+	}
+	defer snap.Close()
+
+	if _, err = snap.ExecContext(ctx, "VACUUM INTO ?", tmp); err != nil {
 		return nil, "", fmt.Errorf("vacuum into: %w", err)
 	}
 

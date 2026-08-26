@@ -29,6 +29,15 @@ func Open(path string) (*sql.DB, error) {
 	return db, nil
 }
 
+func OpenSnapshot(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", path+"?_journal=WAL&_timeout=15000&_fk=true&mode=ro")
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite snapshot: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	return db, nil
+}
+
 func applyPendingRestore(path string) error {
 	restorePath := path + ".restore"
 	if _, err := os.Stat(restorePath); err != nil {

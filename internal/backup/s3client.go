@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+var s3HTTP = &http.Client{Timeout: 10 * time.Minute}
+
 type s3Client struct {
 	endpoint  string
 	bucket    string
@@ -72,7 +74,7 @@ func (c *s3Client) Put(ctx context.Context, key string, body []byte) error {
 
 	c.sign(req, now, payloadHash)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s3HTTP.Do(req)
 	if err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func (c *s3Client) Get(ctx context.Context, key string) ([]byte, error) {
 
 	c.sign(req, now, payloadHash)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s3HTTP.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +126,7 @@ func (c *s3Client) Delete(ctx context.Context, key string) error {
 
 	c.sign(req, now, payloadHash)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s3HTTP.Do(req)
 	if err != nil {
 		return err
 	}
@@ -164,7 +166,7 @@ func (c *s3Client) List(ctx context.Context, prefix string) ([]s3Object, error) 
 
 	c.sign(req, now, payloadHash)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s3HTTP.Do(req)
 	if err != nil {
 		return nil, err
 	}

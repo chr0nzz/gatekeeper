@@ -3,6 +3,37 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.7
+
+A stability release. One slow operation can no longer stall every other request.
+
+### Requests can no longer pile up behind a slow database call
+
+Every database-touching request is serialised through a single SQLite connection, so the slowest operation in the process sets the delay for every other request. Two things turned that into a stall rather than a slowdown.
+
+- **Requests now have a deadline** - Database calls inherited the request's own context, which cancels only when the browser gives up, so waiting requests accumulated instead of being dropped. Requests now carry a 20 second deadline. Backup upload, download and restore are exempt, since those are legitimately slow.
+- **Connections now have timeouts** - Both listeners ran with every HTTP timeout unset, meaning infinite, so a connection that stalled mid-request held a slot forever. Header, read, write and idle timeouts are now set on the public and admin listeners.
+
+### Automatic backups no longer freeze the server
+
+Taking a backup copies the whole database with `VACUUM INTO`, and that ran on the same connection every request uses. For the length of the copy, every sign-in, token request and protected-site check was blocked outright, and it grew slower as the database grew. The snapshot now runs on its own read-only connection and does not touch request traffic.
+
+### Setting up an authenticator app no longer stalls everything
+
+Enrolling in TOTP hashes eight recovery codes, and that ran inside the database transaction, holding the only connection throughout. On a single core machine this froze the whole server for 1.2 seconds. The codes are now hashed before the transaction opens.
+
+### Password hashes record their own settings
+
+Stored hashes held only the salt and hash, with the argon2 settings read from constants in the code. Changing any of those settings would have made every existing password fail to verify, locking out every user and administrator with no recovery other than resetting each account by hand.
+
+Hashes now record the settings used to create them. Existing hashes keep working and are rewritten in the new format on the next successful sign-in. Nothing is required from you.
+
+### Failed backup uploads no longer stop all future backups
+
+The uploader used an HTTP client with no timeout, so a hung upload meant the backup routine never returned, the schedule never ticked again, and backups stopped silently. It now gives up after ten minutes.
+
+---
+
 ## v0.9.6
 
 :::danger Critical security release

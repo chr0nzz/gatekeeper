@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -21,6 +22,10 @@ const (
 	argonParallelism = 4
 	argonKeyLen      = 32
 	argonSaltLen     = 16
+
+	legacyArgonMemory      = 64 * 1024
+	legacyArgonIterations  = 3
+	legacyArgonParallelism = 4
 
 	resetTokenBytes = 32
 	resetTTL        = 30 * time.Minute
@@ -94,30 +99,71 @@ func HashPassword(password string) (string, error) {
 		return "", err
 	}
 	hash := argon2.IDKey([]byte(password), salt, argonIterations, argonMemory, argonParallelism, argonKeyLen)
-	return fmt.Sprintf("$argon2id$%x$%x", salt, hash), nil
+	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%x$%x",
+		argon2.Version, argonMemory, argonIterations, argonParallelism, salt, hash), nil
 }
 
 // VerifyPassword checks a plaintext password against a stored argon2id hash.
 func VerifyPassword(password, stored string) error {
-	var saltHex, hashHex string
-	if _, err := fmt.Sscanf(stored, "$argon2id$%s", &saltHex); err != nil || len(saltHex) < 64 {
-		return ErrInvalidPassword
-	}
-	saltHex = saltHex[:32]
-	hashHex = stored[len("$argon2id$")+32+1:]
-	salt, err := hex.DecodeString(saltHex)
+	salt, expected, mem, iters, par, err := parseStoredHash(stored)
 	if err != nil {
 		return ErrInvalidPassword
 	}
-	expected, err := hex.DecodeString(hashHex)
-	if err != nil {
-		return ErrInvalidPassword
-	}
-	got := argon2.IDKey([]byte(password), salt, argonIterations, argonMemory, argonParallelism, argonKeyLen)
+	got := argon2.IDKey([]byte(password), salt, iters, mem, par, uint32(len(expected)))
 	if !constantEqual(got, expected) {
 		return ErrInvalidPassword
 	}
 	return nil
+}
+
+func parseStoredHash(stored string) (salt, hash []byte, mem, iters uint32, par uint8, err error) {
+	if !strings.HasPrefix(stored, "$argon2id$") {
+		return nil, nil, 0, 0, 0, ErrInvalidPassword
+	}
+	parts := strings.Split(stored, "$")
+
+	if len(parts) == 6 && strings.HasPrefix(parts[2], "v=") {
+		var version int
+		if _, err = fmt.Sscanf(parts[2], "v=%d", &version); err != nil {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		var m, t uint32
+		var p uint8
+		if _, err = fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &m, &t, &p); err != nil {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		if m == 0 || t == 0 || p == 0 {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		if salt, err = hex.DecodeString(parts[4]); err != nil {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		if hash, err = hex.DecodeString(parts[5]); err != nil {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		return salt, hash, m, t, p, nil
+	}
+
+	if len(parts) == 4 {
+		if salt, err = hex.DecodeString(parts[2]); err != nil {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		if hash, err = hex.DecodeString(parts[3]); err != nil {
+			return nil, nil, 0, 0, 0, ErrInvalidPassword
+		}
+		return salt, hash, legacyArgonMemory, legacyArgonIterations, legacyArgonParallelism, nil
+	}
+
+	return nil, nil, 0, 0, 0, ErrInvalidPassword
+}
+
+func NeedsRehash(stored string) bool {
+	_, _, mem, iters, par, err := parseStoredHash(stored)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(stored, "$argon2id$v=") ||
+		mem != argonMemory || iters != argonIterations || par != argonParallelism
 }
 
 func constantEqual(a, b []byte) bool {
@@ -290,4 +336,13 @@ func LoadPasswordPolicy(get func(key, fallback string) string) PasswordPolicy {
 // Check validates a password against the policy.
 func (p PasswordPolicy) Check(password string) error {
 	return CheckPasswordPolicy(password, p.MinLength, p.RequireUpper, p.RequireNumber, p.RequireSymbol)
+}
+
+func LegacyHashForTest(t interface{ Fatalf(string, ...any) }, password string) string {
+	salt := make([]byte, argonSaltLen)
+	if _, err := rand.Read(salt); err != nil {
+		t.Fatalf("salt: %v", err)
+	}
+	h := argon2.IDKey([]byte(password), salt, legacyArgonIterations, legacyArgonMemory, legacyArgonParallelism, argonKeyLen)
+	return fmt.Sprintf("$argon2id$%x$%x", salt, h)
 }

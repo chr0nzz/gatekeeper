@@ -21,6 +21,8 @@ These match the OWASP recommended minimum for argon2id. They mean each password 
 
 A new random salt is generated for every hash, so two users with the same password have different hashes in the database.
 
+Each stored hash records the parameters it was created with, so these values can be changed without invalidating existing passwords. Hashes written by versions before v0.9.7 did not record them, and are rewritten in the current format the next time that person signs in.
+
 ## Policy settings
 
 The policy is configured under **Settings - Password policy** and applies immediately, with no restart.
@@ -62,4 +64,4 @@ After the user sets their own password, the flag is cleared.
 
 ## Reset token security
 
-Password reset tokens are 32 bytes of cryptographically random data. GateKeeper stores the argon2id hash of the token, not the token itself. The hash uses a fixed salt (`gatekeeper-reset-token-salt-v1xx`) applied to the raw random bytes. Tokens expire in 30 minutes and are single-use.
+Password reset tokens are 32 bytes of cryptographically random data. GateKeeper stores a SHA-256 digest of the token, not the token itself. A plain digest is the right choice here because the token is already 256 bits of randomness, so there is nothing to guess and nothing for a slow hash to protect. Tokens expire in 30 minutes and are single-use.
