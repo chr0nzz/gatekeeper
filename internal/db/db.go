@@ -4,10 +4,14 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"log/slog"
 	"os"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
+
+const sqliteParams = "?_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(on)"
 
 //go:embed migrations/*.sql
 var migrations embed.FS
@@ -17,11 +21,15 @@ func Open(path string) (*sql.DB, error) {
 	if err := applyPendingRestore(path); err != nil {
 		return nil, fmt.Errorf("apply restore: %w", err)
 	}
-	db, err := sql.Open("sqlite", path+"?_journal=WAL&_timeout=5000&_fk=true")
+	db, err := sql.Open("sqlite", path+sqliteParams)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 	db.SetMaxOpenConns(1)
+	if err := verifyConnection(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	if err := migrate(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -30,12 +38,38 @@ func Open(path string) (*sql.DB, error) {
 }
 
 func OpenSnapshot(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path+"?_journal=WAL&_timeout=15000&_fk=true&mode=ro")
+	db, err := sql.Open("sqlite", path+sqliteParams)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite snapshot: %w", err)
 	}
 	db.SetMaxOpenConns(1)
+	if err := verifyConnection(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return db, nil
+}
+
+func verifyConnection(db *sql.DB) error {
+	var busy int
+	if err := db.QueryRow(`PRAGMA busy_timeout`).Scan(&busy); err != nil {
+		return fmt.Errorf("read busy_timeout: %w", err)
+	}
+	if busy < 1000 {
+		return fmt.Errorf("busy_timeout is %dms, expected at least 1000ms: the connection settings in %q were not applied by the driver", busy, sqliteParams)
+	}
+
+	var journal string
+	if err := db.QueryRow(`PRAGMA journal_mode`).Scan(&journal); err != nil {
+		return fmt.Errorf("read journal_mode: %w", err)
+	}
+	if !strings.EqualFold(journal, "wal") {
+		slog.Warn("sqlite is not in WAL mode, concurrent reads and writes will contend",
+			"journal_mode", journal, "hint", "WAL needs a filesystem supporting shared memory, not NFS or similar")
+	}
+
+	slog.Info("sqlite ready", "journal_mode", journal, "busy_timeout_ms", busy)
+	return nil
 }
 
 func applyPendingRestore(path string) error {

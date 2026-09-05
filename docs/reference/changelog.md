@@ -3,6 +3,34 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.8
+
+:::warning Upgrade from v0.9.7
+Sign-ins could fail with `database is locked` on v0.9.7. Upgrading fixes it.
+:::
+
+### Sign-ins no longer fail with "database is locked"
+
+GateKeeper passed three settings to SQLite when opening the database, and none of them were taking effect. They were written in the query format of a different SQLite driver, and the driver in use ignores unrecognised parameters without reporting an error.
+
+It went unnoticed because everything shared one connection, so nothing could contend for a lock. v0.9.7 gave backups their own connection, which created the first real concurrency the database had seen: without write-ahead logging a backup blocks writes, and without a lock timeout those writes fail instantly. Sign-ins failed with `database is locked`, and scheduled backups eventually failed the same way.
+
+- **Write-ahead logging is on** - reading and writing happen at the same time, so a backup no longer blocks sign-ins.
+- **A 10 second lock timeout applies** - genuine contention waits instead of failing immediately.
+- **Foreign keys are on** - no table declares one today, so nothing changes now, but future ones are enforced.
+
+### The settings now check themselves
+
+A silently ignored setting looks identical to a working one, which is why this lasted so long. GateKeeper now reads back what actually took effect when it opens the database.
+
+- Startup **fails immediately** if the lock timeout is missing, which can only mean the settings were not applied.
+- A **warning** is logged if write-ahead logging could not be enabled, as can happen on network filesystems, naming the mode actually in use.
+- The effective settings are logged on every start: `sqlite ready journal_mode=wal busy_timeout_ms=10000`.
+
+Write-ahead logging also removes a disk sync on every write. The test suite went from roughly eight minutes to one, and writes are quicker in normal use.
+
+---
+
 ## v0.9.7
 
 A stability release. One slow operation can no longer stall every other request.
