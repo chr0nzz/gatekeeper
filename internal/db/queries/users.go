@@ -189,10 +189,28 @@ func (u *UserStore) Approve(ctx context.Context, userID string) error {
 	return err
 }
 
-// Delete removes a user.
+var userOwnedTables = []string{
+	"sessions", "otps", "otp_lockouts", "totp_recovery_codes", "passkeys",
+	"password_reset_tokens", "trusted_devices", "policy_members", "group_members",
+	"social_accounts", "qr_login_tokens", "handoff_tokens", "oidc_tokens",
+}
+
+// Delete removes a user and every credential, session and membership tied to them.
 func (u *UserStore) Delete(ctx context.Context, userID string) error {
-	_, err := u.db.ExecContext(ctx, `DELETE FROM users WHERE id=?`, userID)
-	return err
+	tx, err := u.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, table := range userOwnedTables {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE user_id=?`, userID); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM users WHERE id=?`, userID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (u *UserStore) scan(row *sql.Row) (*User, error) {

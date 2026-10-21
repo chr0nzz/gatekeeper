@@ -25,3 +25,7 @@ docs/dist/
 Thumbs.db
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# test binaries and logs
+*.test
+logs/

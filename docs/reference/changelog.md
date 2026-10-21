@@ -3,6 +3,28 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.9
+
+:::caution Security release
+Upgrade from any earlier version.
+:::
+
+### Passkey and QR sign-in now run every login check
+
+- **Disabled accounts** can no longer sign in with a passkey.
+- **App access policies** are enforced for passkey and QR sign-in.
+- **Forced password changes** apply to passkey and QR sign-in.
+
+### Deleting a user removes their passkeys and links
+
+Deleting or rejecting a user now also removes their passkeys, social logins, sessions, trusted devices, memberships and app tokens. Leftovers from earlier deletions are cleaned up on upgrade.
+
+### Social login no longer links to an existing account on its own
+
+When a social login's email matches an existing account, the user signs in to that account first and the social login is linked afterwards. Users with no password can set one with **Forgot password**.
+
+---
+
 ## v0.9.8
 
 :::warning Upgrade from v0.9.7

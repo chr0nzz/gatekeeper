@@ -244,6 +244,7 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Post("/login/totp/recovery", h.PostTOTPRecovery)
 	r.Post("/login/passkey/begin", h.PostPasskeyLoginBegin)
 	r.Post("/login/passkey/finish", h.PostPasskeyLoginFinish)
+	r.Get("/login/denied", h.GetLoginDenied)
 	r.Post("/login/qr/begin", h.PostQRBegin)
 	r.Get("/login/qr/poll", h.GetQRPoll)
 	r.Get("/login/qr/approve", h.GetQRApprove)
@@ -322,13 +323,14 @@ func (h *Handlers) GetLogin(w http.ResponseWriter, r *http.Request) {
 		user, _ := h.users.GetByID(r.Context(), data.UserID)
 		if user == nil || user.Disabled {
 			h.sessions.Destroy(w, r, sessID)
-		} else if oidcRequest != "" {
-			data.OIDCRequestID = oidcRequest
-			h.sessions.Update(r.Context(), sessID, *data)
-			h.completeLogin(w, r, sessID, data, "sso")
-			return
 		} else {
-			h.redirect(w, r, data.UserID, redirectURI)
+			method := ""
+			if oidcRequest != "" {
+				method = "sso"
+			}
+			data.OIDCRequestID = oidcRequest
+			data.RedirectURI = redirectURI
+			h.completeLogin(w, r, sessID, data, method)
 			return
 		}
 	}
@@ -591,17 +593,35 @@ func (h *Handlers) loginActor(ctx context.Context, oidcRequestID, redirectURI st
 }
 
 func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID string, data *auth.SessionData, method string) {
-	user, _ := h.users.GetByID(r.Context(), data.UserID)
-	if user != nil && user.ForcePasswordChange {
-		data.PendingOTP = false
-		data.PendingTOTP = false
-		h.sessions.Update(r.Context(), sessID, *data)
-		http.Redirect(w, r, "/profile/password?forced=1&redirect_uri="+url.QueryEscape(data.RedirectURI), http.StatusFound)
+	target, deniedApp := h.finishLogin(w, r, sessID, data, method)
+	if deniedApp != "" {
+		h.render(w, "access_denied.html", map[string]interface{}{"AppName": deniedApp})
 		return
 	}
+	http.Redirect(w, r, target, http.StatusFound)
+}
+
+func (h *Handlers) loginTarget(w http.ResponseWriter, r *http.Request, sessID string, data *auth.SessionData) string {
+	target, deniedApp := h.finishLogin(w, r, sessID, data, "")
+	if deniedApp != "" {
+		return "/login/denied?oidc_request=" + url.QueryEscape(data.OIDCRequestID)
+	}
+	return target
+}
+
+func (h *Handlers) finishLogin(w http.ResponseWriter, r *http.Request, sessID string, data *auth.SessionData, method string) (string, string) {
+	user, _ := h.users.GetByID(r.Context(), data.UserID)
+	if user == nil || user.Disabled {
+		h.sessions.Destroy(w, r, sessID)
+		return "/login?social_err=account_disabled", ""
+	}
+	h.confirmSocialLink(w, r, user.ID)
 	data.PendingOTP = false
 	data.PendingTOTP = false
 	h.sessions.Update(r.Context(), sessID, *data)
+	if user.ForcePasswordChange {
+		return "/profile/password?forced=1&redirect_uri=" + url.QueryEscape(data.RedirectURI), ""
+	}
 	if method != "" {
 		actor := h.loginActor(r.Context(), data.OIDCRequestID, data.RedirectURI)
 		h.auditLog.Log(r.Context(), audit.EventLoginSuccess, data.UserID, actor, r.RemoteAddr, method)
@@ -615,20 +635,72 @@ func (h *Handlers) completeLogin(w http.ResponseWriter, r *http.Request, sessID 
 			if policyID != "" {
 				ok, _ := h.policies.IsUserInPolicyByID(r.Context(), policyID, data.UserID)
 				if !ok {
-					h.render(w, "access_denied.html", map[string]interface{}{"AppName": req.GetClientID()})
-					return
+					return "", req.GetClientID()
 				}
 			}
 		}
 		if err := h.oidcStorage.AuthRequestDone(r.Context(), data.OIDCRequestID, data.UserID); err != nil {
 			slog.Error("oidc auth request done failed", "id", data.OIDCRequestID, "err", err)
 		} else {
-			http.Redirect(w, r, "/authorize/callback?id="+url.QueryEscape(data.OIDCRequestID), http.StatusFound)
-			return
+			return "/authorize/callback?id=" + url.QueryEscape(data.OIDCRequestID), ""
 		}
 	}
 
-	h.redirect(w, r, data.UserID, data.RedirectURI)
+	return h.redirectURL(r.Context(), data.UserID, data.RedirectURI), ""
+}
+
+func (h *Handlers) GetLoginDenied(w http.ResponseWriter, r *http.Request) {
+	app := ""
+	if h.oidcStorage != nil {
+		if req, err := h.oidcStorage.AuthRequestByID(r.Context(), r.URL.Query().Get("oidc_request")); err == nil && req != nil {
+			app = req.GetClientID()
+		}
+	}
+	h.render(w, "access_denied.html", map[string]interface{}{"AppName": app})
+}
+
+const socialLinkCookie = "__Host-gk_social_link"
+
+type pendingSocialLink struct {
+	UserID     string
+	Provider   string
+	ProviderID string
+	Email      string
+	Expires    int64
+}
+
+func (h *Handlers) setPendingSocialLink(w http.ResponseWriter, link pendingSocialLink) error {
+	plain, err := json.Marshal(link)
+	if err != nil {
+		return err
+	}
+	value, err := auth.EncryptSecret(plain, []byte(h.secretKey))
+	if err != nil {
+		return err
+	}
+	http.SetCookie(w, &http.Cookie{Name: socialLinkCookie, Value: value, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	return nil
+}
+
+func (h *Handlers) confirmSocialLink(w http.ResponseWriter, r *http.Request, userID string) {
+	c, err := r.Cookie(socialLinkCookie)
+	if err != nil {
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: socialLinkCookie, Value: "", Path: "/", HttpOnly: true, Secure: true, MaxAge: -1})
+	plain, err := auth.DecryptSecret(c.Value, []byte(h.secretKey))
+	if err != nil {
+		return
+	}
+	var link pendingSocialLink
+	if json.Unmarshal(plain, &link) != nil || link.UserID != userID || time.Now().Unix() > link.Expires {
+		return
+	}
+	if existing, _ := h.socialAccounts.FindByProvider(r.Context(), link.Provider, link.ProviderID); existing != nil {
+		return
+	}
+	h.socialAccounts.Create(r.Context(), userID, link.Provider, link.ProviderID, link.Email)
+	h.auditLog.Log(r.Context(), "social.linked", userID, link.Provider, r.RemoteAddr, "confirmed")
 }
 
 func (h *Handlers) redirectURL(ctx context.Context, userID, target string) string {
@@ -725,23 +797,20 @@ func (h *Handlers) PostPasskeyLoginFinish(w http.ResponseWriter, r *http.Request
 
 	redirectURI := r.URL.Query().Get("redirect_uri")
 	oidcRequest := r.URL.Query().Get("oidc_request")
+	if user, _ := h.users.GetByID(r.Context(), userID); user == nil || user.Disabled {
+		h.auditLog.Log(r.Context(), audit.EventLoginFailure, userID, "", r.RemoteAddr, "passkey for disabled or deleted account")
+		http.Error(w, "authentication failed", http.StatusUnauthorized)
+		return
+	}
 	sessData := auth.SessionData{UserID: userID, RedirectURI: redirectURI, OIDCRequestID: oidcRequest}
-	if _, err2 := h.sessions.Create(w, r, sessData); err2 != nil {
+	loginSessID, err := h.sessions.Create(w, r, sessData)
+	if err != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
 	}
 	h.auditLog.Log(r.Context(), audit.EventLoginPasskey, userID, h.loginActor(r.Context(), oidcRequest, redirectURI), r.RemoteAddr, "")
 
-	if oidcRequest != "" && h.oidcStorage != nil {
-		if err := h.oidcStorage.AuthRequestDone(r.Context(), oidcRequest, userID); err == nil {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("/authorize/callback?id=" + url.QueryEscape(oidcRequest)))
-			return
-		}
-	}
-
-	target := h.redirectURL(r.Context(), userID, redirectURI)
+	target := h.loginTarget(w, r, loginSessID, &sessData)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(target))
@@ -1442,6 +1511,8 @@ func socialErrMsg(code string) string {
 		return "Your account is disabled."
 	case "already_linked":
 		return "This social account is already linked to a different user."
+	case "link_required":
+		return "An account with this email already exists. Sign in to it to link your social account."
 	case "email_required":
 		return "Your social profile does not have a verified email address."
 	default:
@@ -1554,10 +1625,18 @@ func (h *Handlers) GetSocialCallback(w http.ResponseWriter, r *http.Request) {
 		userID = account.UserID
 	} else {
 		existing, _ := h.users.GetByEmail(r.Context(), strings.ToLower(profile.Email))
-		if existing != nil && !existing.Disabled {
-			h.socialAccounts.Create(r.Context(), existing.ID, provider, profile.ProviderID, profile.Email)
-			h.auditLog.Log(r.Context(), "social.linked", existing.ID, provider, r.RemoteAddr, "auto")
-			userID = existing.ID
+		if existing != nil {
+			link := pendingSocialLink{UserID: existing.ID, Provider: provider, ProviderID: profile.ProviderID, Email: profile.Email, Expires: time.Now().Add(10 * time.Minute).Unix()}
+			if err := h.setPendingSocialLink(w, link); err != nil {
+				http.Redirect(w, r, "/login?social_err=failed", http.StatusFound)
+				return
+			}
+			target := "/login?social_err=link_required"
+			if oidcReq != "" {
+				target += "&oidc_request=" + url.QueryEscape(oidcReq)
+			}
+			http.Redirect(w, r, target, http.StatusFound)
+			return
 		} else {
 			mode := h.settings.Get(r.Context(), "registration_mode", "disabled")
 			if mode == "disabled" || mode == "invite_only" {
@@ -1595,11 +1674,7 @@ func (h *Handlers) GetSocialCallback(w http.ResponseWriter, r *http.Request) {
 	sd := auth.SessionData{UserID: userID, OIDCRequestID: oidcReq}
 	sessID, _ := h.sessions.Create(w, r, sd)
 	h.auditLog.Log(r.Context(), "login.social", userID, provider, r.RemoteAddr, "")
-	if oidcReq != "" {
-		h.completeLogin(w, r, sessID, &sd, "")
-	} else {
-		h.redirect(w, r, userID, "")
-	}
+	h.completeLogin(w, r, sessID, &sd, "")
 }
 
 func (h *Handlers) PostSocialDisconnect(w http.ResponseWriter, r *http.Request) {

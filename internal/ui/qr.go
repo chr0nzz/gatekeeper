@@ -84,7 +84,8 @@ func (h *Handlers) GetQRPoll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessData := auth.SessionData{UserID: claimed.UserID, OIDCRequestID: claimed.OIDCRequest, RedirectURI: claimed.RedirectURI}
-	if _, err := h.sessions.Create(w, r, sessData); err != nil {
+	sessID, err := h.sessions.Create(w, r, sessData)
+	if err != nil {
 		http.Error(w, "session error", http.StatusInternalServerError)
 		return
 	}
@@ -92,15 +93,7 @@ func (h *Handlers) GetQRPoll(w http.ResponseWriter, r *http.Request) {
 	h.auditLog.Log(r.Context(), "login.qr", claimed.UserID, h.loginActor(r.Context(), claimed.OIDCRequest, claimed.RedirectURI), r.RemoteAddr, "")
 	h.qrTokens.Cleanup(r.Context())
 
-	redirect := "/"
-	if claimed.OIDCRequest != "" && h.oidcStorage != nil {
-		if authErr := h.oidcStorage.AuthRequestDone(r.Context(), claimed.OIDCRequest, claimed.UserID); authErr == nil {
-			redirect = "/authorize/callback?id=" + claimed.OIDCRequest
-		}
-	} else if claimed.RedirectURI != "" {
-		redirect = h.redirectURL(r.Context(), claimed.UserID, claimed.RedirectURI)
-	}
-	json.NewEncoder(w).Encode(map[string]string{"status": "approved", "redirect": redirect})
+	json.NewEncoder(w).Encode(map[string]string{"status": "approved", "redirect": h.loginTarget(w, r, sessID, &sessData)})
 }
 
 func (h *Handlers) GetQRApprove(w http.ResponseWriter, r *http.Request) {

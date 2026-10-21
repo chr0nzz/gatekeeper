@@ -15,7 +15,7 @@ GateKeeper supports OAuth2 sign-in via GitHub, Google, and Discord. When a provi
 4. GateKeeper exchanges the code for an access token and fetches the user's profile.
 5. GateKeeper looks up the provider identity in its database:
    - **Found** - logs in as the linked user.
-   - **Not found, email matches existing user** - links the provider to that account and logs in.
+   - **Not found, email matches existing user** - asks the user to sign in to that account first. The provider is linked once that sign-in succeeds, within 10 minutes.
    - **Not found, no match** - creates a new account (if registration is open) or shows an error.
 
 ## Configuration
