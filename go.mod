@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-webauthn/webauthn v0.15.0
 	github.com/google/uuid v1.6.0
