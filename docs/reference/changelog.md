@@ -3,6 +3,38 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.10
+
+:::caution Security release
+Upgrade from any earlier version.
+:::
+
+### Disabled users lose app access right away
+
+Disabling a user or revoking their sessions now deletes their app tokens. Disabled and deleted users can no longer refresh a token or read their details from the userinfo endpoint.
+
+### Token introspection reports revoked tokens as inactive
+
+The introspection endpoint reported expired, revoked and disabled users' tokens as active. It now reports them as inactive, and active responses include the scope, client and expiry.
+
+### Refresh tokens work once
+
+Using a refresh token now ends the old pair and issues a new one. Apps must save the new refresh token. An app that reuses an old one has to sign in again.
+
+### Forced password changes apply to forward-auth
+
+A user flagged by an admin who already has a session is now sent to change their password before reaching a protected app.
+
+### The login limit can no longer be avoided with a fake header
+
+GateKeeper no longer trusts the `X-Real-IP` header, which a client could fake to avoid the login attempt limit behind some proxy setups. The client address now comes from `X-Forwarded-For`, so a proxy in front of GateKeeper must send that header.
+
+### Dependencies
+
+Updated chi to v5.5.0 to clear advisory GHSA-j6qf-3m9c-vwj3. GateKeeper does not use the affected function.
+
+---
+
 ## v0.9.9
 
 :::caution Security release

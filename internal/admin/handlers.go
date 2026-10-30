@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -1219,6 +1220,7 @@ func (h *Handlers) PostDisableUser(w http.ResponseWriter, r *http.Request) {
 	h.users.SetDisabled(r.Context(), id, true)
 	h.sessions.RevokeAll(r.Context(), id)
 	h.trustedDevices.RevokeAll(r.Context(), id)
+	h.revokeOIDCTokens(r.Context(), id)
 	adminID := h.adminIDFromRequest(r)
 	h.auditLog.Log(r.Context(), audit.EventUserDisabled, id, adminID, r.RemoteAddr, "")
 	http.Redirect(w, r, h.adminBase+"/users", http.StatusFound)
@@ -1282,9 +1284,17 @@ func (h *Handlers) PostRevokeSessions(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	h.sessions.RevokeAll(r.Context(), id)
 	h.trustedDevices.RevokeAll(r.Context(), id)
+	h.revokeOIDCTokens(r.Context(), id)
 	adminID := h.adminIDFromRequest(r)
 	h.auditLog.Log(r.Context(), audit.EventSessionRevoked, id, adminID, r.RemoteAddr, "admin-all")
 	http.Redirect(w, r, h.adminBase+"/users/"+id, http.StatusFound)
+}
+
+// revokeOIDCTokens deletes every OIDC access and refresh token issued to a user.
+func (h *Handlers) revokeOIDCTokens(ctx context.Context, userID string) {
+	if _, err := h.db.ExecContext(ctx, `DELETE FROM oidc_tokens WHERE user_id=?`, userID); err != nil {
+		slog.Error("revoke oidc tokens failed", "user_id", userID, "err", err)
+	}
 }
 
 func (h *Handlers) PostRevokeTOTP(w http.ResponseWriter, r *http.Request) {

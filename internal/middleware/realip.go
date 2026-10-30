@@ -36,9 +36,6 @@ func isSharedAddressSpace(ip net.IP) bool {
 }
 
 func forwardedClientIP(r *http.Request) string {
-	if v := strings.TrimSpace(r.Header.Get("X-Real-IP")); v != "" && net.ParseIP(v) != nil {
-		return v
-	}
 	fwd := r.Header.Get("X-Forwarded-For")
 	if fwd == "" {
 		return ""

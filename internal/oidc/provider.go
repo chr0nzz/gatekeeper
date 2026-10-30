@@ -250,8 +250,17 @@ func (s *Storage) CreateAccessToken(ctx context.Context, req op.TokenRequest) (s
 	return token, expires, err
 }
 
-// CreateAccessAndRefreshTokens issues both an access and refresh token.
+// CreateAccessAndRefreshTokens issues both tokens, consuming the presented refresh token so it is single-use.
 func (s *Storage) CreateAccessAndRefreshTokens(ctx context.Context, req op.TokenRequest, currentRefreshToken string) (string, string, time.Time, error) {
+	if currentRefreshToken != "" {
+		res, err := s.db.ExecContext(ctx, `DELETE FROM oidc_tokens WHERE refresh_token=?`, currentRefreshToken)
+		if err != nil {
+			return "", "", time.Time{}, err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return "", "", time.Time{}, errors.New("invalid refresh token")
+		}
+	}
 	access, expires, err := s.CreateAccessToken(ctx, req)
 	if err != nil {
 		return "", "", time.Time{}, err
@@ -261,21 +270,24 @@ func (s *Storage) CreateAccessAndRefreshTokens(ctx context.Context, req op.Token
 		return "", "", time.Time{}, err
 	}
 	now := time.Now()
-	s.db.ExecContext(ctx,
+	if _, err := s.db.ExecContext(ctx,
 		`UPDATE oidc_tokens SET refresh_token=?, refresh_expires=? WHERE access_token=?`,
 		refresh, now.Add(refreshTokenTTL).Unix(), access,
-	)
+	); err != nil {
+		return "", "", time.Time{}, err
+	}
 	return access, refresh, expires, nil
 }
 
-// TokenRequestByRefreshToken retrieves a token request from a refresh token.
+// TokenRequestByRefreshToken retrieves a token request from a refresh token owned by an enabled user.
 func (s *Storage) TokenRequestByRefreshToken(ctx context.Context, refreshToken string) (op.RefreshTokenRequest, error) {
 	var r authRequest
 	var scopesRaw string
 	now := time.Now()
 	err := s.db.QueryRowContext(ctx,
-		`SELECT auth_request_id, client_id, user_id, scopes FROM oidc_tokens
-		 WHERE refresh_token=? AND refresh_expires>?`,
+		`SELECT t.auth_request_id, t.client_id, t.user_id, t.scopes FROM oidc_tokens t
+		 JOIN users u ON u.id = t.user_id
+		 WHERE t.refresh_token=? AND t.refresh_expires>? AND u.disabled=0`,
 		refreshToken, now.Unix(),
 	).Scan(&r.id, &r.clientID, &r.userID, &scopesRaw)
 	if err == sql.ErrNoRows {
@@ -441,34 +453,54 @@ func (s *Storage) SetUserinfoFromScopes(ctx context.Context, userinfo *oidc.User
 
 // SetUserinfoFromToken populates userinfo from an access token.
 func (s *Storage) SetUserinfoFromToken(ctx context.Context, userinfo *oidc.UserInfo, tokenID, subject, origin string) error {
-	var email string
-	var verified int
-	err := s.db.QueryRowContext(ctx, `SELECT email, email_verified FROM users WHERE id=?`, subject).Scan(&email, &verified)
+	tok, err := s.activeAccessToken(ctx, tokenID, subject)
 	if err != nil {
 		return err
 	}
 	userinfo.Subject = subject
-	scopes := s.tokenScopes(ctx, tokenID)
-	if len(scopes) == 0 || hasScope(scopes, oidc.ScopeEmail) {
-		userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: email, EmailVerified: oidc.Bool(verified == 1)}
+	if len(tok.scopes) == 0 || hasScope(tok.scopes, oidc.ScopeEmail) {
+		userinfo.UserInfoEmail = oidc.UserInfoEmail{Email: tok.email, EmailVerified: oidc.Bool(tok.emailVerified)}
 	}
-	if len(scopes) == 0 || hasScope(scopes, oidc.ScopeProfile) {
-		userinfo.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: email}
+	if len(tok.scopes) == 0 || hasScope(tok.scopes, oidc.ScopeProfile) {
+		userinfo.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: tok.email}
 	}
 	userinfo.Claims = s.userGroupClaims(ctx, subject)
 	return nil
 }
 
-func (s *Storage) tokenScopes(ctx context.Context, tokenID string) []string {
-	var raw string
-	if err := s.db.QueryRowContext(ctx,
-		`SELECT scopes FROM oidc_tokens WHERE id=? OR access_token=?`, tokenID, tokenID,
-	).Scan(&raw); err != nil {
-		return nil
+// accessToken is a stored access token joined with its (enabled) owner.
+type accessToken struct {
+	clientID      string
+	scopes        []string
+	createdAt     time.Time
+	expiresAt     time.Time
+	email         string
+	emailVerified bool
+}
+
+// activeAccessToken loads a stored, unexpired access token owned by subject, an enabled user.
+func (s *Storage) activeAccessToken(ctx context.Context, tokenID, subject string) (*accessToken, error) {
+	var tok accessToken
+	var scopesRaw string
+	var created, expires int64
+	var verified int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT t.client_id, t.scopes, t.created_at, t.access_expires, u.email, u.email_verified
+		 FROM oidc_tokens t JOIN users u ON u.id = t.user_id
+		 WHERE (t.id=? OR t.access_token=?) AND t.user_id=? AND t.access_expires>? AND u.disabled=0`,
+		tokenID, tokenID, subject, time.Now().Unix(),
+	).Scan(&tok.clientID, &scopesRaw, &created, &expires, &tok.email, &verified)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errors.New("invalid access token")
 	}
-	var scopes []string
-	json.Unmarshal([]byte(raw), &scopes)
-	return scopes
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal([]byte(scopesRaw), &tok.scopes)
+	tok.createdAt = time.Unix(created, 0)
+	tok.expiresAt = time.Unix(expires, 0)
+	tok.emailVerified = verified == 1
+	return &tok, nil
 }
 
 func (s *Storage) emailVerified(ctx context.Context, userID string) bool {
@@ -486,14 +518,28 @@ func hasScope(scopes []string, want string) bool {
 	return false
 }
 
-// SetIntrospectionFromToken implements token introspection.
-func (s *Storage) SetIntrospectionFromToken(ctx context.Context, userinfo *oidc.IntrospectionResponse, tokenID, subject, clientID string) error {
-	var email string
-	s.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=?`, subject).Scan(&email)
-	userinfo.SetUserInfo(&oidc.UserInfo{
-		Subject:       subject,
-		UserInfoEmail: oidc.UserInfoEmail{Email: email},
-	})
+// SetIntrospectionFromToken implements token introspection. An error reports the token as inactive, nil as active.
+func (s *Storage) SetIntrospectionFromToken(ctx context.Context, resp *oidc.IntrospectionResponse, tokenID, subject, clientID string) error {
+	tok, err := s.activeAccessToken(ctx, tokenID, subject)
+	if err != nil {
+		return err
+	}
+	resp.Active = true
+	resp.Scope = tok.scopes
+	resp.ClientID = tok.clientID
+	resp.TokenType = oidc.BearerToken
+	resp.Expiration = oidc.FromTime(tok.expiresAt)
+	resp.IssuedAt = oidc.FromTime(tok.createdAt)
+	resp.Subject = subject
+	resp.Audience = oidc.Audience{tok.clientID}
+	resp.Issuer = s.issuer
+	resp.Username = tok.email
+	if len(tok.scopes) == 0 || hasScope(tok.scopes, oidc.ScopeEmail) {
+		resp.UserInfoEmail = oidc.UserInfoEmail{Email: tok.email, EmailVerified: oidc.Bool(tok.emailVerified)}
+	}
+	if len(tok.scopes) == 0 || hasScope(tok.scopes, oidc.ScopeProfile) {
+		resp.UserInfoProfile = oidc.UserInfoProfile{PreferredUsername: tok.email}
+	}
 	return nil
 }
 
@@ -864,7 +910,7 @@ func randomToken(n int) (string, error) {
 // GetUserinfo returns userinfo claims for a user.
 func (s *Storage) GetUserinfo(ctx context.Context, userID, clientID string, scopes []string) (*oidc.UserInfo, error) {
 	var email string
-	err := s.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=?`, userID).Scan(&email)
+	err := s.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=? AND disabled=0`, userID).Scan(&email)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}

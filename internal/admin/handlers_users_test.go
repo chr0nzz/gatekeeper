@@ -287,3 +287,64 @@ func TestAdminUserWritesRequireAnAdminSession(t *testing.T) {
 		t.Error("unauthenticated request deleted a user")
 	}
 }
+
+func admUsersSeedOIDCToken(t *testing.T, a *adminHarness, userID, id string) {
+	t.Helper()
+	now := time.Now().Unix()
+	_, err := a.db.Exec(
+		`INSERT INTO oidc_tokens (id, auth_request_id, client_id, user_id, access_token, refresh_token, scopes, created_at, access_expires, refresh_expires)
+		 VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		id, "ar-"+id, "client1", userID, "at-"+id, "rt-"+id, `["openid"]`, now, now+900, now+3600,
+	)
+	if err != nil {
+		t.Fatalf("seed oidc token: %v", err)
+	}
+}
+
+func admUsersOIDCTokenCount(t *testing.T, a *adminHarness, userID string) int {
+	t.Helper()
+	var n int
+	if err := a.db.QueryRow(`SELECT COUNT(*) FROM oidc_tokens WHERE user_id=?`, userID).Scan(&n); err != nil {
+		t.Fatalf("count oidc tokens: %v", err)
+	}
+	return n
+}
+
+func TestAdminDisableUserRevokesOIDCTokens(t *testing.T) {
+	a := newAdminHarness(t)
+	cookie := a.signIn(t)
+	id := a.addUser(t, "oidc-disable@example.com")
+	other := a.addUser(t, "oidc-bystander@example.com")
+	admUsersSeedOIDCToken(t, a, id, "dis-one")
+	admUsersSeedOIDCToken(t, a, other, "dis-bystander")
+
+	if rec := a.postForm("/users/"+id+"/disable", nil, cookie); rec.Code != http.StatusFound {
+		t.Fatalf("disable: status %d", rec.Code)
+	}
+	if n := admUsersOIDCTokenCount(t, a, id); n != 0 {
+		t.Errorf("disabled user kept %d oidc tokens, want 0", n)
+	}
+	if n := admUsersOIDCTokenCount(t, a, other); n != 1 {
+		t.Errorf("bystander oidc tokens = %d, want 1", n)
+	}
+}
+
+func TestAdminRevokeSessionsRevokesOIDCTokens(t *testing.T) {
+	a := newAdminHarness(t)
+	cookie := a.signIn(t)
+	id := a.addUser(t, "oidc-revoke@example.com")
+	other := a.addUser(t, "oidc-revoke-bystander@example.com")
+	admUsersSeedOIDCToken(t, a, id, "rev-one")
+	admUsersSeedOIDCToken(t, a, id, "rev-two")
+	admUsersSeedOIDCToken(t, a, other, "rev-bystander")
+
+	if rec := a.postForm("/users/"+id+"/revoke-sessions", nil, cookie); rec.Code != http.StatusFound {
+		t.Fatalf("revoke sessions: status %d", rec.Code)
+	}
+	if n := admUsersOIDCTokenCount(t, a, id); n != 0 {
+		t.Errorf("oidc tokens left for the target user = %d, want 0", n)
+	}
+	if n := admUsersOIDCTokenCount(t, a, other); n != 1 {
+		t.Errorf("bystander oidc tokens = %d, want 1", n)
+	}
+}

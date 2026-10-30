@@ -66,9 +66,14 @@ func (f *ForwardAuth) Verify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var email string
-	f.db.QueryRowContext(r.Context(), `SELECT email FROM users WHERE id=? AND disabled=0`, data.UserID).Scan(&email)
+	var forceChange bool
+	f.db.QueryRowContext(r.Context(), `SELECT email, force_password_change FROM users WHERE id=? AND disabled=0`, data.UserID).Scan(&email, &forceChange)
 	if email == "" {
 		http.Redirect(w, r, f.loginURL(r), http.StatusFound)
+		return
+	}
+	if forceChange {
+		http.Redirect(w, r, f.passwordChangeURL(r), http.StatusFound)
 		return
 	}
 
@@ -157,4 +162,17 @@ func (f *ForwardAuth) loginURL(r *http.Request) string {
 		loginURL += "?redirect_uri=" + url.QueryEscape(original)
 	}
 	return loginURL
+}
+
+// passwordChangeURL builds the forced password change URL, returning to the protected app afterwards.
+func (f *ForwardAuth) passwordChangeURL(r *http.Request) string {
+	proto := r.Header.Get("X-Forwarded-Proto")
+	host := r.Header.Get("X-Forwarded-Host")
+	uri := r.Header.Get("X-Forwarded-Uri")
+
+	target := f.baseURL + "/profile/password?forced=1"
+	if proto != "" && host != "" {
+		target += "&redirect_uri=" + url.QueryEscape(proto+"://"+host+uri)
+	}
+	return target
 }

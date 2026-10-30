@@ -35,7 +35,9 @@ Short-lived tokens limit the window an attacker has if a token is stolen.
 | Refresh token | 30 days |
 | ID token | 15 minutes |
 
-Refresh tokens are stored server-side. They can be revoked immediately by deleting the token record. Access tokens cannot be revoked before they expire (this is inherent to bearer tokens).
+Refresh tokens are stored server-side and each one works once. Using it issues a new access and refresh token and ends the old pair, so apps must save the new refresh token.
+
+Disabling a user or revoking their sessions deletes their tokens right away. The userinfo and introspection endpoints stop accepting them immediately. An app that checks a token itself, without calling GateKeeper, keeps accepting it until it expires.
 
 ## Client authentication
 
