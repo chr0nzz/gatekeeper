@@ -478,17 +478,18 @@ type accessToken struct {
 	emailVerified bool
 }
 
-// activeAccessToken loads a stored, unexpired access token owned by subject, an enabled user.
+// activeAccessToken loads a stored, unexpired access token owned by subject: an enabled user, or the client for a machine token.
 func (s *Storage) activeAccessToken(ctx context.Context, tokenID, subject string) (*accessToken, error) {
 	var tok accessToken
 	var scopesRaw string
 	var created, expires int64
 	var verified int
 	err := s.db.QueryRowContext(ctx,
-		`SELECT t.client_id, t.scopes, t.created_at, t.access_expires, u.email, u.email_verified
-		 FROM oidc_tokens t JOIN users u ON u.id = t.user_id
-		 WHERE (t.id=? OR t.access_token=?) AND t.user_id=? AND t.access_expires>? AND u.disabled=0`,
-		tokenID, tokenID, subject, time.Now().Unix(),
+		`SELECT t.client_id, t.scopes, t.created_at, t.access_expires, COALESCE(u.email, ''), COALESCE(u.email_verified, 0)
+		 FROM oidc_tokens t LEFT JOIN users u ON u.id = t.user_id
+		 WHERE (t.id=? OR t.access_token=?) AND t.access_expires>?
+		   AND ((t.user_id=? AND u.disabled=0) OR (t.user_id IS NULL AND t.client_id=?))`,
+		tokenID, tokenID, time.Now().Unix(), subject, subject,
 	).Scan(&tok.clientID, &scopesRaw, &created, &expires, &tok.email, &verified)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.New("invalid access token")

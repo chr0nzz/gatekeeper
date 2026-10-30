@@ -32,6 +32,30 @@ func TestTrustedRealIP(t *testing.T) {
 			want:   "198.51.100.9:0",
 		},
 		{
+			name:   "Cloudflare edge vouches for the client",
+			peer:   "172.18.0.2:4000",
+			header: map[string]string{"X-Forwarded-For": "203.0.113.10, 198.51.100.9, 104.16.0.1", "CF-Connecting-IP": "198.51.100.9"},
+			want:   "198.51.100.9:0",
+		},
+		{
+			name:   "Cloudflare edge over IPv6 vouches for the client",
+			peer:   "172.18.0.2:4000",
+			header: map[string]string{"X-Forwarded-For": "2606:4700::1", "CF-Connecting-IP": "2001:db8::9"},
+			want:   "[2001:db8::9]:0",
+		},
+		{
+			name:   "CF-Connecting-IP from outside Cloudflare is ignored",
+			peer:   "172.18.0.2:4000",
+			header: map[string]string{"X-Forwarded-For": "198.51.100.9", "CF-Connecting-IP": "203.0.113.10"},
+			want:   "198.51.100.9:0",
+		},
+		{
+			name:   "Cloudflare edge without a valid client header stays the edge",
+			peer:   "172.18.0.2:4000",
+			header: map[string]string{"X-Forwarded-For": "104.16.0.1", "CF-Connecting-IP": "not-an-ip"},
+			want:   "104.16.0.1:0",
+		},
+		{
 			name:   "public peer cannot set forwarding headers",
 			peer:   "198.51.100.9:4000",
 			header: map[string]string{"X-Real-IP": "203.0.113.10", "X-Forwarded-For": "203.0.113.10"},

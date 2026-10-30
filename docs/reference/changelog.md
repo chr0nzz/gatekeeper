@@ -3,6 +3,26 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.11
+
+:::caution Security release
+Upgrade from any earlier version.
+:::
+
+### Login limits see the real client behind Cloudflare
+
+Behind Cloudflare, GateKeeper saw a Cloudflare address instead of the visitor's, so visitors could share one login attempt limit and audit logs showed the wrong address. It now reads `CF-Connecting-IP`, but only when the request came through a Cloudflare address. No setup is needed.
+
+### Machine-to-machine tokens work
+
+The `client_credentials` grant, which lets a service get a token without a user, failed with a database error. Services can now get tokens, and the introspection endpoint reports them correctly. Revoked and expired ones show as inactive.
+
+### Dependencies
+
+Updated go-jose to v4.1.6, which fixes three denial of service advisories (GHSA-mgcc-cww5-fp2q, GHSA-vvm8-gf78-28g4, GHSA-4w3g-jfj2-cw2q). Updated vite to v6.4.5 for the docs site (GHSA-8g5g-mxqh-grgj).
+
+---
+
 ## v0.9.10
 
 :::caution Security release
