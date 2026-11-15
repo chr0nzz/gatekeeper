@@ -3,6 +3,14 @@ title: Changelog
 description: Version history for GateKeeper.
 ---
 
+## v0.9.12
+
+### Dependencies
+
+Updated OpenTelemetry, a tracing library used by the OIDC provider, to v1.47.0 (GHSA-q7gw-24fr-5p69). GateKeeper does not record traces, so it was not affected.
+
+---
+
 ## v0.9.11
 
 :::caution Security release
